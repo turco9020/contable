@@ -1,19 +1,50 @@
-# Sistema
+# =========================
+# Sistema Operativo
+# =========================
 .DS_Store
 Thumbs.db
 
-# VS Code
+# =========================
+# Visual Studio Code
+# =========================
 .vscode/
 
+# =========================
 # Logs
+# =========================
 *.log
 
+# =========================
 # Archivos temporales
+# =========================
 *.tmp
 *.bak
-
-# Configuración local (si algún día ponés credenciales)
-.env
-
-# Xdebug
 *.cache
+
+# =========================
+# Variables de entorno
+# =========================
+.env
+.env.*
+
+# =========================
+# Dependencias Composer (si algún día usamos Composer)
+# =========================
+vendor/
+
+# =========================
+# Dependencias Node (si algún día usamos Vite o npm)
+# =========================
+node_modules/
+
+# =========================
+# Archivos comprimidos
+# =========================
+*.zip
+*.rar
+*.7z
+
+# =========================
+# Backups de base de datos
+# =========================
+*.sql.bak

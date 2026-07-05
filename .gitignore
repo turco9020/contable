@@ -1,0 +1,19 @@
+# Sistema
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+
+# Archivos temporales
+*.tmp
+*.bak
+
+# Configuración local (si algún día ponés credenciales)
+.env
+
+# Xdebug
+*.cache

@@ -190,42 +190,90 @@ if($_GET['accion']=='guardar'){
                 ".($archivo_nombre ? "'$archivo_nombre'" : "NULL").", $usuario)";
     }
 
-    $ok = $conn->query($sql);
+   $ok = $conn->query($sql);
 
 if($ok){
 
-    // SOLO PARA ALTAS NUEVAS
-    if(!$id && $caja_id != "NULL"){
+    if($id){
 
-        $gasto_id = $conn->insert_id;
+        // ACTUALIZA MOVIMIENTO DE CAJA
 
-        $concepto = "GASTO #".$gasto_id;
+        if($caja_id != "NULL"){
 
-        $conn->query("
-            INSERT INTO movimientos_caja (
+            $concepto = "GASTO #".$id;
 
-                fecha,
-                caja_id,
-                tipo,
-                concepto,
-                comprobante,
-                importe,
-                origen,
-                referencia_id
+            $conn->query("
 
-            ) VALUES (
+                UPDATE movimientos_caja SET
 
-                '$fecha',
-                $caja_id,
-                'EGRESO',
-                '$concepto',
-                '$numero_comprobante',
-                '$total',
-                'GASTO',
-                $gasto_id
+                    fecha='$fecha',
 
-            )
-        ");
+                    caja_id=$caja_id,
+
+                    concepto='$concepto',
+
+                    comprobante='$numero_comprobante',
+
+                    importe='$total'
+
+                WHERE
+
+                    origen='GASTO'
+
+                    AND referencia_id=$id
+
+            ");
+
+        }
+
+    }else{
+
+        // INSERT NUEVO
+
+        if($caja_id != "NULL"){
+
+            $gasto_id = $conn->insert_id;
+
+            $concepto = "GASTO #".$gasto_id;
+
+            $conn->query("
+
+                INSERT INTO movimientos_caja(
+
+                    fecha,
+                    caja_id,
+                    tipo,
+                    concepto,
+                    comprobante,
+                    importe,
+
+                    origen,
+                    referencia_id
+
+                ) VALUES(
+
+                    '$fecha',
+
+                    $caja_id,
+
+                    'EGRESO',
+
+                    '$concepto',
+
+                    '$numero_comprobante',
+
+                    '$total',
+
+                    'GASTO',
+
+                    $gasto_id
+
+                )
+
+            ");
+
+        }
+
     }
 
     echo "OK";
@@ -238,7 +286,6 @@ if($ok){
 
 exit;
 }
-
 
 /* =========================
    ELIMINAR ARCHIVO
@@ -261,17 +308,60 @@ if($_GET['accion']=='eliminar_archivo'){
    ELIMINAR GASTO COMPLETO
 ========================= */
 if($_GET['accion']=='eliminar'){
-    $id = $_POST['id'] ?? 0;
-    
-    // Primero borrar archivo físico
-    $res = $conn->query("SELECT archivo FROM gastos WHERE id=$id");
+
+    $id = (int)($_POST['id'] ?? 0);
+
+    // =========================
+    // ELIMINAR ARCHIVO FÍSICO
+    // =========================
+
+    $res = $conn->query("
+        SELECT archivo
+        FROM gastos
+        WHERE id = $id
+    ");
+
     $row = $res->fetch_assoc();
-    if($row && $row['archivo']){
-        $ruta = $_SERVER['DOCUMENT_ROOT'].'/contable/uploads/gastos/'.$row['archivo'];
-        if(file_exists($ruta)) unlink($ruta);
+
+    if($row && !empty($row['archivo'])){
+
+        $ruta = $_SERVER['DOCUMENT_ROOT'].
+                '/contable/uploads/gastos/'.
+                $row['archivo'];
+
+        if(file_exists($ruta)){
+            unlink($ruta);
+        }
+
     }
 
-    if($conn->query("DELETE FROM gastos WHERE id = $id")) echo "OK";
-    else echo "ERROR: ".$conn->error;
+    // =========================
+    // ELIMINAR MOVIMIENTO DE CAJA
+    // =========================
+
+    $conn->query("
+        DELETE FROM movimientos_caja
+        WHERE origen='GASTO'
+        AND referencia_id=$id
+    ");
+
+    // =========================
+    // ELIMINAR GASTO
+    // =========================
+
+    if($conn->query("
+        DELETE FROM gastos
+        WHERE id=$id
+    ")){
+
+        echo "OK";
+
+    }else{
+
+        echo "ERROR: ".$conn->error;
+
+    }
+
     exit;
+
 }

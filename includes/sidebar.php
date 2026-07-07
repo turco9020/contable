@@ -6,7 +6,7 @@
     <a href="/contable/index.php">🏠 Dashboard</a>
 
     <?php if(esAdmin()): ?>
-        <a href="/contable/modules/facturacion/">🧾 Facturación</a>
+        <a href="/contable/modules/facturacion/">🧾 Ingresos</a>
     <?php endif; ?>
 
     <a href="/contable/modules/gastos/">🛒 Gastos</a>

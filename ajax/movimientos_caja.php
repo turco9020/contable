@@ -60,16 +60,17 @@ if($accion == 'saldos'){
 
 if($accion == 'listar'){
 
+    // Modificamos la consulta para traer el archivo original desde la tabla gastos
     $sql = "
         SELECT
             m.*,
-            c.nombre caja
-
+            c.nombre caja,
+            g.archivo AS gasto_archivo
         FROM movimientos_caja m
-
-        LEFT JOIN cajas c
+        LEFT JOIN cajas c 
             ON c.id = m.caja_id
-
+        LEFT JOIN gastos g 
+            ON g.id = m.referencia_id AND m.origen = 'GASTO'
         ORDER BY
             m.fecha DESC,
             m.id DESC

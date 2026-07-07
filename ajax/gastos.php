@@ -79,6 +79,7 @@ if($_GET['accion']=='obtener'){
 
     $sql = "SELECT
                 g.*,
+                mc.caja_id,
                 t.nombre AS tipo_comprobante,
                 m.nombre AS medio_pago,
                 o.nombre AS obra,
@@ -89,6 +90,7 @@ if($_GET['accion']=='obtener'){
 
             FROM gastos g
 
+            LEFT JOIN movimientos_caja mc ON mc.origen='GASTO' AND mc.referencia_id=g.id
             LEFT JOIN tipos_comprobante t ON t.id = g.tipo_comprobante_id
             LEFT JOIN medios_pago m ON m.id = g.medio_pago_id
             LEFT JOIN obras o ON o.id = g.obra_id

@@ -13,12 +13,10 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
         </button>
     </div>
 
-    <!-- SALDOS -->
     <div class="row mb-4" id="cardsSaldos">
 
     </div>
 
-    <!-- TABLA -->
     <table id="tablaMovimientos" class="table table-bordered table-striped w-100">
 
         <thead>
@@ -37,8 +35,6 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
     </table>
 
 </div>
-
-<!-- MODAL -->
 
 <div class="modal fade" id="modalMovimiento">
 
@@ -159,7 +155,9 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
 
 </div>
 
+<?php include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/modal_gasto.php'; ?>
 <?php include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/footer.php'; ?>
+<script src="/contable/assets/js/gastos_modal.js"></script>
 
 <script>
 
@@ -167,14 +165,15 @@ let tabla;
 let modalMovimiento;
 
 // =======================
-// CARGAR CAJAS
+// CARGAR CAJAS PARA EL INDEX
 // =======================
 
-function cargarCajas(){
+function cargarCajasIndex(){ // SE CAMBIÓ EL NOMBRE PARA EVITAR COLISIÓN CON EL MODAL COMPARTIDO
 
     $.get('/contable/ajax/cajas.php?accion=listar', function(r){
 
-        let select = $('#caja_id');
+        // Selector específico para rellenar únicamente el select del index
+        let select = $('#formMovimiento #caja_id'); 
 
         select.empty();
 
@@ -246,7 +245,7 @@ document.addEventListener("DOMContentLoaded", function(){
         document.getElementById('modalMovimiento')
     );
 
-    cargarCajas();
+    cargarCajasIndex(); // SE CORRIGIÓ EL NOMBRE DE LA FUNCIÓN LLAMADA AL INICIO
     cargarSaldos();
 
     tabla = $('#tablaMovimientos').DataTable({
@@ -319,50 +318,77 @@ document.addEventListener("DOMContentLoaded", function(){
                 }
             },
 
-            {
-                data:'archivo',
-                render:function(d){
+{
+    data: 'archivo',
+    render: function(d, type, row){
 
-                    if(!d) return '-';
+        // CASO 1: Si el movimiento viene de un GASTO
+        if(row.origen === 'GASTO'){
+            
+            // Tomamos el 'gasto_archivo' que acabamos de agregar en el backend
+            let archivoGasto = row.gasto_archivo; 
 
-                    return `
-                        <a
-                            href="/contable/uploads/caja/${d}"
-                            target="_blank"
-                            class="btn btn-sm btn-secondary">
+            if(!archivoGasto) return '-';
 
-                            Ver
+            return `
+                <a
+                    href="/contable/uploads/gastos/${archivoGasto}"
+                    target="_blank"
+                    class="btn btn-sm btn-outline-dark">
 
-                        </a>
-                    `;
-                }
-            },
+                    📄 Gasto
 
-            {
-                data:null,
-                orderable:false,
+                </a>
+            `;
+        }
 
-                render:function(d){
+        // CASO 2: Movimiento manual de CAJA tradicional
+        if(!d) return '-';
 
-                    return `
-                        <button
-                            class="btn btn-sm btn-primary"
-                            onclick='editar(${JSON.stringify(d)})'>
+        return `
+            <a
+                href="/contable/uploads/caja/${d}"
+                target="_blank"
+                class="btn btn-sm btn-secondary">
 
-                            Editar
+                Ver
 
-                        </button>
+            </a>
+        `;
+    }
+},
 
-                        <button
-                            class="btn btn-sm btn-outline-danger"
-                            onclick="eliminar(${d.id})">
+           {
+    data:null,
+    orderable:false,
 
-                            Eliminar
+    render:function(d){
 
-                        </button>
-                    `;
-                }
-            }
+        // Si el origen del movimiento es un GASTO, ocultamos los botones
+        if(d.origen === 'GASTO'){
+            return `<span class="text-muted-small"><em>Bloqueado (Gasto)</em></span>`;
+        }
+
+        // Si es un movimiento manual de caja, se puede editar/eliminar normal
+        return `
+            <button
+                class="btn btn-sm btn-primary"
+                onclick='editar(${JSON.stringify(d)})'>
+
+                Editar
+
+            </button>
+
+            <button
+                class="btn btn-sm btn-outline-danger"
+                onclick="eliminar(${d.id})">
+
+                Eliminar
+
+            </button>
+        `;
+    }
+}
 
         ]
 
@@ -379,6 +405,10 @@ window.abrirModal = function(){
     $('#formMovimiento')[0].reset();
 
     $('#id').val('');
+
+    // Forzamos a que el input de archivo se vuelva a mostrar 
+    // por si el modal de gastos lo había ocultado
+    $('#archivo').show();
 
     $('#archivo').val('');
 
@@ -458,11 +488,14 @@ window.eliminar = function(id){
 function verGasto(id){
 
     $.get(
-        '/contable/ajax/gastos.php?accion=obtener&id=' + id,
-        function(data){
+        '/contable/ajax/gastos.php',
+        {
+            accion:'obtener',
+            id:id
+        },
+        function(g){
 
-            // reutilizamos exactamente el mismo modal
-            window.ver(data);
+            window.mostrarModalGasto(g);
 
         },
         'json'
@@ -482,7 +515,7 @@ window.editar = function(data){
 
     $('#fecha').val(data.fecha);
 
-    $('#caja_id').val(data.caja_id);
+    $('#formMovimiento #caja_id').val(data.caja_id); // Ajustado para apuntar específicamente al formMovimiento
 
     $('#tipo').val(data.tipo);
 
@@ -518,6 +551,5 @@ window.editar = function(data){
 
     modalMovimiento.show();
 }
-
 
 </script>

@@ -57,7 +57,6 @@ include '../../includes/sidebar.php';
 <th>Obra</th>
 <th>Categoria</th>
 <th>Subcategoria</th>
-<th>Archivo</th>
 <th>Acciones</th>
 </tr>
 </thead>
@@ -66,52 +65,33 @@ include '../../includes/sidebar.php';
 
 </div>
 
-
 <?php include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/modal_gasto.php'; ?>
 <?php include '../../includes/footer.php'; ?>
 
 <script>
 let modalGasto;
 
-//FILTROS
-
-// Función para recargar la tabla con filtros
 window.aplicarFiltros = function() {
     $('#tablaGastos').DataTable().ajax.reload();
 }
 
-// Función para resetear filtros
 window.limpiarFiltros = function() {
     $('#f_desde, #f_hasta').val('');
     $('#f_centro, #f_categoria, #f_obra').val('');
     $('#tablaGastos').DataTable().ajax.reload();
 }
 
-
-
-//FORMATO MONEDA (Robusto, para cualquier tipo de entrada, incluso mal formateada)
 function renderMoneda(val) {
-    if (val === null || val === undefined || val === '') return '$ 0,00';
-
-    // El DECIMAL(15,2) de MySQL llega como "1000.50". 
-    // parseFloat lo entiende perfectamente SIEMPRE que no le quitemos el punto.
-    let num = parseFloat(val);
-
+    if (!val || val == 0) return '$ 0,00';
+    let limpio = val.toString().replace(/[^0-9.-]+/g, "");
+    let num = parseFloat(limpio);
     if (isNaN(num)) return '$ 0,00';
 
-    // Intl.NumberFormat es la librería nativa de JS para moneda.
-    // Ella sola pondrá el punto en los miles y la coma en decimales.
-    return new Intl.NumberFormat('es-AR', {
-        style: 'currency',
-        currency: 'ARS',
+    return '$ ' + num.toLocaleString('es-AR', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
-    }).format(num);
+    });
 }
-
-// =======================
-// CARGAS (Modificadas para retornar la promesa del AJAX)
-// =======================
 
 function cargarTipos(){
     return $.get('/contable/ajax/tipos_comprobante.php?accion=listar', r=>{
@@ -129,11 +109,8 @@ function cargarMedios(){
     },'json');
 }
 
-// Modificar la carga de opciones para que también llenen los filtros
-// Reemplaza tus funciones existentes por estas (o añade las líneas de los filtros)
 function cargarCentros(){
     return $.get('/contable/ajax/centros.php?accion=listar', r=>{
-        // Seleccionamos el del modal (#centro_costo_id) y el del filtro (#f_centro)
         let s = $('#centro_costo_id, #f_centro'); 
         s.empty().append(`<option value="">-- Seleccionar --</option>`);
         r.data.forEach(x=>{ s.append(`<option value="${x.id}">${x.nombre}</option>`); });
@@ -171,7 +148,7 @@ function cargarSubcategorias(categoria_id){
 function cargarProveedores(){
     return $.get('/contable/ajax/get_proveedores.php', r=>{
         let s=$('#proveedor_id');
-        s.empty().append(`<option value="">-- Seleccionar --</option>`);
+        s.empty().append('<option value="">-- Seleccionar --</option>');
         r.forEach(p=>{ s.append(`<option value="${p.id}">${p.nombre} (${p.cuit})</option>`); });
     },'json');
 }
@@ -182,17 +159,10 @@ function cargarCajas(selector = '#caja_id'){
         s.empty();
         s.append('<option value="">Seleccionar</option>');
         r.data.forEach(x=>{
-            s.append(`
-                <option value="${x.id}">
-                    ${x.nombre}
-                </option>
-            `);
+            s.append(`<option value="${x.id}">${x.nombre}</option>`);
         });
     },'json');
 }
-// =======================
-// GLOBAL
-// =======================
 
 window.abrirModal = function(){
     $('#formGasto')[0].reset();
@@ -202,122 +172,98 @@ window.abrirModal = function(){
     $('#formGasto input, select').prop('disabled', false);
     $('#formGasto button[type="submit"], #formGasto .btn-dark').show();
     
-    // Cargamos todo antes de mostrar
     $.when(cargarCentros(), cargarCajas(), cargarTipos(), cargarMedios(), cargarObras(), cargarCategorias(), cargarProveedores())
      .done(() => { modalGasto.show(); });
 }
 
-// =======================
-// INIT
-// =======================
-
 document.addEventListener("DOMContentLoaded", function() {
-
     modalGasto = new bootstrap.Modal(document.getElementById('modalGasto'));
 
- let tabla = $('#tablaGastos').DataTable({
-    responsive: true,
-    scrollX: true,
-    dom: 'Bfrtip',
-    buttons: [
-        { extend: 'colvis', text: 'Columnas', className: 'btn btn-sm btn-secondary' },
-        { extend: 'excel', text: 'Excel', className: 'btn btn-sm btn-secondary' }
-    ],
-    ajax: {
-        url: '/contable/ajax/gastos.php?accion=listar',
-        data: function(d) {
-            d.f_desde = $('#f_desde').val();
-            d.f_hasta = $('#f_hasta').val();
-            d.f_centro = $('#f_centro').val();
-            d.f_categoria = $('#f_categoria').val();
-            d.f_obra = $('#f_obra').val();
-        }
-    },
-    columns: [
-    { data: 'id', visible: true },
-    { data: 'fecha', render: function(d, type) { 
-        if (type === 'display' && d) { let p = d.split('-'); return `${p[2]}/${p[1]}/${p[0]}`; }
-        return d;
-    }},
-    { data: 'tipo_comprobante', className: 'none' },
-    { data: 'numero_comprobante', className: 'none' },
-    { data: 'medio_pago', className: 'none' },
-    { data: 'proveedor', defaultContent: '' },
-    { data: 'detalle', className: 'none' },
-    { data: 'neto', className: 'text-end', render: d => renderMoneda(d) },
-    { data: 'iva', className: 'text-end', render: d => renderMoneda(d) },
-    { data: 'ret_iibb', className: 'none', render: d => renderMoneda(d) },
-    { data: 'otros_tributos', className: 'none', render: d => renderMoneda(d) },
-    { data: 'total', className: 'text-end fw-bold', render: d => renderMoneda(d) },
-    { data: 'centro' },
-    { data: 'obra' },
-    { data: 'categoria' },
-    { data: 'subcategoria' },
-    { data: 'archivo', render: d => d ? `<a href="/contable/uploads/gastos/${d}" target="_blank" class="btn btn-sm btn-secondary">Ver</a>` : '-' },
-    { data: null, orderable: false, render: function(data) {
-        return `
-            <button class="btn btn-sm btn-secondary" onclick='ver(${JSON.stringify(data)})'>Ver</button>
-            <button class="btn btn-sm btn-primary" onclick='editar(${JSON.stringify(data)})'>Editar</button>
-            <button class="btn btn-sm btn-outline-danger" onclick="eliminar(${data.id})">Eliminar</button>
-        `;
-    }}
-]
-});
-
-// Función de ayuda para que el renderizado sea perfecto
-function renderMoneda(val) {
-    if (!val || val == 0) return '$ 0,00';
-    
-    // Convertimos a string y limpiamos cualquier formato previo por seguridad
-    // Reemplazamos comas por puntos si el origen viene mal formateado
-    let limpio = val.toString().replace(/[^0-9.-]+/g, "");
-    let num = parseFloat(limpio);
-    
-    if (isNaN(num)) return '$ 0,00';
-
-    return '$ ' + num.toLocaleString('es-AR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
+    let tabla = $('#tablaGastos').DataTable({
+        responsive: true,
+        scrollX: true,
+        dom: 'Bfrtip',
+        buttons: [
+            { extend: 'colvis', text: 'Columnas', className: 'btn btn-sm btn-secondary' },
+            { extend: 'excel', text: 'Excel', className: 'btn btn-sm btn-secondary' }
+        ],
+        ajax: {
+            url: '/contable/ajax/gastos.php?accion=listar',
+            data: function(d) {
+                d.f_desde = $('#f_desde').val();
+                d.f_hasta = $('#f_hasta').val();
+                d.f_centro = $('#f_centro').val();
+                d.f_categoria = $('#f_categoria').val();
+                d.f_obra = $('#f_obra').val();
+            }
+        },
+        columns: [
+            { data: 'id', visible: true },
+            { data: 'fecha', render: function(d, type) { 
+                if (type === 'display' && d) { let p = d.split('-'); return `${p[2]}/${p[1]}/${p[0]}`; }
+                return d;
+            }},
+            { data: 'tipo_comprobante', className: 'none' },
+            { data: 'numero_comprobante', className: 'none' },
+            { data: 'medio_pago', className: 'none' },
+            { data: 'proveedor', defaultContent: '' },
+            { data: 'detalle', className: 'none' },
+            { data: 'neto', className: 'text-end', render: d => renderMoneda(d) },
+            { data: 'iva', className: 'text-end', render: d => renderMoneda(d) },
+            { data: 'ret_iibb', className: 'none', render: d => renderMoneda(d) },
+            { data: 'otros_tributos', className: 'none', render: d => renderMoneda(d) },
+            { data: 'total', className: 'text-end fw-bold', render: d => renderMoneda(d) },
+            { data: 'centro' },
+            { data: 'obra' },
+            { data: 'categoria' },
+            { data: 'subcategoria' },
+            { 
+                data: null, 
+                orderable: false, 
+                render: function(data) {
+                    // Si el registro tiene archivo adjunto, agregamos la carpeta uniforme
+                    let btnArchivo = data.archivo ? `<a href="/contable/uploads/gastos/${data.archivo}" target="_blank" class="btn btn-sm btn-outline-secondary" title="Ver Adjunto Gasto">📁</a>` : '';
+                    
+                    return `
+                        <div class="d-flex gap-1 align-items-center">
+                            ${btnArchivo}
+                            <button class="btn btn-sm btn-secondary" onclick='ver(${JSON.stringify(data)})'>Ver</button>
+                            <button class="btn btn-sm btn-primary" onclick='editar(${JSON.stringify(data)})'>Editar</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="eliminar(${data.id})">Eliminar</button>
+                        </div>
+                    `;
+                }
+            }
+        ]
     });
-}
 
     $('#categoria_id').on('change', function() { cargarSubcategorias($(this).val()); });
 
-// TOTAL (Cálculo automático blindado)
-$('#neto, #iva, #ret_iibb, #otros_tributos').on('input', function() {
-    
-    const limpiarNum = (val) => {
-        if (!val) return 0;
-        // Convertir a string y quitar todo lo que no sea número o coma
-        let s = val.toString().replace(/[^\d,.-]/g, '');
-        
-        // Si el valor tiene puntos de miles (formato AR), los quitamos
-        // Solo si hay una coma después del punto, o si hay múltiples puntos
-        if (s.includes(',') && s.includes('.')) {
-            s = s.replace(/\./g, '');
-        } else if ((s.match(/\./g) || []).length > 1) {
-            s = s.replace(/\./g, '');
-        }
+    $('#neto, #iva, #ret_iibb, #otros_tributos').on('input', function() {
+        const limpiarNum = (val) => {
+            if (!val) return 0;
+            let s = val.toString().replace(/[^\d,.-]/g, '');
+            if (s.includes(',') && s.includes('.')) {
+                s = s.replace(/\./g, '');
+            } else if ((s.match(/\./g) || []).length > 1) {
+                s = s.replace(/\./g, '');
+            }
+            s = s.replace(',', '.');
+            return parseFloat(s) || 0;
+        };
 
-        // Finalmente, normalizar coma a punto para que JS lo entienda
-        s = s.replace(',', '.');
-        return parseFloat(s) || 0;
-    };
+        let neto  = limpiarNum($('#neto').val());
+        let iva   = limpiarNum($('#iva').val());
+        let iibb  = limpiarNum($('#ret_iibb').val());
+        let otros = limpiarNum($('#otros_tributos').val());
 
-    let neto  = limpiarNum($('#neto').val());
-    let iva   = limpiarNum($('#iva').val());
-    let iibb  = limpiarNum($('#ret_iibb').val());
-    let otros = limpiarNum($('#otros_tributos').val());
+        let sumaTotal = neto + iva + iibb + otros;
 
-    let sumaTotal = neto + iva + iibb + otros;
-
-    // Seteamos el valor con formato limpio
-    $('#total').val(sumaTotal.toLocaleString('es-AR', { 
-        minimumFractionDigits: 2, 
-        maximumFractionDigits: 2 
-    }));
-});
-
+        $('#total').val(sumaTotal.toLocaleString('es-AR', { 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2 
+        }));
+    });
 
     $('#formGasto').submit(function(e) {
         e.preventDefault();
@@ -348,22 +294,17 @@ $('#neto, #iva, #ret_iibb, #otros_tributos').on('input', function() {
         $('#formGasto input, select').prop('disabled', false); 
         $('#formGasto button').show();
 
-        // 1. Cargamos todas las opciones de los selects primero
         $.when(
             cargarCentros(), cargarCajas(), cargarCategorias(), cargarProveedores(), 
             cargarTipos(), cargarMedios(), cargarObras()
         ).done(function() {
-            // 2. Una vez cargadas las opciones, asignamos los valores
             for (let k in data) {
                 let el = document.getElementById(k);
                 if (el && k !== 'archivo') { el.value = data[k]; }
             }
 
-           // 🔥 ESTA ES LA CLAVE: Forzamos a que el sistema recalcule el total 
-            // con los valores originales del registro apenas abre el modal.
             $('#neto').trigger('input'); 
 
-            // 3. Carga especial de subcategoría
             if(data.categoria_id) {
                 cargarSubcategorias(data.categoria_id).done(() => {
                     $('#subcategoria_id').val(data.subcategoria_id);
@@ -393,14 +334,12 @@ $('#neto, #iva, #ret_iibb, #otros_tributos').on('input', function() {
         $.post('/contable/ajax/gastos.php?accion=eliminar', { id }, () => { tabla.ajax.reload(); });
     }
 
-    // Al final de todo tu código JS, fuera de las funciones:
     $(document).ready(function() {
-    cargarCentros();
-    cargarCajas();
-    cargarObras();
-    cargarCategorias();
+        cargarCentros();
+        cargarCajas();
+        cargarObras();
+        cargarCategorias();
     });
-
 });
 
 $(document).on('click', '#btnEliminarArchivo', function() {

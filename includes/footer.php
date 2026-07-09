@@ -121,6 +121,29 @@ $.extend(true, $.fn.dataTable.defaults, {
 });
 </script>
 
+<script>
+// ==========================================
+// CONFIGURACIÓN GLOBAL DE MODALES (TECLA ESC)
+// ==========================================
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        bootstrap.Modal.Default.keyboard = true; 
+    }
+
+    window.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' || e.keyCode === 27) {
+            let modalAbierto = document.querySelector('.modal.show');
+            if (modalAbierto) {
+                let instanciaModal = bootstrap.Modal.getInstance(modalAbierto);
+                if (instanciaModal) {
+                    instanciaModal.hide();
+                }
+            }
+        }
+    });
+});
+</script>
+
 </body>
 </html>
 ```

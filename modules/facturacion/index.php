@@ -13,6 +13,8 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
     </div>
 
     <div class="card p-3 shadow-sm">
+    <!-- El wrapper que permite el desplazamiento horizontal suave en pantallas chicas -->
+    <div class="table-responsive">
         <table id="tablaFacturas" class="table table-bordered table-striped w-100">
             <thead class="table-dark">
                 <tr>
@@ -22,14 +24,15 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
                     <th>Cliente</th>
                     <th>Centro Costo</th>
                     <th>Total</th>
+                    <th>Vence</th>
+                    <th>Estado</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
         </table>
     </div>
-
 </div>
-
+</div>
 <div class="modal fade" id="modalFactura" data-bs-backdrop="static">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -45,8 +48,8 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
 
                     <div id="seccionEscaneo" class="p-3 mb-3 bg-light border rounded text-center">
                         <label class="form-label fw-bold text-secondary mb-2">✨ Asistente de Carga Automática (Subir PDF de AFIP)</label>
-                        <input type="file" id="archivo_escanear" class="form-control form-control-sm mx-auto" style="max-width: 400px;" accept="application/pdf">
-                        <div class="form-text mt-1">Subí el comprobante digital original para autocompletar el formulario al instante.</div>
+                          <input type="file" id="archivo_escanear" name="archivo" class="form-control form-control-sm mx-auto" style="max-width: 400px;" accept="application/pdf">
+                           <div class="form-text mt-1">Subí el comprobante digital original para autocompletar el formulario al instante.</div>
                     </div>
 
                     <div class="row g-3">
@@ -82,9 +85,20 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
                         </div>
 
                         <div class="col-md-4">
-                            <label class="form-label-resaltado fw-bold ">⚠️ Centro de Costo</label>
+                            <label class="form-label-resaltado mb-2">
+                                ⚠️ Centro de Costo
+                            </label>
                             <select name="centro_costo_id" id="centro_costo_id" class="form-select border-danger bg-warning bg-opacity-10 text-dark" required>
                                 </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label ">Estado de Pago</label>
+                            <select name="estado" id="estado" class="form-select " required>
+                                <option value="DEBE">🔴 DEBE</option>
+                                <option value="PAGADO">🟢 PAGADO</option>
+                                <option value="VER">🟡 VER (Revisión)</option>
+                            </select>
                         </div>
 
                         <div class="col-12">
@@ -149,6 +163,11 @@ document.addEventListener("DOMContentLoaded", function() {
     tabla = $('#tablaFacturas').DataTable({
         ajax: '/contable/ajax/facturacion.php?accion=listar',
         order: [[0, 'desc']],
+
+        // EXCLUSIVO PARA QUE SE ADAPTE SIN DESFASE:
+        autoWidth: false,      // Evita que DataTables calcule anchos fijos en px
+        responsive: true,     
+       
         columns: [
             { 
                 data: 'fecha',
@@ -175,6 +194,64 @@ document.addEventListener("DOMContentLoaded", function() {
                     return '$ ' + Number(d).toLocaleString('es-AR', { minimumFractionDigits: 2 });
                 }
             },
+            // ==========================================================
+            // NUEVA COLUMNA: CÁLCULO DE DÍAS RESTANTES (VENCE EN)
+            // ==========================================================
+            {
+                data: null,
+                className: 'text-center',
+                render: function(row) {
+                    if (!row.fecha_vencimiento) return '<span class="text-muted">-</span>';
+                    
+                    // Creamos las fechas para la resta (sin horas para que el cálculo de días sea exacto)
+                    let fechaVto = new Date(row.fecha_vencimiento + 'T00:00:00');
+                    let hoy = new Date();
+                    hoy.setHours(0, 0, 0, 0);
+                    
+                    // Resta en milisegundos y conversión a días
+                    let diferenciaMs = fechaVto - hoy;
+                    let diasRestantes = Math.ceil(diferenciaMs / (1000 * 60 * 60 * 24));
+                    
+                    let estadoFactura = row.estado ? row.estado.toUpperCase() : 'DEBE';
+                    
+                    // Si ya está cobrada/pagada, no tiene sentido alertar por el vencimiento
+                    if (estadoFactura === 'PAGADO') {
+                        return '<span class="text-muted">✔︎</span>';
+                    }
+                    
+                    if (diasRestantes < 0) {
+                        // Vencida (en rojo minimalista)
+                        let diasPasados = Math.abs(diasRestantes);
+                        return `<span class="text-danger fw-bold">Vencida hace ${diasPasados} ${diasPasados === 1 ? 'día' : 'días'}</span>`;
+                    } else if (diasRestantes === 0) {
+                        // Vence hoy
+                        return '<span class="text-warning fw-bold">Vence hoy</span>';
+                    } else {
+                        // Faltan días (en gris/negro prolijo)
+                        return `<span class="text-secondary">${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'}</span>`;
+                    }
+                }
+            },
+            {
+            data: 'estado',
+            render: function(d) {
+                let texto = d ? d.toUpperCase() : 'DEBE';
+                let colorLed = 'bg-danger'; // Por defecto rojo para DEBE
+                
+                if(texto === 'PAGADO') {
+                    colorLed = 'bg-success';
+                } else if(texto === 'VER') {
+                    colorLed = 'bg-warning';
+                }
+                
+                return `
+                    <div class="d-inline-flex align-items-center text-secondary fw-semibold" style="font-size: 0.9rem;">
+                        <span class="rounded-circle ${colorLed}" style="width: 8px; height: 8px; display: inline-block; margin-right: 8px;"></span>
+                        ${texto}
+                    </div>
+                `;
+            }
+        },
             {
                 data: null,
                 orderable: false,
@@ -191,6 +268,11 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
             }
         ]
+    });
+
+    // Truco extra: recalculamos los encabezados si cambia el tamaño de la ventana
+    $(window).on('resize', function () {
+        tabla.columns.adjust();
     });
 
     // Escuchador dinámico manual por si editan Neto o IVA manual
@@ -215,11 +297,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
         let labelOriginal = $('#seccionEscaneo label').text();
         $('#seccionEscaneo label').text('⏳ Extrayendo datos del comprobante...');
-
-        // Duplicamos el archivo al input real invisible
-        let dt = new DataTransfer();
-        dt.items.add(file);
-        document.getElementById('archivo').files = dt.files;
 
         let fileReader = new FileReader();
         fileReader.onload = function() {
@@ -381,6 +458,7 @@ window.abrirModal = function() {
     $('#seccionArchivoReal').hide();
     $('#tituloModal').text('Nueva Factura de Venta');
     $('#formFactura')[0].reset();
+    $('#estado').val('DEBE'); // Setear por defecto
     $('#id').val('');
     $('#archivo_actual').html('');
     modalFactura.show();
@@ -415,6 +493,7 @@ window.editarFactura = function(data) {
     $('#total').val(data.total);
     $('#observaciones').val(data.observaciones);
     $('#centro_costo_id').val(data.centro_costo_id);
+    $('#estado').val(data.estado ? data.estado : 'DEBE');
 
     if(data.archivo){
         $('#archivo_actual').html(`<a href="/contable/uploads/facturacion/${data.archivo}" target="_blank" class="btn btn-sm btn-dark">Ver archivo actual</a>`);

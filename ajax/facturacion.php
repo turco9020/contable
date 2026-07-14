@@ -24,6 +24,7 @@ if($accion == 'listar'){
             f.cliente_id,
             f.tipo_comprobante_id,
             f.centro_costo_id,
+            f.estado,
             IFNULL(c.nombre, 'SIN CLIENTE') AS cliente_nombre,
             IFNULL(tc.nombre, 'SIN TIPO') AS tipo_comprobante_nombre,
             IFNULL(cc.nombre, 'SIN CENTRO') AS centro_costo_nombre
@@ -67,7 +68,7 @@ if($accion == 'guardar'){
     $total = (float)$_POST['total'];
     $observaciones = $conn->real_escape_string(trim($_POST['observaciones']));
     $centro_costo_id = (int)$_POST['centro_costo_id'];
-    
+    $estado = $conn->real_escape_string(trim($_POST['estado'] ?? 'DEBE'));
     // Procesar archivo
     $archivo_nombre = null;
     if(isset($_FILES['archivo']) && $_FILES['archivo']['error'] == 0){
@@ -96,16 +97,17 @@ if($accion == 'guardar'){
                     iva=$iva, 
                     total=$total, 
                     observaciones='$observaciones',
-                    centro_costo_id=$centro_costo_id";
-        
+                    centro_costo_id=$centro_costo_id,
+                    estado='$estado'";
+
         if($archivo_nombre){
             $sql .= ", archivo='$archivo_nombre'";
         }
         $sql .= " WHERE id=$id";
     } else {
         // NUEVO
-        $sql = "INSERT INTO facturas_venta (fecha, tipo_comprobante_id, cliente_id, punto_venta, nro_factura, fecha_vencimiento, detalle, neto, iva, total, observaciones, centro_costo_id, archivo) 
-                VALUES ('$fecha', $tipo_comprobante_id, $cliente_id, $punto_venta, $nro_factura, $fecha_vencimiento, '$detalle', $neto, $iva, $total, '$observaciones', $centro_costo_id, " . ($archivo_nombre ? "'$archivo_nombre'" : "NULL") . ")";
+        $sql = "INSERT INTO facturas_venta (fecha, tipo_comprobante_id, cliente_id, punto_venta, nro_factura, fecha_vencimiento, detalle, neto, iva, total, observaciones, centro_costo_id, archivo, estado) 
+                VALUES ('$fecha', $tipo_comprobante_id, $cliente_id, $punto_venta, $nro_factura, $fecha_vencimiento, '$detalle', $neto, $iva, $total, '$observaciones', $centro_costo_id, " . ($archivo_nombre ? "'$archivo_nombre'" : "NULL") . ", '$estado')";
     }
     
     if($conn->query($sql)){

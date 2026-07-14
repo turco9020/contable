@@ -11,28 +11,28 @@ include '../../includes/sidebar.php';
 <div class="content">
 
     <div class="card p-3 shadow-sm">
-        <table id="tablaProveedores" class="table table-bordered table-striped">
-        <thead class="table-dark">
-<tr>
-    <th>ID</th>
-    <th>Nombre</th>
-    <th>CUIT</th>
-    <th>Condición</th>
-    <th>Producto/Servicio</th>
-    <th>Teléfono</th>
+        <table id="tablaProveedores" class="table table-bordered table-striped w-100">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>CUIT</th>
+                    <th>Condición</th>
+                    <th>Producto/Servicio</th>
+                    <th>Teléfono</th>
 
-    <!-- ocultas -->
-    <th>Dirección</th>
-    <th>Localidad</th>
-    <th>Provincia</th>
-    <th>CP</th>
-    <th>Whatsapp</th>
-    <th>Contacto</th>
-    <th>Observaciones</th>
+                    <!-- ocultas pero exportables -->
+                    <th>Dirección</th>
+                    <th>Localidad</th>
+                    <th>Provincia</th>
+                    <th>CP</th>
+                    <th>Whatsapp</th>
+                    <th>Contacto</th>
+                    <th>Observaciones</th>
 
-    <th>Acciones</th>
-</tr>
-</thead>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
         </table>
     </div>
 
@@ -120,73 +120,83 @@ include '../../includes/sidebar.php';
     </div>
 </div>
 
+<?php include '../../includes/footer.php'; ?>
+
 <script>
+let tabla; // Declarada globalmente al inicio para evitar errores de referencia
+
 document.addEventListener("DOMContentLoaded", function(){
 
-let tabla = $('#tablaProveedores').DataTable({
-
-    dom: 'Bfrtip',
-
-    buttons: [
-        {
-            extend: 'excel',
-            text: 'Excel',
-            className: 'btn btn-sm btn-secondary',
-            exportOptions: {
-                columns: ':not(:last-child)' // excluye acciones
+    tabla = $('#tablaProveedores').DataTable({
+        responsive: true,       // Activa comportamiento fluido responsive
+        scrollX: false,         // Desactiva el scrollX manual para no romper cabeceras
+        autoWidth: false,       // Evita cálculos forzados de píxeles estáticos
+        dom: 'Bfrtip',
+        buttons: [
+            {
+                extend: 'excel',
+                text: 'Excel',
+                className: 'btn btn-sm btn-secondary',
+                exportOptions: {
+                    columns: ':not(:last-child)' // excluye acciones
+                }
+            },
+            {
+                extend: 'pdf',
+                text: 'PDF',
+                className: 'btn btn-sm btn-secondary',
+                exportOptions: {
+                    columns: ':not(:last-child)'
+                }
+            },
+            {
+                extend: 'print',
+                text: 'Imprimir',
+                className: 'btn btn-sm btn-secondary',
+                exportOptions: {
+                    columns: ':not(:last-child)'
+                }
             }
-        },
-        {
-            extend: 'pdf',
-            text: 'PDF',
-            className: 'btn btn-sm btn-secondary',
-            exportOptions: {
-                columns: ':not(:last-child)'
+        ],
+
+        ajax: '/contable/ajax/proveedores.php?accion=listar',
+
+        columns: [
+            {data:'id', defaultContent:''},
+            {data:'nombre', defaultContent:''},
+            {data:'cuit', defaultContent:''},
+            {data:'condicion_fiscal', defaultContent:''},
+            {data:'producto_servicio', defaultContent:''},
+            {data:'telefono', defaultContent:''},
+
+            // COLUMNAS OCULTAS PERO EXPORTABLES
+            {data:'direccion', visible:false, defaultContent:''},
+            {data:'localidad', visible:false, defaultContent:''},
+            {data:'provincia', visible:false, defaultContent:''},
+            {data:'cp', visible:false, defaultContent:''},
+            {data:'whatsapp', visible:false, defaultContent:''},
+            {data:'contacto', visible:false, defaultContent:''},
+            {data:'observaciones', visible:false, defaultContent:''},
+
+            {
+                data:null,
+                orderable:false,
+                render: function(data){
+                    return `
+                        <button class="btn btn-sm btn-secondary" onclick='ver(${JSON.stringify(data)})'>Ver</button>
+                        <button class="btn btn-sm btn-primary" onclick='editar(${JSON.stringify(data)})'>Editar</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="eliminar(${data.id})">Eliminar</button>
+                    `;
+                }
             }
-        },
-        {
-            extend: 'print',
-            text: 'Imprimir',
-            className: 'btn btn-sm btn-secondary',
-            exportOptions: {
-                columns: ':not(:last-child)'
-            }
-        }
-    ],
+        ]
+    });
 
-    ajax: '/contable/ajax/proveedores.php?accion=listar',
+    // Reajusta las cabeceras cuando la ventana cambia de tamaño
+    $(window).on('resize', function () {
+        tabla.columns.adjust().responsive.recalc();
+    });
 
-    columns: [
-        {data:'id', defaultContent:''},
-        {data:'nombre', defaultContent:''},
-        {data:'cuit', defaultContent:''},
-        {data:'condicion_fiscal', defaultContent:''},
-        {data:'producto_servicio', defaultContent:''},
-        {data:'telefono', defaultContent:''},
-
-        // 👇 COLUMNAS OCULTAS PERO EXPORTABLES
-        {data:'direccion', visible:false, defaultContent:''},
-        {data:'localidad', visible:false, defaultContent:''},
-        {data:'provincia', visible:false, defaultContent:''},
-        {data:'cp', visible:false, defaultContent:''},
-        {data:'whatsapp', visible:false, defaultContent:''},
-        {data:'contacto', visible:false, defaultContent:''},
-        {data:'observaciones', visible:false, defaultContent:''},
-
-        {
-            data:null,
-            orderable:false,
-            render: function(data){
-                return `
-                    <button class="btn btn-sm btn-secondary" onclick='ver(${JSON.stringify(data)})'>Ver</button>
-                    <button class="btn btn-sm btn-primary" onclick='editar(${JSON.stringify(data)})'>Editar</button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="eliminar(${data.id})">Eliminar</button>
-                `;
-            }
-        }
-    ]
-
-});
     window.abrirModal = function(){
         $('#formProveedor')[0].reset();
         $('#id').val('');
@@ -231,14 +241,14 @@ let tabla = $('#tablaProveedores').DataTable({
     }
 
     window.eliminar = function(id){
-        if(confirm("Eliminar proveedor?")){
+        if(confirm("¿Eliminar proveedor?")){
             $.post('/contable/ajax/proveedores.php?accion=eliminar', {id:id}, function(){
                 tabla.ajax.reload();
             });
         }
     }
 
-    // MAYÚSCULAS
+    // MAYÚSCULAS AUTOMÁTICAS
     $(document).on('input', 'input, textarea', function(){
         this.value = this.value.toUpperCase();
     });
@@ -257,5 +267,3 @@ let tabla = $('#tablaProveedores').DataTable({
 
 });
 </script>
-
-<?php include '../../includes/footer.php'; ?>

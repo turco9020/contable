@@ -151,6 +151,9 @@ document.addEventListener("DOMContentLoaded", function(){
     cargarSaldos();
 
     tabla = $('#tablaMovimientos').DataTable({
+        responsive: true,       // Activa el comportamiento responsive para pantallas chicas
+        scrollX: false,         // Desactiva el scrollX de JS para evitar desfase de cabeceras
+        autoWidth: false,       // Impide que DataTables asigne anchos fijos en px
         ajax:'/contable/ajax/movimientos_caja.php?accion=listar',
         order:[[0,'desc']],
         columns:[
@@ -226,6 +229,11 @@ document.addEventListener("DOMContentLoaded", function(){
                 }
             }
         ]
+    });
+
+    // Forzamos el recalculo cuando se redimensiona la ventana
+    $(window).on('resize', function () {
+        tabla.columns.adjust().responsive.recalc();
     });
 });
 

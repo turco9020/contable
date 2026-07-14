@@ -38,33 +38,31 @@ include '../../includes/sidebar.php';
     </div>
 </div>
 <div class="card p-3 shadow-sm">
-<table id="tablaGastos" class="table table-bordered table-striped">
-<thead class="table-dark">
-<tr>
-<th>ID</th>
-<th>Fecha</th>
-<th>Tipo comprobante</th>
-<th>Número</th>         
-<th>Medio de pago</th>
-<th>Proveedor</th>
-<th>Detalle</th>
-<th>Neto</th>
-<th>IVA</th>
-<th>Ret IIBB</th>
-<th>Otros tributos</th>         
-<th>Total</th>
-<th>Centro</th>
-<th>Obra</th>
-<th>Categoria</th>
-<th>Subcategoria</th>
-<th>Acciones</th>
-</tr>
-</thead>
-</table>
+        <table id="tablaGastos" class="table table-bordered table-striped w-100">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Fecha</th>
+                    <th>Tipo comprobante</th>
+                    <th>Número</th>         
+                    <th>Medio de pago</th>
+                    <th>Proveedor</th>
+                    <th>Detalle</th>
+                    <th>Neto</th>
+                    <th>IVA</th>
+                    <th>Ret IIBB</th>
+                    <th>Otros tributos</th>         
+                    <th>Total</th>
+                    <th>Centro</th>
+                    <th>Obra</th>
+                    <th>Categoria</th>
+                    <th>Subcategoria</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
 </div>
-
-</div>
-
 <?php include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/modal_gasto.php'; ?>
 <?php include '../../includes/footer.php'; ?>
 
@@ -180,8 +178,9 @@ document.addEventListener("DOMContentLoaded", function() {
     modalGasto = new bootstrap.Modal(document.getElementById('modalGasto'));
 
     let tabla = $('#tablaGastos').DataTable({
-        responsive: true,
-        scrollX: true,
+        responsive: true,      // Mantenemos esto activo porque usás las clases 'none'
+        scrollX: false,        // <--- ¡DESACTIVALO! El scrollX rompe la alineación al redimensionar
+        autoWidth: false,      // <--- ¡AGREGALO! Evita que se congelen los anchos de columna en px
         dom: 'Bfrtip',
         buttons: [
             { extend: 'colvis', text: 'Columnas', className: 'btn btn-sm btn-secondary' },
@@ -235,6 +234,11 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
             }
         ]
+    });
+
+    // Ajusta los anchos de las columnas en tiempo real al cambiar el tamaño de pantalla
+    $(window).on('resize', function () {
+        tabla.columns.adjust().responsive.recalc();
     });
 
     $('#categoria_id').on('change', function() { cargarSubcategorias($(this).val()); });

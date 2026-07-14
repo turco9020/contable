@@ -11,7 +11,7 @@ include '../../includes/sidebar.php';
 <div class="content">
 
     <div class="card p-3 shadow-sm">
-        <table id="tablaClientes" class="table table-bordered table-striped">
+        <table id="tablaClientes" class="table table-bordered table-striped w-100">
             <thead class="table-dark">
                 <tr>
                     <th>ID</th>
@@ -106,10 +106,17 @@ include '../../includes/sidebar.php';
     </div>
 </div>
 
+<?php include '../../includes/footer.php'; ?>
+
 <script>
+let tabla; // Declarada global para que sea consistente con los otros módulos
+
 document.addEventListener("DOMContentLoaded", function(){
 
-    let tabla = $('#tablaClientes').DataTable({
+    tabla = $('#tablaClientes').DataTable({
+        responsive: true,       // Activa el comportamiento responsive para pantallas chicas
+        scrollX: false,         // Desactiva el scrollX para evitar desfase de cabeceras
+        autoWidth: false,       // Impide que DataTables asigne anchos fijos en px
         ajax: '/contable/ajax/clientes.php?accion=listar',
         columns: [
             {data:'id'},
@@ -120,6 +127,7 @@ document.addEventListener("DOMContentLoaded", function(){
             {data:'telefono'},
             {
                 data:null,
+                orderable: false,
                 render: function(data){
                     return `
                         <button class="btn btn-sm btn-info" onclick='ver(${JSON.stringify(data)})'>Ver</button>
@@ -129,6 +137,11 @@ document.addEventListener("DOMContentLoaded", function(){
                 }
             }
         ]
+    });
+
+    // Forzamos el reajuste de la tabla al cambiar el tamaño de pantalla
+    $(window).on('resize', function () {
+        tabla.columns.adjust().responsive.recalc();
     });
 
     window.abrirModal = function(){
@@ -206,4 +219,3 @@ document.addEventListener("DOMContentLoaded", function(){
 });
 </script>
 
-<?php include '../../includes/footer.php'; ?>

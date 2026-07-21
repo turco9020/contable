@@ -1,0 +1,202 @@
+<?php
+// Incluimos el header general (que a su vez incluye la base de datos y la sesión mediante auth.php)
+include '../../includes/header.php';
+include '../../includes/sidebar.php';
+
+// DOBLE CANDADO: Aunque el sidebar oculte el enlace, si intentan ingresar por URL y no son admin, los rebota
+if (!esAdmin()) {
+    header("Location: /contable/index.php?status=no_autorizado");
+    exit;
+}
+
+// Obtener la lista de usuarios con sus respectivos roles para la tabla
+$queryUsuarios = "SELECT u.id, u.usuario, r.nombre as rol_nombre 
+                  FROM usuarios u 
+                  JOIN roles r ON u.rol_id = r.id 
+                  ORDER BY u.id DESC";
+$resultadoUsuarios = $conn->query($queryUsuarios);
+
+// Obtener los roles disponibles para cargarlos dinámicamente en el select del Modal
+$queryRoles = "SELECT id, nombre FROM roles ORDER BY nombre ASC";
+$resultadoRoles = $conn->query($queryRoles);
+?>
+
+<div class="content">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold text-dark mb-0"><i class="bi bi-people text-secondary me-2"></i> Gestión de Usuarios</h4>
+        <button type="button" class="btn btn-dark d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#modalUsuario">
+            <i class="bi bi-person-plus-fill me-2"></i> Nuevo Usuario
+        </button>
+    </div>
+
+    <!-- Contenedor de la Tabla -->
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle w-100" id="tablaUsuarios">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Usuario</th>
+                            <th>Rol Asignado</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php while ($row = $resultadoUsuarios->fetch_assoc()): ?>
+                            <tr>
+                                <td><?= $row['id'] ?></td>
+                                <td class="fw-semibold"><?= htmlspecialchars($row['usuario']) ?></td>
+                                <td>
+                                    <span class="badge bg-secondary px-2 py-1"><?= htmlspecialchars($row['rol_nombre']) ?></span>
+                                </td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-outline-danger" onclick="eliminarUsuario(<?= $row['id'] ?>)">
+                                        <i class="bi bi-trash3"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        <?php endwhile; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =======================================================================
+     MODAL PARA AGREGAR NUEVO USUARIO
+     ======================================================================= -->
+<div class="modal fade" id="modalUsuario" data-bs-backdrop="static" tabindex="-1" aria-labelledby="modalUsuarioLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="modalUsuarioLabel"><i class="bi bi-person-plus me-2"></i> Registrar Usuario</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formUsuario">
+                <div class="modal-body">
+                    <div id="alertaModal" class="alert alert-danger d-none"></div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Nombre de Usuario</label>
+                        <input type="text" name="user" class="form-control" placeholder="Ej: jgomez" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Contraseña</label>
+                        <input type="password" name="pass" class="form-control" placeholder="Mínimo 6 caracteres" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Asignar Rol</label>
+                        <select name="rol_id" class="form-select" required>
+                            <option value="" selected disabled>Seleccione un rol...</option>
+                            <?php while ($rol = $resultadoRoles->fetch_assoc()): ?>
+                                <option value="<?= $rol['id'] ?>"><?= htmlspecialchars($rol['nombre']) ?></option>
+                            <?php endwhile; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-dark">Guardar Usuario</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<?php include '../../includes/footer.php'; ?>
+
+<!-- =======================================================================
+     LÓGICA JAVASCRIPT / DATATABLES / AJAX
+     ======================================================================= -->
+<script>
+$(document).ready(function() {
+    // Inicializar DataTables con tu configuración nativa y en español
+    $('#tablaUsuarios').DataTable({
+        responsive: true,
+        order: [[0, 'desc']],
+        language: {
+            url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
+        }
+    });
+
+    // Procesar el formulario por AJAX
+    $('#formUsuario').on('submit', function(e) {
+        e.preventDefault();
+        
+        $.ajax({
+            url: 'procesar_usuario.php',
+            type: 'POST',
+            data: $(this).serialize(),
+            dataType: 'json',
+            success: function(response) {
+                if(response.success) {
+                    location.reload(); // Recargamos para ver el nuevo usuario reflejado
+                } else {
+                    $('#alertaModal').removeClass('d-none').text(response.message);
+                }
+            },
+            error: function() {
+                $('#alertaModal').removeClass('d-none').text('Error interno del servidor al procesar la solicitud.');
+            }
+        });
+    });
+});
+
+function eliminarUsuario(id) {
+    Swal.fire({
+        title: '¿Confirmación requerida?',
+        text: 'Para eliminar este usuario y revocar sus accesos permanentemente, escribe la palabra "ELIMINAR" a continuación:',
+        icon: 'warning',
+        input: 'text',
+        inputPlaceholder: 'Escribe ELIMINAR aquí...',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545', // Rojo para acción destructiva
+        cancelButtonColor: '#212529',  // Gris oscuro para cancelar
+        confirmButtonText: 'Confirmar eliminación',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true,
+        // Validación en tiempo real del texto ingresado
+        inputValidator: (value) => {
+            if (!value) {
+                return '¡Debes escribir la palabra de confirmación!';
+            }
+            if (value !== 'ELIMINAR') {
+                return 'La palabra no coincide. Intenta de nuevo (en mayúsculas).';
+            }
+        }
+    }).then((result) => {
+        // Si pasó la validación y el usuario hizo clic en confirmar
+        if (result.isConfirmed) {
+            $.ajax({
+                url: 'eliminar_usuario.php',
+                type: 'POST',
+                data: { id: id },
+                dataType: 'json',
+                success: function(response) {
+                    if(response.success) {
+                        Swal.fire({
+                            title: '¡Eliminado!',
+                            text: 'El usuario ha sido borrado correctamente.',
+                            icon: 'success',
+                            confirmButtonColor: '#212529'
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'Error',
+                            text: response.message,
+                            icon: 'error',
+                            confirmButtonColor: '#212529'
+                        });
+                    }
+                }
+            });
+        }
+    });
+}
+</script>

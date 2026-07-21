@@ -5,14 +5,13 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
 
 <div class="content">
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
-    <h5 class="fw-bold text-dark mb-0">
-        <i class="bi bi-wallet2 text-secondary me-2"></i>Caja
-    </h5>
-    <button class="btn btn-dark d-flex align-items-center" onclick="abrirModal()">
-        <i class="bi bi-plus-circle me-2"></i>Nuevo Movimiento
-    </button>
-</div>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>💰 Caja</h3>
+
+        <button class="btn btn-dark" onclick="abrirModal()">
+            + Nuevo Movimiento
+        </button>
+    </div>
 
     <div class="row mb-4" id="cardsSaldos">
 
@@ -266,41 +265,13 @@ $('#formMovimiento').submit(function(e){
     });
 });
 
-// SWEETALERT2 CON CONTROL DE ELIMINACIÓN CRÍTICA
 window.eliminar = function(id){
-    Swal.fire({
-        title: '¿Estás completamente seguro?',
-        text: 'Esta acción eliminará el movimiento de caja de forma permanente. Para proceder, escribe "ELIMINAR" abajo:',
-        icon: 'warning',
-        input: 'text',
-        inputPlaceholder: 'Escribe ELIMINAR aquí...',
-        showCancelButton: true,
-        confirmButtonColor: '#dc3545',
-        cancelButtonColor: '#212529',
-        confirmButtonText: 'Sí, eliminar movimiento',
-        cancelButtonText: 'Cancelar',
-        reverseButtons: true,
-        inputValidator: (value) => {
-            if (!value) {
-                return 'Debes ingresar la palabra de confirmación.';
-            }
-            if (value !== 'ELIMINAR') {
-                return 'La palabra no coincide. Debe ser exactamente ELIMINAR.';
-            }
-        }
-    }).then((result) => {
-        if (result.isConfirmed) {
-            $.post('/contable/ajax/movimientos_caja.php?accion=eliminar', {id}, function(resp){
-                tabla.ajax.reload();
-                cargarSaldos();
-                Swal.fire({
-                    title: 'Eliminado',
-                    text: 'El movimiento ha sido removido con éxito.',
-                    icon: 'success',
-                    confirmButtonColor: '#212529'
-                });
-            });
-        }
+    if(!confirm('¿Eliminar movimiento?')) return;
+    if(prompt('Escribí OK para confirmar') !== 'OK') return;
+
+    $.post('/contable/ajax/movimientos_caja.php?accion=eliminar', {id}, function(resp){
+        tabla.ajax.reload();
+        cargarSaldos();
     });
 }
 

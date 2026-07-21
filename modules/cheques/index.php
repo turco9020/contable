@@ -4,33 +4,37 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
 ?>
 
 <div class="content">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3>🏦 Gestión de Cheques</h3>
-        <button class="btn btn-dark" onclick="abrirModal()">
-            + Nuevo Cheque
-        </button>
-    </div>
+    
+<!-- CABECERA DEL MÓDULO UNIFICADA -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h5 class="fw-bold text-dark mb-0">
+        <i class="bi bi-bank text-secondary me-2"></i>Gestión de Cheques
+    </h5>
+    <button class="btn btn-dark d-flex align-items-center" onclick="abrirModal()">
+        <i class="bi bi-plus-circle me-2"></i>Nuevo Cheque
+    </button>
+</div>
 
     <!-- Pestañas de Navegación de Estados -->
     <ul class="nav nav-tabs mb-3" id="tabCheques" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active fw-semibold text-dark" id="recibidos-tab" data-bs-toggle="tab" data-bs-target="#recibidos" type="button" role="tab" onclick="filtrarPestaña('RECIBIDOS')">
-                📥 Recibidos <span class="badge bg-secondary ms-1" id="cant-recibidos">0</span>
+                <i class="bi bi-download me-1 text-secondary"></i> Recibidos <span class="badge bg-secondary ms-1" id="cant-recibidos">0</span>
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link fw-semibold text-dark" id="emitidos-tab" data-bs-toggle="tab" data-bs-target="#emitidos" type="button" role="tab" onclick="filtrarPestaña('EMITIDOS')">
-                📤 Emitidos <span class="badge bg-secondary ms-1" id="cant-emitidos">0</span>
+                <i class="bi bi-upload me-1 text-secondary"></i> Emitidos <span class="badge bg-secondary ms-1" id="cant-emitidos">0</span>
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link fw-semibold text-dark" id="cedidos-tab" data-bs-toggle="tab" data-bs-target="#cedidos" type="button" role="tab" onclick="filtrarPestaña('ENDOSADO')">
-                🔄 Cedidos/Endosados <span class="badge bg-secondary ms-1" id="cant-cedidos">0</span>
+                <i class="bi bi-arrow-left-right me-1 text-secondary"></i> Cedidos/Endosados <span class="badge bg-secondary ms-1" id="cant-cedidos">0</span>
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link fw-semibold text-dark" id="finalizados-tab" data-bs-toggle="tab" data-bs-target="#finalizados" type="button" role="tab" onclick="filtrarPestaña('FINALIZADOS')">
-                ✔︎ Cobrados / Pagados <span class="badge bg-secondary ms-1" id="cant-finalizados">0</span>
+                <i class="bi bi-check-circle me-1 text-secondary"></i> Cobrados / Pagados <span class="badge bg-secondary ms-1" id="cant-finalizados">0</span>
             </button>
         </li>
     </ul>
@@ -53,14 +57,13 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
                         <th>Acciones</th>
                     </tr>
                 </thead>
-                <!-- NUEVO: Pie de tabla para alojar los totales -->
                 <tfoot class="table-light fw-bold">
-                <tr>
-                    <th colspan="4" class="text-end">Total General:</th>
-                    <th id="totalImporte" class="text-end text-dark">$ 0,00</th>
-                    <th colspan="6"></th> <!-- Columnas restantes vacías -->
-                </tr>
-            </tfoot>
+                    <tr>
+                        <th colspan="4" class="text-end">Total General:</th>
+                        <th id="totalImporte" class="text-end text-dark">$ 0,00</th>
+                        <th colspan="6"></th>
+                    </tr>
+                </tfoot>
             </table>
         </div>
     </div>
@@ -71,7 +74,7 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="tituloModal">Registrar Cheque</h5>
+                <h5 class="modal-title fw-bold" id="tituloModal">Registrar Cheque</h5>
                 <button class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -111,7 +114,7 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-bold">Importe ($)</label>
-                            <input type="number" step="0.01" name="importe" id="importe" class="form-control" value="0.00" required>
+                            <input type="number" step="0.01" name="importe" id="importe" class="form-control fw-bold" value="0.00" required>
                         </div>
                         <div class="col-md-8">
                             <label class="form-label fw-bold" id="labelBeneficiario">Beneficiario</label>
@@ -122,7 +125,6 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
                             <textarea name="observaciones" id="observaciones" class="form-control" rows="2" placeholder="Notas internas..."></textarea>
                         </div>
                         
-                        <!-- NUEVO: Campo para adjuntar Foto/Imagen del Cheque -->
                         <div class="col-12 mt-3">
                             <label class="form-label fw-bold">Foto / Comprobante del Cheque</label>
                             <input type="file" id="archivo" name="archivo" class="form-control" accept="image/*,application/pdf">
@@ -153,7 +155,6 @@ document.addEventListener("DOMContentLoaded", function() {
     obtenerProveedores();
 
     tabla = $('#tablaCheques').DataTable({
-        // 'dom' define la disposición de los elementos. Agrega los botones arriba a la izquierda
         dom: '<"d-flex justify-content-between align-items-center mb-2"Bf>rtip',
         buttons: [
             {
@@ -161,7 +162,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 text: ' Excel',
                 className: 'btn btn-success btn-sm',
                 exportOptions: {
-                    columns: [0, 1, 2, 3, 4, 5, 6, 7, 8] // Exporta todo menos Días y Acciones
+                    columns: [0, 1, 2, 3, 4, 5, 6, 7, 8]
                 }
             },
             {
@@ -276,38 +277,38 @@ document.addEventListener("DOMContentLoaded", function() {
                     return `
                         <div class="d-flex gap-1">
                             ${btnArchivo}
-                            <button class="btn btn-sm btn-secondary" onclick='verCheque(${JSON.stringify(d)})'>Ver</button>
-                            <button class="btn btn-sm btn-primary" onclick='editarCheque(${JSON.stringify(d)})'>Editar</button>
+                            <button class="btn btn-sm btn-info" onclick='verCheque(${JSON.stringify(d)})'>Ver</button>
+                            <button class="btn btn-sm btn-secondary" onclick='editarCheque(${JSON.stringify(d)})'>Editar</button>
                             <button class="btn btn-sm btn-outline-danger" onclick="eliminarCheque(${d.id})">Eliminar</button>
                         </div>
                     `;
                 }
             }
         ],
-        // NUEVO: Función Callback para sumar la columna Importe (Columna índice 4) en tiempo real
         footerCallback: function(row, data, start, end, display) {
             let api = this.api();
-
-            // Helper para limpiar strings y convertirlos a flotantes puros
             let intVal = function(i) {
                 return typeof i === 'string' ? i.replace(/[\$,]/g, '') * 1 : typeof i === 'number' ? i : 0;
             };
 
-            // Calcular el total sobre los registros que están filtrados y visibles en la pestaña activa
             let total = api
-                .column(4, { page: 'current' }) // Índice 4 es la columna Importe
+                .column(4, { page: 'current' })
                 .data()
                 .reduce(function(a, b) {
                     return intVal(a) + intVal(b);
                 }, 0);
 
-            // Actualizar el pie de la tabla con el formato de moneda Argentina
             $('#totalImporte').html('$ ' + total.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
         }
     });
 
     $(window).on('resize', function () {
-        tabla.columns.adjust();
+        tabla.columns.adjust().responsive.recalc();
+    });
+
+    // MAYÚSCULAS AUTOMÁTICAS EN INPUTS Y TEXTAREAS
+    $(document).on('input', 'input[type="text"], textarea', function(){
+        this.value = this.value.toUpperCase();
     });
 });
 
@@ -405,33 +406,32 @@ window.editarCheque = function(data) {
 $('#formCheque').submit(function(e) {
     e.preventDefault();
     
-    // 1. Creamos el FormData directamente del formulario REAL tal cual está.
-    // Como el beneficiario puede estar disabled, FormData no lo va a incluir automáticamente si está bloqueado.
     let formData = new FormData(this);
     
-    // 2. Resolvemos el valor del beneficiario de forma manual según el estado
-    // Si está deshabilitado (RECIBIDO), forzamos "RECURSOS GLOBALES"
     if ($('#estado').val() === 'RECIBIDO') {
         formData.set('beneficiario', 'RECURSOS GLOBALES');
     } else {
-        // Si está habilitado, nos aseguramos de tomar lo que el usuario seleccionó en la UI
         formData.set('beneficiario', $('#beneficiario').val());
     }
     
-    // 3. Enviamos los datos limpios. El navegador no se queja porque nunca alteramos el DOM ni los archivos.
     $.ajax({
         url: '/contable/ajax/cheques.php?accion=guardar',
         method: 'POST',
         data: formData,
-        contentType: false, // Requerido para archivos binarios
-        processData: false, // Requerido para archivos binarios
+        contentType: false,
+        processData: false,
         dataType: 'json',
         success: function(resp) {
             if(resp.success) {
                 tabla.ajax.reload();
                 modalCheque.hide();
             } else {
-                alert('Error al guardar: ' + resp.error);
+                Swal.fire({
+                    title: 'Error',
+                    text: resp.error,
+                    icon: 'error',
+                    confirmButtonColor: '#212529'
+                });
             }
         },
         error: function(jqXHR, textStatus, errorThrown) {
@@ -440,12 +440,40 @@ $('#formCheque').submit(function(e) {
     });
 });
 
+// SWEETALERT2 CON CONTROL DE ELIMINACIÓN CRÍTICA EXIGIDA
 window.eliminarCheque = function(id) {
-    if (!confirm('¿Eliminar este cheque del sistema?')) return;
-    if (prompt('Escribí OK para confirmar') !== 'OK') return;
-
-    $.post('/contable/ajax/cheques.php?accion=eliminar', { id }, function(resp) {
-        tabla.ajax.reload();
-    }, 'json');
+    Swal.fire({
+        title: '¿Estás completamente seguro?',
+        text: 'Esta acción eliminará el cheque del sistema de forma permanente. Para proceder, escribe "ELIMINAR" abajo:',
+        icon: 'warning',
+        input: 'text',
+        inputPlaceholder: 'Escribe ELIMINAR aquí...',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#212529',
+        confirmButtonText: 'Sí, eliminar cheque',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true,
+        inputValidator: (value) => {
+            if (!value) {
+                return 'Debes ingresar la palabra de confirmación.';
+            }
+            if (value !== 'ELIMINAR') {
+                return 'La palabra no coincide. Debe ser exactamente ELIMINAR.';
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.post('/contable/ajax/cheques.php?accion=eliminar', { id }, function(resp) {
+                tabla.ajax.reload();
+                Swal.fire({
+                    title: 'Eliminado',
+                    text: 'El cheque ha sido removido con éxito.',
+                    icon: 'success',
+                    confirmButtonColor: '#212529'
+                });
+            }, 'json');
+        }
+    });
 }
 </script>

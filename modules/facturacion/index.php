@@ -5,34 +5,37 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
 
 <div class="content">
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3>🧾 Facturación (Ventas)</h3>
-        <button class="btn btn-dark" onclick="abrirModal()">
-            + Nueva Factura
+    <!-- CABECERA DEL MÓDULO (Estilo unificado) -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold text-dark mb-0">
+            <i class="bi bi-receipt text-secondary me-2"></i> Facturación (Ventas)
+        </h4>
+        <button class="btn btn-dark d-flex align-items-center" onclick="abrirModal()">
+            <i class="bi bi-plus-circle me-2"></i> Nueva Factura
         </button>
     </div>
 
     <div class="card p-3 shadow-sm">
-    <!-- El wrapper que permite el desplazamiento horizontal suave en pantallas chicas -->
-    <div class="table-responsive">
-        <table id="tablaFacturas" class="table table-bordered table-striped w-100">
-            <thead class="table-dark">
-                <tr>
-                    <th>Fecha</th>
-                    <th>Tipo</th>
-                    <th>Nro. Factura</th>
-                    <th>Cliente</th>
-                    <th>Centro Costo</th>
-                    <th>Total</th>
-                    <th>Vence</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-        </table>
+        <div class="table-responsive">
+            <table id="tablaFacturas" class="table table-bordered table-striped w-100">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th>Nro. Factura</th>
+                        <th>Cliente</th>
+                        <th>Centro Costo</th>
+                        <th>Total</th>
+                        <th>Vence</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
     </div>
 </div>
-</div>
+
 <div class="modal fade" id="modalFactura" data-bs-backdrop="static">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -48,8 +51,8 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
 
                     <div id="seccionEscaneo" class="p-3 mb-3 bg-light border rounded text-center">
                         <label class="form-label fw-bold text-secondary mb-2">✨ Asistente de Carga Automática (Subir PDF de AFIP)</label>
-                          <input type="file" id="archivo_escanear" name="archivo" class="form-control form-control-sm mx-auto" style="max-width: 400px;" accept="application/pdf">
-                           <div class="form-text mt-1">Subí el comprobante digital original para autocompletar el formulario al instante.</div>
+                        <input type="file" id="archivo_escanear" name="archivo_escanear" class="form-control form-control-sm mx-auto" style="max-width: 400px;" accept="application/pdf">
+                        <div class="form-text mt-1">Subí el comprobante digital original para autocompletar el formulario al instante.</div>
                     </div>
 
                     <div class="row g-3">
@@ -60,8 +63,7 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
 
                         <div class="col-md-4">
                             <label class="form-label">Tipo Comprobante</label>
-                            <select name="tipo_comprobante_id" id="tipo_comprobante_id" class="form-control" required>
-                                </select>
+                            <select name="tipo_comprobante_id" id="tipo_comprobante_id" class="form-control" required></select>
                         </div>
 
                         <div class="col-md-4">
@@ -80,21 +82,17 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
 
                         <div class="col-md-4">
                             <label class="form-label">Cliente</label>
-                            <select name="cliente_id" id="cliente_id" class="form-control" required>
-                                </select>
+                            <select name="cliente_id" id="cliente_id" class="form-control" required></select>
                         </div>
 
                         <div class="col-md-4">
-                            <label class="form-label-resaltado mb-2">
-                                ⚠️ Centro de Costo
-                            </label>
-                            <select name="centro_costo_id" id="centro_costo_id" class="form-select border-danger bg-warning bg-opacity-10 text-dark" required>
-                                </select>
+                            <label class="form-label mb-2 fw-semibold text-dark">Centro de Costo</label>
+                            <select name="centro_costo_id" id="centro_costo_id" class="form-select border-secondary text-dark" required></select>
                         </div>
 
                         <div class="col-md-4">
-                            <label class="form-label ">Estado de Pago</label>
-                            <select name="estado" id="estado" class="form-select " required>
+                            <label class="form-label">Estado de Pago</label>
+                            <select name="estado" id="estado" class="form-select" required>
                                 <option value="DEBE">🔴 DEBE</option>
                                 <option value="PAGADO">🟢 PAGADO</option>
                                 <option value="VER">🟡 VER (Revisión)</option>
@@ -128,7 +126,7 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
 
                         <div class="col-12" id="seccionArchivoReal" style="display:none;">
                             <label class="form-label">Comprobante Adjunto Definitivo</label>
-                            <input type="file" name="archivo" id="archivo" class="form-control">
+                            <input type="file" name="archivo" id="archivo" class="form-control" accept="application/pdf,image/*">
                             <div id="archivo_actual" class="mt-2"></div>
                         </div>
                     </div>
@@ -153,7 +151,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 
 let tabla;
 let modalFactura;
-let globalClientesParaMapeo = []; // Almacenará CUITs y IDs para emparejar al vuelo
+let globalClientesParaMapeo = [];
 
 document.addEventListener("DOMContentLoaded", function() {
     modalFactura = new bootstrap.Modal(document.getElementById('modalFactura'));
@@ -163,11 +161,9 @@ document.addEventListener("DOMContentLoaded", function() {
     tabla = $('#tablaFacturas').DataTable({
         ajax: '/contable/ajax/facturacion.php?accion=listar',
         order: [[0, 'desc']],
-
-        // EXCLUSIVO PARA QUE SE ADAPTE SIN DESFASE:
-        autoWidth: false,      // Evita que DataTables calcule anchos fijos en px
-        responsive: true,     
-       
+        autoWidth: false,
+        responsive: true,
+        deferRender: true,
         columns: [
             { 
                 data: 'fecha',
@@ -181,8 +177,8 @@ document.addEventListener("DOMContentLoaded", function() {
             { 
                 data: null,
                 render: function(row){
-                    let pv = String(row.punto_venta).padStart(5, '0');
-                    let nf = String(row.nro_factura).padStart(8, '0');
+                    let pv = String(row.punto_venta || 0).padStart(5, '0');
+                    let nf = String(row.nro_factura || 0).padStart(8, '0');
                     return `${pv}-${nf}`;
                 }
             },
@@ -191,67 +187,54 @@ document.addEventListener("DOMContentLoaded", function() {
             { 
                 data: 'total',
                 render: function(d) {
-                    return '$ ' + Number(d).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+                    return '$ ' + Number(d || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
                 }
             },
-            // ==========================================================
-            // NUEVA COLUMNA: CÁLCULO DE DÍAS RESTANTES (VENCE EN)
-            // ==========================================================
             {
                 data: null,
                 className: 'text-center',
                 render: function(row) {
                     if (!row.fecha_vencimiento) return '<span class="text-muted">-</span>';
                     
-                    // Creamos las fechas para la resta (sin horas para que el cálculo de días sea exacto)
                     let fechaVto = new Date(row.fecha_vencimiento + 'T00:00:00');
                     let hoy = new Date();
                     hoy.setHours(0, 0, 0, 0);
                     
-                    // Resta en milisegundos y conversión a días
                     let diferenciaMs = fechaVto - hoy;
                     let diasRestantes = Math.ceil(diferenciaMs / (1000 * 60 * 60 * 24));
-                    
                     let estadoFactura = row.estado ? row.estado.toUpperCase() : 'DEBE';
                     
-                    // Si ya está cobrada/pagada, no tiene sentido alertar por el vencimiento
                     if (estadoFactura === 'PAGADO') {
                         return '<span class="text-muted">✔︎</span>';
                     }
                     
                     if (diasRestantes < 0) {
-                        // Vencida (en rojo minimalista)
                         let diasPasados = Math.abs(diasRestantes);
                         return `<span class="text-danger fw-bold">Vencida hace ${diasPasados} ${diasPasados === 1 ? 'día' : 'días'}</span>`;
                     } else if (diasRestantes === 0) {
-                        // Vence hoy
                         return '<span class="text-warning fw-bold">Vence hoy</span>';
                     } else {
-                        // Faltan días (en gris/negro prolijo)
                         return `<span class="text-secondary">${diasRestantes} ${diasRestantes === 1 ? 'día' : 'días'}</span>`;
                     }
                 }
             },
             {
-            data: 'estado',
-            render: function(d) {
-                let texto = d ? d.toUpperCase() : 'DEBE';
-                let colorLed = 'bg-danger'; // Por defecto rojo para DEBE
-                
-                if(texto === 'PAGADO') {
-                    colorLed = 'bg-success';
-                } else if(texto === 'VER') {
-                    colorLed = 'bg-warning';
+                data: 'estado',
+                render: function(d) {
+                    let texto = d ? d.toUpperCase() : 'DEBE';
+                    let colorLed = 'bg-danger';
+                    
+                    if(texto === 'PAGADO') colorLed = 'bg-success';
+                    else if(texto === 'VER') colorLed = 'bg-warning';
+                    
+                    return `
+                        <div class="d-inline-flex align-items-center text-secondary fw-semibold" style="font-size: 0.9rem;">
+                            <span class="rounded-circle ${colorLed}" style="width: 8px; height: 8px; display: inline-block; margin-right: 8px;"></span>
+                            ${texto}
+                        </div>
+                    `;
                 }
-                
-                return `
-                    <div class="d-inline-flex align-items-center text-secondary fw-semibold" style="font-size: 0.9rem;">
-                        <span class="rounded-circle ${colorLed}" style="width: 8px; height: 8px; display: inline-block; margin-right: 8px;"></span>
-                        ${texto}
-                    </div>
-                `;
-            }
-        },
+            },
             {
                 data: null,
                 orderable: false,
@@ -270,12 +253,10 @@ document.addEventListener("DOMContentLoaded", function() {
         ]
     });
 
-    // Truco extra: recalculamos los encabezados si cambia el tamaño de la ventana
     $(window).on('resize', function () {
         tabla.columns.adjust();
     });
 
-    // Escuchador dinámico manual por si editan Neto o IVA manual
     $('#neto, #iva').on('input', function(){
         let n = parseFloat($('#neto').val()) || 0;
         let i = parseFloat($('#iva').val()) || 0;
@@ -283,7 +264,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     // ==========================================
-    // CAPTURADOR INTELIGENTE AUTOMÁTICO DE PDF (ULTRA FLEXIBLE)
+    // PARSER AFIP MEDIANTE PDF.JS
     // ==========================================
     $('#archivo_escanear').on('change', function(e) {
         let file = e.target.files[0];
@@ -305,15 +286,13 @@ document.addEventListener("DOMContentLoaded", function() {
             pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
                 pdf.getPage(1).then(function(page) {
                     page.getTextContent().then(function(textContent) {
-                        // Creamos un array con cada fragmento de texto extraído por separado
                         let fragmentos = textContent.items.map(item => item.str.trim()).filter(str => str !== "");
-                        // Creamos también el texto unificado completo
                         let textoCompleto = fragmentos.join(" ");
                         
                         $('#seccionEscaneo label').text(labelOriginal);
                         
                         try {
-                            // 1. EXTRAER FECHA DE EMISIÓN (Por proximidad de palabra clave)
+                            // 1. FECHA EMISIÓN
                             let indexFecha = fragmentos.findIndex(f => f.toLowerCase().includes("emisión") || f.toLowerCase().includes("emision"));
                             if(indexFecha !== -1) {
                                 for(let i = indexFecha; i <= indexFecha + 5; i++) {
@@ -327,7 +306,7 @@ document.addEventListener("DOMContentLoaded", function() {
                                 }
                             }
 
-                            // 2. EXTRAER FECHA DE VENCIMIENTO
+                            // 2. FECHA VENCIMIENTO
                             let indexVto = fragmentos.findIndex(f => f.toLowerCase().includes("vto. para el pago") || f.toLowerCase().includes("vto. para"));
                             if(indexVto !== -1) {
                                 for(let i = indexVto; i <= indexVto + 5; i++) {
@@ -341,7 +320,7 @@ document.addEventListener("DOMContentLoaded", function() {
                                 }
                             }
 
-                            // 3. EXTRAER PUNTO DE VENTA Y NÚMERO (Por longitud estricta de dígitos de AFIP)
+                            // 3. PUNTO DE VENTA Y NRO COMPROBANTE
                             let ptoVentaDetectado = false;
                             let nroCompDetectado = false;
 
@@ -356,7 +335,6 @@ document.addEventListener("DOMContentLoaded", function() {
                                 }
                             });
 
-                            // Fallback secundario de respaldo por si fallan los bloques limpios
                             if(!ptoVentaDetectado) {
                                 let matchPto = textoCompleto.match(/Punto\s*de\s*Venta[\s:]*(\d+)/i);
                                 if(matchPto) $('#punto_venta').val(parseInt(matchPto[1], 10));
@@ -366,7 +344,7 @@ document.addEventListener("DOMContentLoaded", function() {
                                 if(matchNro) $('#nro_factura').val(parseInt(matchNro[1], 10));
                             }
 
-                            // 4. CLIENTE (Búsqueda inteligente por CUIT)
+                            // 4. CLIENTE (POR CUIT)
                             let todosLosCuits = textoCompleto.match(/CUIT[\s:]*(\d{11})/gi) || textoCompleto.match(/\b\d{11}\b/g);
                             if (todosLosCuits && todosLosCuits.length > 0) {
                                 for (let i = 0; i < todosLosCuits.length; i++) {
@@ -390,14 +368,14 @@ document.addEventListener("DOMContentLoaded", function() {
                                 if(matchDetalle) {
                                     $('#detalle').val(matchDetalle[1].trim());
                                 } else {
-                                    $('#detalle').val("Carga automática: Verificar descripción en el PDF adjunto.");
+                                    $('#detalle').val("Carga automática AFIP: Verificar descripción interna.");
                                 }
                             }
 
-                            // 6. VALORES MONETARIOS
-                            let matchTotal = textoCompleto.match(/Importe\s*Total[\s:]*\$\s*([\d.,]+)/i) || textoCompleto.match(/Total[\s:]*\$\s*([\d.,]+)/i);
-                            let matchNeto = textoCompleto.match(/Importe\s*Neto\s*Gravado[\s:]*\$\s*([\d.,]+)/i);
-                            let matchIva = textoCompleto.match(/IVA\s*21%[\s:]*\$\s*([\d.,]+)/i);
+                            // 6. IMPORTES (Regex robustas para detectar formatos con comas y puntos)
+                            let matchTotal = textoCompleto.match(/(?:Importe\s*Total|Total)[\s:]*\$\s*([\d.,]+)/i);
+                            let matchNeto = textoCompleto.match(/(?:Neto\s*Gravado|Neto)[\s:]*\$\s*([\d.,]+)/i);
+                            let matchIva = textoCompleto.match(/IVA\s*(?:21|10\.5)?%[\s:]*\$\s*([\d.,]+)/i);
 
                             if(matchNeto) {
                                 let neto = matchNeto[1].replace(/\./g, '').replace(',', '.');
@@ -412,15 +390,14 @@ document.addEventListener("DOMContentLoaded", function() {
                                 $('#total').val(parseFloat(total).toFixed(2));
                             }
 
-                            // Alerta informativa de éxito
                             let cartel = document.createElement("div");
                             cartel.className = "alert alert-success mt-2 py-1 eval-aviso";
-                            cartel.innerHTML = "✨ <b>Análisis completado.</b> Verificá que los campos sean correctos.";
+                            cartel.innerHTML = "✨ <b>Análisis completado.</b> Verificá los campos antes de guardar.";
                             $('.eval-aviso').remove();
                             $('#seccionEscaneo').append(cartel);
 
                         } catch (err) {
-                            console.error("Error en parsing: ", err);
+                            console.error("Error procesando contenido del PDF: ", err);
                         }
                     });
                 });
@@ -431,23 +408,20 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 function cargarSelects() {
-    // Clientes
     $.get('/contable/ajax/clientes.php?accion=listar', function(r) {
         let s = $('#cliente_id').empty().append('<option value="">Seleccione Cliente</option>');
         globalClientesParaMapeo = r.data ? r.data : [];
         globalClientesParaMapeo.forEach(c => s.append(`<option value="${c.id}">${c.nombre}</option>`));
     }, 'json');
 
-    // Tipos de Comprobante
     $.get('/contable/ajax/tipos_comprobante.php?accion=listar', function(r) {
         let s = $('#tipo_comprobante_id').empty().append('<option value="">Seleccione Tipo</option>');
-        r.data.forEach(x => s.append(`<option value="${x.id}">${x.nombre}</option>`));
+        if(r.data) r.data.forEach(x => s.append(`<option value="${x.id}">${x.nombre}</option>`));
     }, 'json');
 
-    // Centros de Costo
     $.get('/contable/ajax/centros.php?accion=listar', function(r) {
         let s = $('#centro_costo_id').empty().append('<option value="">Seleccione Centro</option>');
-        r.data.forEach(x => s.append(`<option value="${x.id}">${x.nombre}</option>`));
+        if(r.data) r.data.forEach(x => s.append(`<option value="${x.id}">${x.nombre}</option>`));
     }, 'json');
 }
 
@@ -458,7 +432,7 @@ window.abrirModal = function() {
     $('#seccionArchivoReal').hide();
     $('#tituloModal').text('Nueva Factura de Venta');
     $('#formFactura')[0].reset();
-    $('#estado').val('DEBE'); // Setear por defecto
+    $('#estado').val('DEBE');
     $('#id').val('');
     $('#archivo_actual').html('');
     modalFactura.show();
@@ -504,9 +478,20 @@ window.editarFactura = function(data) {
     modalFactura.show();
 }
 
+// =========================================================
+// ENVÍO DE FORMULARIO - UNIFICACIÓN DE ADJUNTOS
+// =========================================================
 $('#formFactura').submit(function(e) {
     e.preventDefault();
     let formData = new FormData(this);
+
+    // Si el usuario usó el asistente y no cargó nada en el input real, inyectamos el archivo del escaneo
+    let inputReal = document.getElementById('archivo');
+    let inputEscaneo = document.getElementById('archivo_escanear');
+    
+    if ((!inputReal || inputReal.files.length === 0) && (inputEscaneo && inputEscaneo.files.length > 0)) {
+        formData.set('archivo', inputEscaneo.files[0]);
+    }
 
     $.ajax({
         url: '/contable/ajax/facturacion.php?accion=guardar',
@@ -515,18 +500,37 @@ $('#formFactura').submit(function(e) {
         contentType: false,
         processData: false,
         success: function(resp) {
-            tabla.ajax.reload();
+            tabla.ajax.reload(null, false); // Mantiene la página actual tras recargar
             modalFactura.hide();
         }
     });
 });
 
 window.eliminarFactura = function(id) {
-    if (!confirm('¿Eliminar esta factura?')) return;
-    if (prompt('Escribí OK para confirmar') !== 'OK') return;
-
-    $.post('/contable/ajax/facturacion.php?accion=eliminar', { id }, function(resp) {
-        tabla.ajax.reload();
+    Swal.fire({
+        title: '¿Estás seguro?',
+        text: "Esta acción no se puede deshacer.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#212529', // Gris oscuro/Negro unificado a tu Bootstrap Dark
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.post('/contable/ajax/facturacion.php?accion=eliminar', { id }, function(resp) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Eliminado',
+                    text: 'El comprobante fue borrado con éxito.',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+                tabla.ajax.reload(null, false);
+            }).fail(function() {
+                Swal.fire('Error', 'No se pudo eliminar el registro.', 'error');
+            });
+        }
     });
 }
 </script>

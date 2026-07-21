@@ -20,6 +20,7 @@ include __DIR__ . '/auth.php';
     <!-- DataTables botones-->
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css">
 
+
     <style>
 
         body {
@@ -120,6 +121,9 @@ include __DIR__ . '/auth.php';
         }
 
     </style>
+    
+    <!-- SweetAlert2 para confirmaciones elegantes -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
 <body class="<?php echo $_SESSION['dark'] ?? '' ?>">

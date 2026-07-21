@@ -9,7 +9,7 @@
 <div class="topbar d-flex justify-content-between align-items-center footer-lite">
 
     <div class="text-muted small">
-        Sistema Contable © <?= date('Y') ?>
+        Sistema Contable © Recursos Globales® <?= date('Y') ?>
     </div>
 
     <div class="text-muted small">

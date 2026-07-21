@@ -3,80 +3,94 @@ include '../../includes/header.php';
 include '../../includes/sidebar.php';
 ?>
 
-<div class="topbar d-flex justify-content-between align-items-center">
-    <h5>Gastos</h5>
-    <button class="btn btn-dark" onclick="abrirModal()">+ Nuevo</button>
+<div class="content">
+
+    <!-- CABECERA DEL MÓDULO (Estilo unificado) -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold text-dark mb-0">
+            <i class="bi bi-calculator text-secondary me-2"></i> Gestión de Gastos
+        </h4>
+        <button class="btn btn-dark d-flex align-items-center" onclick="abrirModal()">
+            <i class="bi bi-plus-circle me-2"></i> Nuevo Gasto
+        </button>
+    </div>
+
+    <!-- SECCIÓN DE FILTROS -->
+    <div class="card p-3 shadow-sm mb-3 border-0">
+        <div class="row g-2">
+            <div class="col-md-2">
+                <label class="small fw-bold text-muted">Desde</label>
+                <input type="date" id="f_desde" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-2">
+                <label class="small fw-bold text-muted">Hasta</label>
+                <input type="date" id="f_hasta" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-2">
+                <label class="small fw-bold text-muted">Centro</label>
+                <select id="f_centro" class="form-select form-select-sm"></select>
+            </div>
+            <div class="col-md-2">
+                <label class="small fw-bold text-muted">Categoría</label>
+                <select id="f_categoria" class="form-select form-select-sm"></select>
+            </div>
+            <div class="col-md-2">
+                <label class="small fw-bold text-muted">Obra</label>
+                <select id="f_obra" class="form-select form-select-sm"></select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button class="btn btn-sm btn-dark w-100" onclick="aplicarFiltros()">Filtrar</button>
+                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="limpiarFiltros()" title="Limpiar Filtros">X</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTENEDOR DE LA TABLA (Card Limpia) -->
+    <div class="card p-3 shadow-sm border-0">
+        <div class="table-responsive">
+            <table id="tablaGastos" class="table table-bordered table-striped w-100">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Fecha</th>
+                        <th>Tipo comprobante</th>
+                        <th>Número</th>         
+                        <th>Medio de pago</th>
+                        <th>Proveedor</th>
+                        <th>Detalle</th>
+                        <th>Neto</th>
+                        <th>IVA</th>
+                        <th>Ret IIBB</th>
+                        <th>Otros tributos</th>         
+                        <th>Total</th>
+                        <th>Centro</th>
+                        <th>Obra</th>
+                        <th>Categoria</th>
+                        <th>Subcategoria</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+    </div>
+
 </div>
 
-<div class="content">
-<div class="card p-3 shadow-sm mb-3">
-    <div class="row g-2">
-        <div class="col-md-2">
-            <label class="small">Desde</label>
-            <input type="date" id="f_desde" class="form-control form-control-sm">
-        </div>
-        <div class="col-md-2">
-            <label class="small">Hasta</label>
-            <input type="date" id="f_hasta" class="form-control form-control-sm">
-        </div>
-        <div class="col-md-2">
-            <label class="small">Centro</label>
-            <select id="f_centro" class="form-select form-select-sm"></select>
-        </div>
-        <div class="col-md-2">
-            <label class="small">Categoría</label>
-            <select id="f_categoria" class="form-select form-select-sm"></select>
-        </div>
-        <div class="col-md-2">
-            <label class="small">Obra</label>
-            <select id="f_obra" class="form-select form-select-sm"></select>
-        </div>
-        <div class="col-md-2 d-flex align-items-end">
-            <button class="btn btn-sm btn-dark w-100" onclick="aplicarFiltros()">Filtrar</button>
-            <button class="btn btn-sm btn-outline-secondary ms-1" onclick="limpiarFiltros()" title="Limpiar">X</button>
-        </div>
-    </div>
-</div>
-<div class="card p-3 shadow-sm">
-        <table id="tablaGastos" class="table table-bordered table-striped w-100">
-            <thead class="table-dark">
-                <tr>
-                    <th>ID</th>
-                    <th>Fecha</th>
-                    <th>Tipo comprobante</th>
-                    <th>Número</th>         
-                    <th>Medio de pago</th>
-                    <th>Proveedor</th>
-                    <th>Detalle</th>
-                    <th>Neto</th>
-                    <th>IVA</th>
-                    <th>Ret IIBB</th>
-                    <th>Otros tributos</th>         
-                    <th>Total</th>
-                    <th>Centro</th>
-                    <th>Obra</th>
-                    <th>Categoria</th>
-                    <th>Subcategoria</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-        </table>
-    </div>
-</div>
 <?php include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/modal_gasto.php'; ?>
 <?php include '../../includes/footer.php'; ?>
 
 <script>
 let modalGasto;
+let tabla;
 
 window.aplicarFiltros = function() {
-    $('#tablaGastos').DataTable().ajax.reload();
+    tabla.ajax.reload();
 }
 
 window.limpiarFiltros = function() {
     $('#f_desde, #f_hasta').val('');
     $('#f_centro, #f_categoria, #f_obra').val('');
-    $('#tablaGastos').DataTable().ajax.reload();
+    tabla.ajax.reload();
 }
 
 function renderMoneda(val) {
@@ -177,10 +191,10 @@ window.abrirModal = function(){
 document.addEventListener("DOMContentLoaded", function() {
     modalGasto = new bootstrap.Modal(document.getElementById('modalGasto'));
 
-    let tabla = $('#tablaGastos').DataTable({
-        responsive: true,      // Mantenemos esto activo porque usás las clases 'none'
-        scrollX: false,        // <--- ¡DESACTIVALO! El scrollX rompe la alineación al redimensionar
-        autoWidth: false,      // <--- ¡AGREGALO! Evita que se congelen los anchos de columna en px
+    tabla = $('#tablaGastos').DataTable({
+        responsive: true,
+        scrollX: false,
+        autoWidth: false,
         dom: 'Bfrtip',
         buttons: [
             { extend: 'colvis', text: 'Columnas', className: 'btn btn-sm btn-secondary' },
@@ -220,7 +234,6 @@ document.addEventListener("DOMContentLoaded", function() {
                 data: null, 
                 orderable: false, 
                 render: function(data) {
-                    // Si el registro tiene archivo adjunto, agregamos la carpeta uniforme
                     let btnArchivo = data.archivo ? `<a href="/contable/uploads/gastos/${data.archivo}" target="_blank" class="btn btn-sm btn-outline-secondary" title="Ver Adjunto Gasto">📁</a>` : '';
                     
                     return `
@@ -236,7 +249,6 @@ document.addEventListener("DOMContentLoaded", function() {
         ]
     });
 
-    // Ajusta los anchos de las columnas en tiempo real al cambiar el tamaño de pantalla
     $(window).on('resize', function () {
         tabla.columns.adjust().responsive.recalc();
     });
@@ -331,11 +343,41 @@ document.addEventListener("DOMContentLoaded", function() {
         modalGasto.show();
     }
 
+    // ELIMINAR GASTO CON DOBLE CHECK DE SWEETALERT2
     window.eliminar = function(id) {
-        if (!confirm("¿Eliminar gasto? Escribí OK para confirmar.")) return;
-        let c = prompt("Escribí OK");
-        if (c !== "OK") return;
-        $.post('/contable/ajax/gastos.php?accion=eliminar', { id }, () => { tabla.ajax.reload(); });
+        Swal.fire({
+            title: '¿Eliminar este gasto?',
+            text: 'Esta acción impactará directamente en tus saldos contables. Escribe "ELIMINAR" para proceder:',
+            icon: 'warning',
+            input: 'text',
+            inputPlaceholder: 'Escribe ELIMINAR aquí...',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#212529',
+            confirmButtonText: 'Confirmar eliminación',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true,
+            inputValidator: (value) => {
+                if (!value) {
+                    return '¡Debes escribir la palabra de confirmación!';
+                }
+                if (value !== 'ELIMINAR') {
+                    return 'La palabra no coincide. Intenta de nuevo (en mayúsculas).';
+                }
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post('/contable/ajax/gastos.php?accion=eliminar', { id }, () => { 
+                    Swal.fire({
+                        title: '¡Eliminado!',
+                        text: 'El comprobante de gasto ha sido removido.',
+                        icon: 'success',
+                        confirmButtonColor: '#212529'
+                    });
+                    tabla.ajax.reload(); 
+                });
+            }
+        });
     }
 
     $(document).ready(function() {
@@ -346,13 +388,44 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
+// ELIMINAR ADJUNTO CON SWEETALERT2
 $(document).on('click', '#btnEliminarArchivo', function() {
     let id = $(this).data('id');
-    if (!confirm('¿Eliminar archivo?')) return;
-    $.post('/contable/ajax/gastos.php?accion=eliminar_archivo', { id }, function() {
-        $('#archivo_actual').html('');
-        $('#btnEliminarArchivo').hide();
-        $('#tablaGastos').DataTable().ajax.reload();
+    
+    Swal.fire({
+        title: '¿Eliminar archivo adjunto?',
+        text: 'El documento se borrará permanentemente del servidor. Escribe "ELIMINAR" para confirmar:',
+        icon: 'warning',
+        input: 'text',
+        inputPlaceholder: 'Escribe ELIMINAR aquí...',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#212529',
+        confirmButtonText: 'Eliminar archivo',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true,
+        inputValidator: (value) => {
+            if (!value) {
+                return '¡Debes escribir la palabra de confirmación!';
+            }
+            if (value !== 'ELIMINAR') {
+                return 'La palabra no coincide. Intenta de nuevo.';
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.post('/contable/ajax/gastos.php?accion=eliminar_archivo', { id }, function() {
+                Swal.fire({
+                    title: 'Adjunto Removido',
+                    text: 'El archivo fue eliminado con éxito.',
+                    icon: 'success',
+                    confirmButtonColor: '#212529'
+                });
+                $('#archivo_actual').html('');
+                $('#btnEliminarArchivo').hide();
+                tabla.ajax.reload();
+            });
+        }
     });
 });
 </script>

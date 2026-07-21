@@ -3,12 +3,17 @@ include '../../includes/header.php';
 include '../../includes/sidebar.php';
 ?>
 
-<div class="topbar d-flex justify-content-between align-items-center">
-    <h5>Clientes</h5>
-    <button class="btn btn-dark" onclick="abrirModal()">+ Nuevo</button>
-</div>
-
 <div class="content">
+
+<!-- CABECERA DEL MÓDULO UNIFICADA -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h5 class="fw-bold text-dark mb-0">
+        <i class="bi bi-people text-secondary me-2"></i>Clientes
+    </h5>
+    <button class="btn btn-dark d-flex align-items-center" onclick="abrirModal()">
+        <i class="bi bi-plus-circle me-2"></i>Nuevo
+    </button>
+</div>
 
     <div class="card p-3 shadow-sm">
         <table id="tablaClientes" class="table table-bordered table-striped w-100">
@@ -34,7 +39,7 @@ include '../../includes/sidebar.php';
         <div class="modal-content">
 
             <div class="modal-header">
-                <h5 class="modal-title">Cliente</h5>
+                <h5 class="modal-title fw-bold">Cliente</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
 
@@ -109,14 +114,14 @@ include '../../includes/sidebar.php';
 <?php include '../../includes/footer.php'; ?>
 
 <script>
-let tabla; // Declarada global para que sea consistente con los otros módulos
+let tabla;
 
 document.addEventListener("DOMContentLoaded", function(){
 
     tabla = $('#tablaClientes').DataTable({
-        responsive: true,       // Activa el comportamiento responsive para pantallas chicas
-        scrollX: false,         // Desactiva el scrollX para evitar desfase de cabeceras
-        autoWidth: false,       // Impide que DataTables asigne anchos fijos en px
+        responsive: true,
+        scrollX: false,
+        autoWidth: false,
         ajax: '/contable/ajax/clientes.php?accion=listar',
         columns: [
             {data:'id'},
@@ -139,7 +144,6 @@ document.addEventListener("DOMContentLoaded", function(){
         ]
     });
 
-    // Forzamos el reajuste de la tabla al cambiar el tamaño de pantalla
     $(window).on('resize', function () {
         tabla.columns.adjust().responsive.recalc();
     });
@@ -164,7 +168,6 @@ document.addEventListener("DOMContentLoaded", function(){
     });
 
     window.editar = function(data){
-
         for(let key in data){
             if(document.getElementById(key)){
                 document.getElementById(key).value = data[key];
@@ -178,7 +181,6 @@ document.addEventListener("DOMContentLoaded", function(){
     }
 
     window.ver = function(data){
-
         for(let key in data){
             if(document.getElementById(key)){
                 document.getElementById(key).value = data[key];
@@ -191,15 +193,44 @@ document.addEventListener("DOMContentLoaded", function(){
         new bootstrap.Modal(document.getElementById('modalCliente')).show();
     }
 
+    // SWEETALERT2 CON ELIMINACIÓN CRÍTICA REQUERIDA
     window.eliminar = function(id){
-        if(confirm("Eliminar cliente?")){
-            $.post('/contable/ajax/clientes.php?accion=eliminar', {id:id}, function(){
-                tabla.ajax.reload();
-            });
-        }
+        Swal.fire({
+            title: '¿Estás completamente seguro?',
+            text: 'Esta acción no se puede deshacer. Para proceder, por favor escribe "ELIMINAR" en el campo de abajo:',
+            icon: 'warning',
+            input: 'text',
+            inputPlaceholder: 'Escribe ELIMINAR aquí...',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#212529',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true,
+            inputValidator: (value) => {
+                if (!value) {
+                    return 'Debes escribir la palabra de confirmación.';
+                }
+                if (value !== 'ELIMINAR') {
+                    return 'La palabra no coincide. Debe ser exactamente ELIMINAR.';
+                }
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post('/contable/ajax/clientes.php?accion=eliminar', {id: id}, function(){
+                    tabla.ajax.reload();
+                    Swal.fire({
+                        title: 'Eliminado',
+                        text: 'El cliente ha sido borrado correctamente.',
+                        icon: 'success',
+                        confirmButtonColor: '#212529'
+                    });
+                });
+            }
+        });
     }
 
-    // MAYÚSCULAS
+    // MAYÚSCULAS AUTOMÁTICAS
     $(document).on('input', 'input, textarea', function(){
         this.value = this.value.toUpperCase();
     });
@@ -218,4 +249,3 @@ document.addEventListener("DOMContentLoaded", function(){
 
 });
 </script>
-

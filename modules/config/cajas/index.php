@@ -3,15 +3,12 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/header.php';
 include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
 ?>
 
+<div class="topbar d-flex justify-content-between align-items-center">
+    <h5>Cajas</h5>
+    <button class="btn btn-dark" onclick="abrirModal()">+ Nueva Caja</button>
+</div>
+
 <div class="content">
-
-    <div class="d-flex justify-content-between mb-3">
-        <h4>Cajas</h4>
-
-        <button class="btn btn-dark" onclick="abrirModal()">
-            + Nueva Caja
-        </button>
-    </div>
 
     <table id="tablaCajas" class="table table-bordered table-striped">
         <thead class="table-dark">

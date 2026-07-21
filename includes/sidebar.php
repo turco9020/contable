@@ -139,7 +139,7 @@
 <!-- Tu HTML original intacto con íconos grises unificados -->
 <div class="sidebar" id="sidebarMenu"> 
 
-    <h5 class="text-center mt-3"><i class="bi bi-vector-pen"></i> Contable</h5>
+    <h5 class="text-center mt-3">RG CONTABLE</h5>
     <hr>
 
     <a href="/contable/index.php"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>

@@ -3,37 +3,43 @@ include '../../includes/header.php';
 include '../../includes/sidebar.php';
 ?>
 
-<div class="topbar d-flex justify-content-between align-items-center">
-    <h5>Proveedores</h5>
-    <button class="btn btn-dark" onclick="abrirModal()">+ Nuevo</button>
-</div>
-
 <div class="content">
 
-    <div class="card p-3 shadow-sm">
-        <table id="tablaProveedores" class="table table-bordered table-striped w-100">
-            <thead class="table-dark">
-                <tr>
-                    <th>ID</th>
-                    <th>Nombre</th>
-                    <th>CUIT</th>
-                    <th>Condición</th>
-                    <th>Producto/Servicio</th>
-                    <th>Teléfono</th>
+    <!-- CABECERA DEL MÓDULO (Estilo unificado) -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold text-dark mb-0">
+            <i class="bi bi-truck text-secondary me-2"></i> Gestión de Proveedores
+        </h4>
+        <button class="btn btn-dark d-flex align-items-center" onclick="abrirModal()">
+            <i class="bi bi-plus-circle me-2"></i> Nuevo Proveedor
+        </button>
+    </div>
 
-                    <!-- ocultas pero exportables -->
-                    <th>Dirección</th>
-                    <th>Localidad</th>
-                    <th>Provincia</th>
-                    <th>CP</th>
-                    <th>Whatsapp</th>
-                    <th>Contacto</th>
-                    <th>Observaciones</th>
-
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-        </table>
+    <!-- CONTENEDOR DE LA TABLA (Card Limpia) -->
+    <div class="card p-3 shadow-sm border-0">
+        <div class="table-responsive">
+            <table id="tablaProveedores" class="table table-bordered table-striped w-100">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>CUIT</th>
+                        <th>Condición</th>
+                        <th>Producto/Servicio</th>
+                        <th>Teléfono</th>
+                        <!-- Ocultas pero exportables -->
+                        <th>Dirección</th>
+                        <th>Localidad</th>
+                        <th>Provincia</th>
+                        <th>CP</th>
+                        <th>Whatsapp</th>
+                        <th>Contacto</th>
+                        <th>Observaciones</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
     </div>
 
 </div>
@@ -123,14 +129,14 @@ include '../../includes/sidebar.php';
 <?php include '../../includes/footer.php'; ?>
 
 <script>
-let tabla; // Declarada globalmente al inicio para evitar errores de referencia
+let tabla;
 
 document.addEventListener("DOMContentLoaded", function(){
 
     tabla = $('#tablaProveedores').DataTable({
-        responsive: true,       // Activa comportamiento fluido responsive
-        scrollX: false,         // Desactiva el scrollX manual para no romper cabeceras
-        autoWidth: false,       // Evita cálculos forzados de píxeles estáticos
+        responsive: true,
+        scrollX: false,
+        autoWidth: false,
         dom: 'Bfrtip',
         buttons: [
             {
@@ -138,7 +144,7 @@ document.addEventListener("DOMContentLoaded", function(){
                 text: 'Excel',
                 className: 'btn btn-sm btn-secondary',
                 exportOptions: {
-                    columns: ':not(:last-child)' // excluye acciones
+                    columns: ':not(:last-child)'
                 }
             },
             {
@@ -192,7 +198,6 @@ document.addEventListener("DOMContentLoaded", function(){
         ]
     });
 
-    // Reajusta las cabeceras cuando la ventana cambia de tamaño
     $(window).on('resize', function () {
         tabla.columns.adjust().responsive.recalc();
     });
@@ -240,12 +245,41 @@ document.addEventListener("DOMContentLoaded", function(){
         new bootstrap.Modal(document.getElementById('modalProveedor')).show();
     }
 
-    window.eliminar = function(id){
-        if(confirm("¿Eliminar proveedor?")){
-            $.post('/contable/ajax/proveedores.php?accion=eliminar', {id:id}, function(){
-                tabla.ajax.reload();
-            });
-        }
+    // ACCIÓN ELIMINAR BLINDADA CON SWEETALERT2
+    window.eliminar = function(id) {
+        Swal.fire({
+            title: '¿Confirmación crítica?',
+            text: 'Para eliminar este proveedor permanentemente, escribe la palabra "ELIMINAR" a continuación:',
+            icon: 'warning',
+            input: 'text',
+            inputPlaceholder: 'Escribe ELIMINAR aquí...',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#212529',
+            confirmButtonText: 'Confirmar eliminación',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true,
+            inputValidator: (value) => {
+                if (!value) {
+                    return '¡Debes escribir la palabra de confirmación!';
+                }
+                if (value !== 'ELIMINAR') {
+                    return 'La palabra no coincide. Intenta de nuevo (en mayúsculas).';
+                }
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post('/contable/ajax/proveedores.php?accion=eliminar', { id: id }, function() {
+                    Swal.fire({
+                        title: '¡Eliminado!',
+                        text: 'El proveedor ha sido borrado correctamente.',
+                        icon: 'success',
+                        confirmButtonColor: '#212529'
+                    });
+                    tabla.ajax.reload();
+                });
+            }
+        });
     }
 
     // MAYÚSCULAS AUTOMÁTICAS

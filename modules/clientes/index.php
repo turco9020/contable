@@ -4,7 +4,6 @@ include '../../includes/sidebar.php';
 ?>
 
 <div class="content">
-
 <!-- CABECERA DEL MÓDULO UNIFICADA -->
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h5 class="fw-bold text-dark mb-0">

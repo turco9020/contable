@@ -87,7 +87,7 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
 
                         <div class="col-md-4">
                             <label class="form-label mb-2 fw-semibold text-dark">Centro de Costo</label>
-                            <select name="centro_costo_id" id="centro_costo_id" class="form-select border-secondary text-dark" required></select>
+                            <select name="centro_costo_id" id="centro_costo_id" class="form-select border-secondary text-dark" style="background-color: #fef9e7" required></select>
                         </div>
 
                         <div class="col-md-4">

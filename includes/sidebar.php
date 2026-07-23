@@ -220,17 +220,35 @@ function toggleDark(){
 // ================= OPERACIONES =================
 function toggleMenuOperaciones(e){
     e.preventDefault();
-    let menu = document.getElementById('menuOperaciones');
-    let abierto = menu.classList.toggle('show');
-    localStorage.setItem('menuOperaciones', abierto ? 'open' : 'closed');
+    let menuOperaciones = document.getElementById('menuOperaciones');
+    let menuConfig = document.getElementById('menuConfig');
+    
+    if (!menuOperaciones.classList.contains('show')) {
+        menuOperaciones.classList.add('show');
+        menuConfig.classList.remove('show');
+        localStorage.setItem('menuOperaciones', 'open');
+        localStorage.setItem('menuConfig', 'closed');
+    } else {
+        menuOperaciones.classList.remove('show');
+        localStorage.setItem('menuOperaciones', 'closed');
+    }
 }
 
 // ================= CONFIG =================
 function toggleMenuConfig(e){
     e.preventDefault();
-    let menu = document.getElementById('menuConfig');
-    let abierto = menu.classList.toggle('show');
-    localStorage.setItem('menuConfig', abierto ? 'open' : 'closed');
+    let menuOperaciones = document.getElementById('menuOperaciones');
+    let menuConfig = document.getElementById('menuConfig');
+    
+    if (!menuConfig.classList.contains('show')) {
+        menuConfig.classList.add('show');
+        menuOperaciones.classList.remove('show');
+        localStorage.setItem('menuConfig', 'open');
+        localStorage.setItem('menuOperaciones', 'closed');
+    } else {
+        menuConfig.classList.remove('show');
+        localStorage.setItem('menuConfig', 'closed');
+    }
 }
 
 // ================= INIT =================

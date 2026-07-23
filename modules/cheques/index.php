@@ -264,7 +264,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     let diferenciaTiempo = fechaPago.getTime() - hoy.getTime();
                     let diasDiferencia = Math.ceil(diferenciaTiempo / (1000 * 60 * 60 * 24));
 
-                    if (diasDiferencia < 0) return `<span class="text-danger">- ${Math.abs(diasDiferencia)}</span>`;
+                    if (diasDiferencia < 0) return `<span class="badge bg-warning text-dark px-2 py-1">- ${Math.abs(diasDiferencia)}</span>`;
                     if (diasDiferencia <= 7) return `<span class="badge bg-danger text-white px-2 py-1">${diasDiferencia}</span>`;
                     return `<span class="text-dark">${diasDiferencia}</span>`;
                 }

@@ -1,1 +1,9 @@
-<?php session_start();session_destroy();header("Location: login.php");
+<?php 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+session_unset();
+session_destroy();
+header("Location: /contable/auth/login.php");
+exit;
+?>

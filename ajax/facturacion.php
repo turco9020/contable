@@ -1,12 +1,29 @@
 <?php
+// Iniciamos la sesión para poder auditar el usuario y validar roles
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 include $_SERVER['DOCUMENT_ROOT'].'/contable/config/database.php';
 
 $accion = $_GET['accion'] ?? '';
+
+// Captura de datos de sesión actuales
+$usuario = $_SESSION['id'] ?? 0;
+$rol = $_SESSION['rol'] ?? 'user';
 
 // =======================
 // LISTAR FACTURAS
 // =======================
 if($accion == 'listar'){
+    header('Content-Type: application/json');
+
+    // Construcción de la condición base según rol
+    $where = "WHERE 1=1";
+    if (strcasecmp($rol, 'admin') !== 0 && strcasecmp($rol, 'contador') !== 0) {
+        $where .= " AND f.usuario_id = $usuario";
+    }
+
     // Consulta limpia adaptada a las columnas reales de tu base de datos
     $sql = "
         SELECT 
@@ -32,12 +49,12 @@ if($accion == 'listar'){
         LEFT JOIN clientes c ON c.id = f.cliente_id
         LEFT JOIN tipos_comprobante tc ON tc.id = f.tipo_comprobante_id
         LEFT JOIN centros_costos cc ON cc.id = f.centro_costo_id
+        $where
         ORDER BY f.fecha DESC, f.id DESC
     ";
     
     $res = $conn->query($sql);
     
-    // Si la consulta llega a fallar por otra cosa, esto te lo avisa en limpio
     if(!$res){
         echo json_encode(["error" => "Error SQL: " . $conn->error]);
         exit;
@@ -51,10 +68,13 @@ if($accion == 'listar'){
     echo json_encode(['data' => $data]);
     exit;
 }
+
 // =======================
 // GUARDAR / EDITAR
 // =======================
 if($accion == 'guardar'){
+    header('Content-Type: application/json');
+
     $id = $_POST['id'] ?? '';
     $fecha = $_POST['fecha'];
     $tipo_comprobante_id = (int)$_POST['tipo_comprobante_id'];
@@ -69,6 +89,7 @@ if($accion == 'guardar'){
     $observaciones = $conn->real_escape_string(trim($_POST['observaciones']));
     $centro_costo_id = (int)$_POST['centro_costo_id'];
     $estado = $conn->real_escape_string(trim($_POST['estado'] ?? 'DEBE'));
+    
     // Procesar archivo
     $archivo_nombre = null;
     if(isset($_FILES['archivo']) && $_FILES['archivo']['error'] == 0){
@@ -105,9 +126,9 @@ if($accion == 'guardar'){
         }
         $sql .= " WHERE id=$id";
     } else {
-        // NUEVO
-        $sql = "INSERT INTO facturas_venta (fecha, tipo_comprobante_id, cliente_id, punto_venta, nro_factura, fecha_vencimiento, detalle, neto, iva, total, observaciones, centro_costo_id, archivo, estado) 
-                VALUES ('$fecha', $tipo_comprobante_id, $cliente_id, $punto_venta, $nro_factura, $fecha_vencimiento, '$detalle', $neto, $iva, $total, '$observaciones', $centro_costo_id, " . ($archivo_nombre ? "'$archivo_nombre'" : "NULL") . ", '$estado')";
+        // NUEVO (Inyectamos la columna usuario_id cargando la variable de sesión)
+        $sql = "INSERT INTO facturas_venta (fecha, tipo_comprobante_id, cliente_id, punto_venta, nro_factura, fecha_vencimiento, detalle, neto, iva, total, observaciones, centro_costo_id, archivo, estado, usuario_id) 
+                VALUES ('$fecha', $tipo_comprobante_id, $cliente_id, $punto_venta, $nro_factura, $fecha_vencimiento, '$detalle', $neto, $iva, $total, '$observaciones', $centro_costo_id, " . ($archivo_nombre ? "'$archivo_nombre'" : "NULL") . ", '$estado', $usuario)";
     }
     
     if($conn->query($sql)){
@@ -122,6 +143,7 @@ if($accion == 'guardar'){
 // ELIMINAR
 // =======================
 if($accion == 'eliminar'){
+    header('Content-Type: application/json');
     $id = (int)$_POST['id'];
     
     $res = $conn->query("SELECT archivo FROM facturas_venta WHERE id=$id");

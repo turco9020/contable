@@ -205,7 +205,7 @@ document.addEventListener("DOMContentLoaded", function() {
     { 
         extend: 'excel', 
         text: 'Excel', 
-        className: 'btn btn-sm btn-secondary',
+        className: 'btn btn-sm btn-success',
         exportOptions: {
             columns: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15] // Índices 0-15 (16 columnas)
         }

@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 include '../config/database.php';
 
 // Limpiar buffer para evitar espacios en blanco en el JSON
@@ -27,8 +29,12 @@ function limpiarMonto($valor) {
 if($_GET['accion']=='listar'){
     header('Content-Type: application/json');
     
-    // Condición base (Rol)
-    $where = ($rol=='admin') ? "WHERE 1=1" : "WHERE g.usuario_id=$usuario";
+    // CORRECCIÓN: Si es Admin o Contador ve todo. Si no, se restringe a su ID.
+    if (strcasecmp($rol, 'admin') === 0 || strcasecmp($rol, 'contador') === 0) {
+        $where = "WHERE 1=1";
+    } else {
+        $where = "WHERE g.usuario_id=$usuario";
+    }
 
     // Filtros dinámicos
     if (!empty($_GET['f_desde'])) {
@@ -70,9 +76,7 @@ if($_GET['accion']=='listar'){
 // =======================
 // OBTENER UN GASTO
 // =======================
-
 if($_GET['accion']=='obtener'){
-
     header('Content-Type: application/json');
 
     $id = (int)$_GET['id'];
@@ -87,9 +91,7 @@ if($_GET['accion']=='obtener'){
                 cat.nombre AS categoria,
                 sub.nombre AS subcategoria,
                 p.nombre AS proveedor
-
             FROM gastos g
-
             LEFT JOIN movimientos_caja mc ON mc.origen='GASTO' AND mc.referencia_id=g.id
             LEFT JOIN tipos_comprobante t ON t.id = g.tipo_comprobante_id
             LEFT JOIN medios_pago m ON m.id = g.medio_pago_id
@@ -98,21 +100,19 @@ if($_GET['accion']=='obtener'){
             LEFT JOIN categorias cat ON cat.id = g.categoria_id
             LEFT JOIN subcategorias sub ON sub.id = g.subcategoria_id
             LEFT JOIN proveedores p ON p.id = g.proveedor_id
-
             WHERE g.id = $id";
 
-    if($rol != 'admin'){
+    // CORRECCIÓN: Respetamos los roles jerárquicos para abrir el registro
+    if (strcasecmp($rol, 'admin') !== 0 && strcasecmp($rol, 'contador') !== 0) {
         $sql .= " AND g.usuario_id = $usuario";
     }
 
     $r = $conn->query($sql);
-
     if($r && $r->num_rows){
         echo json_encode($r->fetch_assoc());
     }else{
         echo json_encode([]);
     }
-
     exit;
 }
 
@@ -124,14 +124,12 @@ if($_GET['accion']=='guardar'){
     $fecha = $_POST['fecha'];
     $detalle = $conn->real_escape_string($_POST['detalle']);
     
-    // Limpieza de montos usando la nueva función
     $total          = limpiarMonto($_POST['total']);
     $neto           = limpiarMonto($_POST['neto']);
     $iva            = limpiarMonto($_POST['iva']);
     $ret_iibb       = limpiarMonto($_POST['ret_iibb']);
     $otros_tributos = limpiarMonto($_POST['otros_tributos']);
 
-    // Normalizar NULLs para llaves foráneas
     $tipo_comprobante_id = !empty($_POST['tipo_comprobante_id']) ? $_POST['tipo_comprobante_id'] : "NULL";
     $medio_pago_id = !empty($_POST['medio_pago_id']) ? $_POST['medio_pago_id'] : "NULL";
     $caja_id = !empty($_POST['caja_id']) ? $_POST['caja_id'] : "NULL";
@@ -182,7 +180,7 @@ if($_GET['accion']=='guardar'){
         if($archivo_nombre) $sql .= ", archivo='$archivo_nombre'";
         $sql .= " WHERE id=$id";
     } else {
-        // INSERT
+        // INSERT (Guardamos al usuario creador en la base de datos)
         $sql = "INSERT INTO gastos (fecha, detalle, total, tipo_comprobante_id, numero_comprobante, 
                 neto, iva, ret_iibb, otros_tributos, caja_id, centro_costo_id, categoria_id, subcategoria_id, 
                 proveedor_id, medio_pago_id, obra_id, archivo, usuario_id) 
@@ -192,101 +190,40 @@ if($_GET['accion']=='guardar'){
                 ".($archivo_nombre ? "'$archivo_nombre'" : "NULL").", $usuario)";
     }
 
-   $ok = $conn->query($sql);
+    $ok = $conn->query($sql);
 
-if($ok){
+    if($ok){
+        if($id){
+            // ACTUALIZA MOVIMIENTO DE CAJA
+            if($caja_id != "NULL"){
+                $concepto = "GASTO #".$id;
+                $conn->query("UPDATE movimientos_caja SET
+                                fecha='$fecha',
+                                caja_id=$caja_id,
+                                concepto='$concepto',
+                                comprobante='$numero_comprobante',
+                                importe='$total'
+                              WHERE origen='GASTO' AND referencia_id=$id");
+            }
+        }else{
+            // INSERT NUEVO MOVIMIENTO
+            if($caja_id != "NULL"){
+                $gasto_id = $conn->insert_id;
+                $concepto = "GASTO #".$gasto_id;
 
-    if($id){
-
-        // ACTUALIZA MOVIMIENTO DE CAJA
-
-        if($caja_id != "NULL"){
-
-            $concepto = "GASTO #".$id;
-
-            $conn->query("
-
-                UPDATE movimientos_caja SET
-
-                    fecha='$fecha',
-
-                    caja_id=$caja_id,
-
-                    concepto='$concepto',
-
-                    comprobante='$numero_comprobante',
-
-                    importe='$total'
-
-                WHERE
-
-                    origen='GASTO'
-
-                    AND referencia_id=$id
-
-            ");
-
+                // CORRECCIÓN: Inyectamos el $usuario también en el movimiento de caja automático
+                $conn->query("INSERT INTO movimientos_caja(
+                                fecha, caja_id, tipo, concepto, comprobante, importe, origen, referencia_id, usuario_id
+                              ) VALUES(
+                                '$fecha', $caja_id, 'EGRESO', '$concepto', '$numero_comprobante', '$total', 'GASTO', $gasto_id, $usuario
+                              )");
+            }
         }
-
+        echo "OK";
     }else{
-
-        // INSERT NUEVO
-
-        if($caja_id != "NULL"){
-
-            $gasto_id = $conn->insert_id;
-
-            $concepto = "GASTO #".$gasto_id;
-
-            $conn->query("
-
-                INSERT INTO movimientos_caja(
-
-                    fecha,
-                    caja_id,
-                    tipo,
-                    concepto,
-                    comprobante,
-                    importe,
-
-                    origen,
-                    referencia_id
-
-                ) VALUES(
-
-                    '$fecha',
-
-                    $caja_id,
-
-                    'EGRESO',
-
-                    '$concepto',
-
-                    '$numero_comprobante',
-
-                    '$total',
-
-                    'GASTO',
-
-                    $gasto_id
-
-                )
-
-            ");
-
-        }
-
+        echo "ERROR: ".$conn->error;
     }
-
-    echo "OK";
-
-}else{
-
-    echo "ERROR: ".$conn->error;
-
-}
-
-exit;
+    exit;
 }
 
 /* =========================
@@ -310,60 +247,25 @@ if($_GET['accion']=='eliminar_archivo'){
    ELIMINAR GASTO COMPLETO
 ========================= */
 if($_GET['accion']=='eliminar'){
-
     $id = (int)($_POST['id'] ?? 0);
 
-    // =========================
     // ELIMINAR ARCHIVO FÍSICO
-    // =========================
-
-    $res = $conn->query("
-        SELECT archivo
-        FROM gastos
-        WHERE id = $id
-    ");
-
+    $res = $conn->query("SELECT archivo FROM gastos WHERE id = $id");
     $row = $res->fetch_assoc();
 
     if($row && !empty($row['archivo'])){
-
-        $ruta = $_SERVER['DOCUMENT_ROOT'].
-                '/contable/uploads/gastos/'.
-                $row['archivo'];
-
-        if(file_exists($ruta)){
-            unlink($ruta);
-        }
-
+        $ruta = $_SERVER['DOCUMENT_ROOT'].'/contable/uploads/gastos/'.$row['archivo'];
+        if(file_exists($ruta)) unlink($ruta);
     }
 
-    // =========================
     // ELIMINAR MOVIMIENTO DE CAJA
-    // =========================
+    $conn->query("DELETE FROM movimientos_caja WHERE origen='GASTO' AND referencia_id=$id");
 
-    $conn->query("
-        DELETE FROM movimientos_caja
-        WHERE origen='GASTO'
-        AND referencia_id=$id
-    ");
-
-    // =========================
     // ELIMINAR GASTO
-    // =========================
-
-    if($conn->query("
-        DELETE FROM gastos
-        WHERE id=$id
-    ")){
-
+    if($conn->query("DELETE FROM gastos WHERE id=$id")){
         echo "OK";
-
     }else{
-
         echo "ERROR: ".$conn->error;
-
     }
-
     exit;
-
 }

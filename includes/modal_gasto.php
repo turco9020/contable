@@ -23,7 +23,7 @@
 
 <div class="col-md-3">
 <label>Centro</label>
-<select name="centro_costo_id" id="centro_costo_id" class="form-control mb-2"></select>
+<select name="centro_costo_id" id="centro_costo_id" class="form-control mb-2" required></select>
 </div>
 
 <div class="col-md-3">
@@ -63,7 +63,7 @@
 
 <div class="col-md-4">
 <label>Caja</label>
-<select id="caja_id" name="caja_id" class="form-control">
+<select id="caja_id" name="caja_id" class="form-control" required>
 <option value="">Seleccionar</option>
 </select>
 </div>

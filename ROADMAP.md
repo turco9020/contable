@@ -21,7 +21,9 @@ Proyecto en desarrollo activo.
 
 ---
 
-## Módulos
+## DASHBOARD
+
+FUTUROS AGREGADOS, UN DASH PARA LA PARTE DE OPERADOR ARQUITECTURA, QUE PUEDA VER LOS AVANCES Y GASTOS EN LAS OBRAS. TENDRIA QUE SER UN ROL ARQ LO QUE AGREGO
 
 ### Clientes
 
@@ -53,6 +55,8 @@ Proyecto en desarrollo activo.
 - [ ] Saldo automático
 - [ ] Arqueo
 
+Admin / Contador: Ven todo (Cajas Centrales y todas las Cajas Chicas).  
+Operador: Únicamente ve la Caja Chica que tiene vinculada a su usuario_id. Ninguna más.  
 ---
 
 # Próximos módulos

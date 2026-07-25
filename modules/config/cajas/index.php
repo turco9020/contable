@@ -1,6 +1,16 @@
 <?php
 include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/header.php';
 include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
+include $_SERVER['DOCUMENT_ROOT'].'/contable/config/database.php';
+
+// Consultamos los usuarios activos para poder listarlos en el desplegable
+$usuarios_db = [];
+$res_users = $conn->query("SELECT id, usuario FROM usuarios ORDER BY usuario");
+if($res_users){
+    while($u = $res_users->fetch_assoc()){
+        $usuarios_db[] = $u;
+    }
+}
 ?>
 
 <div class="topbar d-flex justify-content-between align-items-center">
@@ -16,6 +26,7 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
                 <th>ID</th>
                 <th>Nombre</th>
                 <th>Descripción</th>
+                <th>Asignada a</th>
                 <th>Activa</th>
                 <th>Acciones</th>
             </tr>
@@ -52,6 +63,14 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
            class="form-control mb-2"
            id="descripcion"
            name="descripcion">
+
+    <label>Asignar a Usuario (Caja Chica)</label>
+    <select class="form-control mb-2" id="usuario_id" name="usuario_id">
+    <option value="">Ninguno (Caja Central)</option>
+        <?php foreach($usuarios_db as $usr): ?>
+        <option value="<?php echo $usr['id']; ?>"><?php echo htmlspecialchars($usr['usuario']); ?></option>
+        <?php endforeach; ?>
+    </select>
 
     <label>Activa</label>
     <select class="form-control mb-2"
@@ -99,6 +118,12 @@ document.addEventListener("DOMContentLoaded", function(){
             {data:'nombre'},
             {data:'descripcion'},
             {
+                data:'usuario_nombre',
+                render:function(d){
+                    return d ? d : '<span class="text-muted">CENTRAL</span>';
+                }
+            },
+            {
                 data:'activa',
                 render:function(d){
                     return d == 1 ? 'SI' : 'NO';
@@ -132,6 +157,7 @@ function abrirModal(){
 
     $('#formCaja')[0].reset();
     $('#id').val('');
+    $('#usuario_id').val(''); // Reseteamos a Caja Central por defecto
 
     modalCaja.show();
 }
@@ -162,6 +188,7 @@ window.editar = function(d){
     $('#id').val(d.id);
     $('#nombre').val(d.nombre);
     $('#descripcion').val(d.descripcion);
+    $('#usuario_id').val(d.usuario_id ? d.usuario_id : ''); // Asigna el usuario o deja vacío si es NULL
     $('#activa').val(d.activa);
 
     modalCaja.show();
@@ -171,7 +198,7 @@ window.editar = function(d){
 
 window.eliminar = function(id){
 
-    if(!confirm('¿Eliminar caja?')) return;
+    if(!confirm('¿CUIDADO!!!!! - Eliminar caja?')) return;
 
     if(prompt('Escribí OK') != 'OK') return;
 
@@ -186,4 +213,3 @@ window.eliminar = function(id){
 }
 
 </script>
-

@@ -14,13 +14,13 @@ include 'includes/sidebar.php';
         </div>
     <?php endif; ?>
 
-    <?php if (tieneRol('gerente')): ?>
+    <?php if (tieneRol('admin')): ?>
         <!-- =======================================================================
              VISTA GERENCIAL (Estructura lista para expandir en el futuro)
              ======================================================================= -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h4 class="fw-bold text-dark mb-0">📊 Tablero de Control Gerencial</h4>
-            <span class="badge bg-primary px-3 py-2">Perfil: Gerente</span>
+            <span class="badge bg-primary px-3 py-2">Perfil: Admin</span>
         </div>
 
         <div class="row g-3">
@@ -57,9 +57,9 @@ include 'includes/sidebar.php';
             </div>
         </div>
 
-    <?php else: ?>
+    <?php elseif (tieneRol('contador')): ?>
         <!-- =======================================================================
-             VISTA OPERATIVA / CONTADOR (Tu código original intacto)
+             VISTA OPERATIVA / CONTADOR (Exclusivo para Admin y Contador)
              ======================================================================= -->
         <div class="row g-3">
             <div class="col-12 col-md-6 col-xl-3">
@@ -175,15 +175,43 @@ include 'includes/sidebar.php';
                 </div>
             </div>
         </div>
+
+    <?php else: ?>
+        <!-- =======================================================================
+             VISTA RESTRINGIDA / BIENVENIDA (Para Operadores u otros roles externos)
+             ======================================================================= -->
+        <div class="row justify-content-center align-items-center" style="min-height: 65vh;">
+            <div class="col-12 col-md-8 col-lg-6 text-center">
+                <!-- Usamos un ícono nativo de Bootstrap de forma estética en vez de una imagen pesada -->
+                <div class="mb-4">
+                    <i class="bi bi-shield-lock text-secondary" style="font-size: 5rem; opacity: 0.4;"></i>
+                </div>
+                
+                <h3 class="fw-bold text-dark mb-2">¡Hola, <?= htmlspecialchars($_SESSION['nombre'] ?? 'Usuario') ?>!</h3>
+                <p class="text-muted fs-5 mb-4">
+                    Bienvenido al sistema RG Contable. Tu perfil no requiere acceso al panel de métricas globales.
+                </p>
+                <p class="text-muted small">
+                    Por favor, selecciona un módulo del menú lateral izquierdo para comenzar tus tareas.
+                </p>
+
+                <!-- Si es operador, le ponemos un botón de acceso directo al módulo que acabamos de habilitar -->
+                <?php if (tieneRol('operador')): ?>
+                    <a href="/contable/modules/gastos/" class="btn btn-secondary shadow-sm px-4 py-2 mt-2">
+                        <i class="bi bi-receipt me-2"></i> Cargar Gasto
+                    </a>
+                <?php endif; ?>
+            </div>
+        </div>
     <?php endif; ?>
 
 </div>
 
 <?php include 'includes/footer.php'; ?>
 
-<!-- Carga condicional del script según el rol -->
+<!-- Carga condicional del script JS para no romper llamadas Ajax innecesarias -->
 <?php if (tieneRol('gerente')): ?>
     <script src="/contable/assets/js/dashboard_gerente.js"></script>
-<?php else: ?>
+<?php elseif (tieneRol('admin') || tieneRol('contador')): ?>
     <script src="/contable/assets/js/dashboard.js"></script>
 <?php endif; ?>

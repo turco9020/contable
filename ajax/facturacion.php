@@ -124,14 +124,22 @@ if($accion == 'guardar'){
         if($archivo_nombre){
             $sql .= ", archivo='$archivo_nombre'";
         }
+        
         $sql .= " WHERE id=$id";
+        
+        // 🛡️ SEGURIDAD EDITAR: Si no es admin ni contador, sólo puede editar sus propias facturas
+        if (strcasecmp($rol, 'admin') !== 0 && strcasecmp($rol, 'contador') !== 0) {
+            $sql .= " AND usuario_id = $usuario";
+        }
+        
     } else {
-        // NUEVO (Inyectamos la columna usuario_id cargando la variable de sesión)
+        // NUEVO 
         $sql = "INSERT INTO facturas_venta (fecha, tipo_comprobante_id, cliente_id, punto_venta, nro_factura, fecha_vencimiento, detalle, neto, iva, total, observaciones, centro_costo_id, archivo, estado, usuario_id) 
                 VALUES ('$fecha', $tipo_comprobante_id, $cliente_id, $punto_venta, $nro_factura, $fecha_vencimiento, '$detalle', $neto, $iva, $total, '$observaciones', $centro_costo_id, " . ($archivo_nombre ? "'$archivo_nombre'" : "NULL") . ", '$estado', $usuario)";
     }
     
     if($conn->query($sql)){
+        // Si el UPDATE no afectó filas (porque el usuario_id no coincidía), tirará OK pero no cambiará nada en la BD
         echo json_encode(['status' => 'OK']);
     } else {
         echo json_encode(['status' => 'ERROR', 'msg' => $conn->error]);
@@ -146,15 +154,26 @@ if($accion == 'eliminar'){
     header('Content-Type: application/json');
     $id = (int)$_POST['id'];
     
-    $res = $conn->query("SELECT archivo FROM facturas_venta WHERE id=$id");
+    // 🛡️ SEGURIDAD ELIMINAR: Modificamos las consultas para validar el dueño si no es admin/contador
+    $restriccion_usuario = "";
+    if (strcasecmp($rol, 'admin') !== 0 && strcasecmp($rol, 'contador') !== 0) {
+        $restriccion_usuario = " AND usuario_id = $usuario";
+    }
+
+    // Buscamos el archivo asegurándonos de que tenga permisos sobre el registro
+    $res = $conn->query("SELECT archivo FROM facturas_venta WHERE id=$id $restriccion_usuario");
     if($row = $res->fetch_assoc()){
         if(!empty($row['archivo'])){
             $path = $_SERVER['DOCUMENT_ROOT'] . '/contable/uploads/facturacion/' . $row['archivo'];
             if(file_exists($path)) @unlink($path);
         }
+        
+        // Procedemos al borrado físico únicamente si pasó la validación de propiedad
+        $conn->query("DELETE FROM facturas_venta WHERE id=$id $restriccion_usuario");
+        echo json_encode(['status' => 'OK']);
+    } else {
+        // Si no se encontró la fila (o no le pertenece al usuario) mandamos un error silencioso o controlado
+        echo json_encode(['status' => 'ERROR', 'msg' => 'No autorizado o registro no encontrado.']);
     }
-    
-    $conn->query("DELETE FROM facturas_venta WHERE id=$id");
-    echo json_encode(['status' => 'OK']);
     exit;
 }

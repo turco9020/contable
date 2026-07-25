@@ -156,6 +156,30 @@ document.addEventListener("DOMContentLoaded", function(){
         autoWidth: false,       // Impide que DataTables asigne anchos fijos en px
         ajax:'/contable/ajax/movimientos_caja.php?accion=listar',
         order:[[0,'desc']],
+        dom: '<"d-flex justify-content-between align-items-center mb-2"Bf>rtip',
+        buttons: [
+            {
+                extend: 'excelHtml5',
+                text: ' Excel',
+                className: 'btn btn-success btn-sm',
+                exportOptions: {
+                    columns: [0, 1, 2, 3, 4, 5, 6]
+                }
+            },
+            {
+                extend: 'print',
+                text: ' Imprimir',
+                className: 'btn btn-secondary btn-sm',
+                exportOptions: {
+                    columns: [0, 1, 2, 3, 4, 5, 6]
+                }
+            },
+            { 
+        extend: 'colvis', 
+        text: 'Columnas', 
+        className: 'btn btn-sm btn-secondary' 
+            }
+        ],
         columns:[
             {
                 data: 'fecha',

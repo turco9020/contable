@@ -136,7 +136,7 @@
 </button>
 <div class="sidebar-overlay" id="mobileSidebarOverlay"></div>
 
-<!-- Tu HTML original intacto con íconos grises unificados -->
+<!-- Tu HTML original intacto con los accesos por roles corregidos -->
 <div class="sidebar" id="sidebarMenu"> 
 
     <h5 class="text-center mt-3">RG CONTABLE</h5>
@@ -144,7 +144,15 @@
 
     <a href="/contable/index.php"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
 
-    <?php if(esAdmin()): ?>
+
+    <!-- ACCESO A FACTURACIÓN COMPARTIDO -->
+    <?php 
+    $rol_actual = $_SESSION['rol'] ?? '';
+    if (
+        strcasecmp($rol_actual, 'admin') === 0 || 
+        strcasecmp($rol_actual, 'contador') === 0 || 
+        strcasecmp($rol_actual, 'operador') === 0
+    ): ?>
         <a href="/contable/modules/facturacion/"><i class="bi bi-receipt"></i> Facturación</a>
     <?php endif; ?>
 
@@ -178,16 +186,16 @@
 
         <div id="menuConfig" class="submenu">
 
+            <a href="/contable/modules/config/obras/" class="menu-link">Obras</a>
+
+            <?php if(esAdmin()): ?>
             <a href="/contable/modules/config/categorias/" class="menu-link">Categorías</a>
             <a href="/contable/modules/config/subcategorias/" class="menu-link">Subcategorías</a>
             <a href="/contable/modules/config/centros/" class="menu-link">Centros de costo</a>
-            <a href="/contable/modules/config/obras/" class="menu-link">Obras</a>
             <a href="/contable/modules/config/medios_pago/" class="menu-link">Medios de Pago</a>
             <a href="/contable/modules/config/tipos_comprobante/" class="menu-link">Tipos de Comprobante</a>
             <a href="/contable/modules/config/cajas/" class="menu-link">Cajas</a>
-            <hr>
-
-            <?php if(esAdmin()): ?>
+                <hr>
                 <a href="/contable/modules/usuarios/" class="menu-link"><i class="bi bi-people"></i> Usuarios</a>
                 <a href="/contable/modules/roles/" class="menu-link"><i class="bi bi-shield-lock"></i> Roles</a>
             <?php endif; ?>

@@ -6,16 +6,16 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
 <div class="content">
 
     <div class="d-flex justify-content-between align-items-center mb-4">
-    <h5 class="fw-bold text-dark mb-0">
-        <i class="bi bi-wallet2 text-secondary me-2"></i>Caja
-    </h5>
-    <button class="btn btn-dark d-flex align-items-center" onclick="abrirModal()">
-        <i class="bi bi-plus-circle me-2"></i>Nuevo Movimiento
-    </button>
-</div>
+        <h5 class="fw-bold text-dark mb-0">
+            <i class="bi bi-wallet2 text-secondary me-2"></i>Caja
+        </h5>
+        <button class="btn btn-dark d-flex align-items-center" onclick="abrirModal()">
+            <i class="bi bi-plus-circle me-2"></i>Nuevo Movimiento
+        </button>
+    </div>
 
     <div class="row mb-4" id="cardsSaldos">
-
+        <!-- Cargado dinámicamente -->
     </div>
 
     <div class="card p-3 shadow-sm">
@@ -36,12 +36,14 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
 
 </div>
 
+<!-- Modal Movimiento -->
 <div class="modal fade" id="modalMovimiento">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
 
             <div class="modal-header">
-                <h5>Movimiento de Caja</h5>
+                <h5 class="modal-title fw-bold">Movimiento de Caja</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
             <div class="modal-body">
@@ -50,17 +52,17 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
 
                     <div class="row">
                         <div class="col-md-4">
-                            <label>Fecha</label>
+                            <label class="form-label">Fecha</label>
                             <input type="date" id="fecha" name="fecha" class="form-control" required>
                         </div>
 
                         <div class="col-md-4">
-                            <label>Caja</label>
+                            <label class="form-label">Caja</label>
                             <select id="caja_id" name="caja_id" class="form-control" required></select>
                         </div>
 
                         <div class="col-md-4">
-                            <label>Tipo</label>
+                            <label class="form-label">Tipo</label>
                             <select id="tipo" name="tipo" class="form-control">
                                 <option value="INGRESO">INGRESO</option>
                                 <option value="EGRESO">EGRESO</option>
@@ -70,35 +72,35 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
                     </div>
 
                     <div class="mt-3">
-                        <label>Concepto</label>
+                        <label class="form-label">Concepto</label>
                         <input type="text" id="concepto" name="concepto" class="form-control" required>
                     </div>
 
                     <div class="row mt-3">
                         <div class="col-md-6">
-                            <label>Comprobante</label>
+                            <label class="form-label">Comprobante</label>
                             <input type="text" id="comprobante" name="comprobante" class="form-control">
                         </div>
 
                         <div class="col-md-6">
-                            <label>Importe</label>
+                            <label class="form-label">Importe</label>
                             <input type="number" step="0.01" id="importe" name="importe" class="form-control" required>
                         </div>
                     </div>
 
                     <div class="mt-3">
-                        <label>Observaciones</label>
+                        <label class="form-label">Observaciones</label>
                         <textarea id="observaciones" name="observaciones" class="form-control" rows="3"></textarea>
                     </div>
 
-                    <div class="mt-3">
-                        <label>Archivo</label>
+                    <div class="mt-3" id="contenedor_archivo">
+                        <label class="form-label">Archivo</label>
                         <input type="file" id="archivo" name="archivo" class="form-control">
                         <div id="archivo_actual" class="mt-2"></div>
                     </div>
 
                     <div class="mt-4">
-                        <button class="btn btn-dark w-100">Guardar</button>
+                        <button type="submit" id="btnGuardar" class="btn btn-dark w-100">Guardar</button>
                     </div>
                 </form>
             </div>
@@ -112,6 +114,10 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
 <script src="/contable/assets/js/gastos_modal.js"></script>
 
 <script>
+// INYECCIÓN DE DATOS DE SESIÓN PARA LA VALIDACIÓN VISUAL
+const SESION_USUARIO_ID = <?php echo json_encode($_SESSION['id'] ?? null); ?>;
+const SESION_ROL = <?php echo json_encode($_SESSION['rol'] ?? ''); ?>;
+
 let tabla;
 let modalMovimiento;
 
@@ -134,8 +140,8 @@ function cargarSaldos(){
                 <div class="col-md-3 mb-3">
                     <div class="card shadow-sm">
                         <div class="card-body">
-                            <h6>${caja.nombre}</h6>
-                            <h4>$ ${saldo}</h4>
+                            <h6 class="text-muted mb-1">${caja.nombre}</h6>
+                            <h4 class="fw-bold mb-0">$ ${saldo}</h4>
                         </div>
                     </div>
                 </div>
@@ -152,12 +158,36 @@ document.addEventListener("DOMContentLoaded", function(){
     cargarSaldos();
 
     tabla = $('#tablaMovimientos').DataTable({
-        responsive: true,       // Activa el comportamiento responsive para pantallas chicas
-        scrollX: false,         // Desactiva el scrollX de JS para evitar desfase de cabeceras
-        autoWidth: false,       // Impide que DataTables asigne anchos fijos en px
-        ajax:'/contable/ajax/movimientos_caja.php?accion=listar',
-        order:[[0,'desc']],
-        columns:[
+        responsive: true,
+        scrollX: false,
+        autoWidth: false,
+        ajax: '/contable/ajax/movimientos_caja.php?accion=listar',
+        order: [[0, 'desc']],
+        dom: '<"d-flex justify-content-between align-items-center mb-2"Bf>rtip',
+        buttons: [
+            {
+                extend: 'excelHtml5',
+                text: ' Excel',
+                className: 'btn btn-success btn-sm',
+                exportOptions: {
+                    columns: [0, 1, 2, 3, 4, 5, 6]
+                }
+            },
+            {
+                extend: 'print',
+                text: ' Imprimir',
+                className: 'btn btn-secondary btn-sm',
+                exportOptions: {
+                    columns: [0, 1, 2, 3, 4, 5, 6]
+                }
+            },
+            { 
+        extend: 'colvis', 
+        text: 'Columnas', 
+        className: 'btn btn-sm btn-secondary' 
+            }
+        ],
+        columns: [
             {
                 data: 'fecha',
                 render: function(data){
@@ -167,28 +197,28 @@ document.addEventListener("DOMContentLoaded", function(){
                     return `${partes[2]}-${partes[1]}-${partes[0]}`;
                 }
             },
-            { data:'caja' },
+            { data: 'caja' },
             {
-                data:'tipo',
-                render:function(d){
+                data: 'tipo',
+                render: function(d){
                     if(d == 'INGRESO') return `<span class="badge bg-success">INGRESO</span>`;
                     if(d == 'EGRESO') return `<span class="badge bg-danger">EGRESO</span>`;
                     return `<span class="badge bg-primary">TRANSFERENCIA</span>`;
                 }
             },
             {
-                 data:'concepto',
-                 render:function(data,type,row){
+                 data: 'concepto',
+                 render: function(data, type, row){
                     if(row.origen == 'GASTO'){
-                        return `<a href="#" onclick="verGasto(${row.referencia_id});return false;">${data}</a>`;
+                        return `<a href="#" class="text-decoration-none text-primary" onclick="verGasto(${row.referencia_id});return false;">${data}</a>`;
                     }
                     return data;
                  }
             },
-            { data:'comprobante' },
+            { data: 'comprobante' },
             {
-                data:'importe',
-                render:function(d){
+                data: 'importe',
+                render: function(d){
                     return '$ ' + Number(d).toLocaleString('es-AR', {minimumFractionDigits:2});
                 }
             },
@@ -196,7 +226,6 @@ document.addEventListener("DOMContentLoaded", function(){
                 data: null,
                 orderable: false,
                 render: function(d){
-                    // 1. Resolver el archivo adjunto dinámico (Si viene de Gasto o Manual de Caja)
                     let btnArchivo = '';
                     if(d.origen === 'GASTO'){
                         if(d.gasto_archivo) {
@@ -208,31 +237,38 @@ document.addEventListener("DOMContentLoaded", function(){
                         }
                     }
 
-                    // CASO A: Si el movimiento viene automáticamente de un GASTO, se bloquea la edición/eliminación
-                    if(d.origen === 'GASTO'){
+                    // CONTROL DE PERMISOS: Admin y Contador controlan todo. 
+                    // Operadores solo editan/eliminan si el origen es MANUAL y ellos son los creadores.
+                    const rol = SESION_ROL.toLowerCase();
+                    const esEditable = (rol === 'admin' || rol === 'contador') || 
+                                       (d.origen === 'MANUAL' && d.usuario_id == SESION_USUARIO_ID);
+
+                    if(esEditable){
                         return `
-                            <div class="d-flex gap-1 align-items-center">
+                            <div class="d-flex gap-1 justify-content-end">
                                 ${btnArchivo}
-                                <span class="text-muted small"><em>Bloqueado (Gasto)</em></span>
+                                <button class="btn btn-sm btn-secondary" onclick='verManual(${JSON.stringify(d)})'>Ver</button>
+                                <button class="btn btn-sm btn-primary" onclick='editar(${JSON.stringify(d)})'>Editar</button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="eliminar(${d.id})">Eliminar</button>
+                            </div>
+                        `;
+                    } else {
+                        // Si está bloqueado, dejamos el botón "Ver" para auditoría y un aviso descriptivo
+                        return `
+                            <div class="d-flex gap-1 align-items-center justify-content-end">
+                                ${btnArchivo}
+                                <button class="btn btn-sm btn-secondary" onclick='verManual(${JSON.stringify(d)})'>Ver</button>
+                                <span class="badge bg-light text-muted border" title="Movimiento automático del sistema o creado por otro usuario">
+                                    <i class="bi bi-lock-fill"></i> Bloqueado
+                                </span>
                             </div>
                         `;
                     }
-
-                    // CASO B: Cualquier movimiento manual tradicional de la caja (Incrustamos carpeta uniforme)
-                    return `
-                        <div class="d-flex gap-1">
-                            ${btnArchivo}
-                            <button class="btn btn-sm btn-secondary" onclick='verManual(${JSON.stringify(d)})'>Ver</button>
-                            <button class="btn btn-sm btn-primary" onclick='editar(${JSON.stringify(d)})'>Editar</button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="eliminar(${d.id})">Eliminar</button>
-                        </div>
-                    `;
                 }
             }
         ]
     });
 
-    // Forzamos el recalculo cuando se redimensiona la ventana
     $(window).on('resize', function () {
         tabla.columns.adjust().responsive.recalc();
     });
@@ -240,10 +276,11 @@ document.addEventListener("DOMContentLoaded", function(){
 
 window.abrirModal = function(){
     $('#formMovimiento input, textarea, select').prop('disabled', false);
-    $('#formMovimiento button.btn-dark').show();
+    $('#btnGuardar').show();
+    $('#contenedor_archivo').show(); 
     $('#formMovimiento')[0].reset();
     $('#id').val('');
-    $('#archivo').show().val('');
+    $('#archivo').val('');
     $('#archivo_actual').html('');
     modalMovimiento.show();
 }
@@ -253,12 +290,12 @@ $('#formMovimiento').submit(function(e){
     let formData = new FormData(this);
 
     $.ajax({
-        url:'/contable/ajax/movimientos_caja.php?accion=guardar',
-        method:'POST',
-        data:formData,
-        contentType:false,
-        processData:false,
-        success:function(resp){
+        url: '/contable/ajax/movimientos_caja.php?accion=guardar',
+        method: 'POST',
+        data: formData,
+        contentType: false,
+        processData: false,
+        success: function(resp){
             tabla.ajax.reload();
             cargarSaldos();
             modalMovimiento.hide();
@@ -266,7 +303,6 @@ $('#formMovimiento').submit(function(e){
     });
 });
 
-// SWEETALERT2 CON CONTROL DE ELIMINACIÓN CRÍTICA
 window.eliminar = function(id){
     Swal.fire({
         title: '¿Estás completamente seguro?',
@@ -312,7 +348,8 @@ function verGasto(id){
 
 window.editar = function(data){
     $('#formMovimiento input, textarea, select').prop('disabled', false);
-    $('#formMovimiento button.btn-dark').show();
+    $('#btnGuardar').show();
+    $('#contenedor_archivo').show(); 
     $('#formMovimiento')[0].reset();
 
     $('#id').val(data.id);
@@ -326,7 +363,7 @@ window.editar = function(data){
 
     if(data.archivo){
         $('#archivo_actual').html(`<a href="/contable/uploads/caja/${data.archivo}" target="_blank" class="btn btn-sm btn-dark">Ver archivo actual</a>`);
-    }else{
+    } else {
         $('#archivo_actual').html('');
     }
 
@@ -335,8 +372,12 @@ window.editar = function(data){
 }
 
 window.verManual = function(data){
-    window.editar(data);
+    window.editar(data); 
     $('#formMovimiento input, textarea, select').prop('disabled', true);
-    $('#formMovimiento button.btn-dark').hide();
+    $('#btnGuardar').hide();
+    
+    if(!data.archivo){
+        $('#contenedor_archivo').hide();
+    }
 }
 </script>

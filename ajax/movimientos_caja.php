@@ -16,10 +16,14 @@ $rol_sesion = $_SESSION['rol'] ?? '';
 // SALDOS
 // =======================
 if($accion == 'saldos'){
+    header('Content-Type: application/json');
 
-    // NOTA: Para los saldos globales de las tarjetas, si querés que los operadores
-    // vean el saldo general de la empresa, lo dejás libre. Si querés que el saldo 
-    // se calcule solo con lo que cargó él, descomentarías las líneas del WHERE.
+    // Restricción base por rol: Admin/Contador ven todo, Operador ve solo su caja asignada
+    $whereCaja = "WHERE c.activa = 1";
+    if (strcasecmp($rol_sesion, 'admin') !== 0 && strcasecmp($rol_sesion, 'contador') !== 0) {
+        $whereCaja .= " AND c.usuario_id = $id_usuario_sesion";
+    }
+
     $sql = "
         SELECT
             c.id,
@@ -35,20 +39,17 @@ if($accion == 'saldos'){
             ,0) saldo
         FROM cajas c
         LEFT JOIN movimientos_caja m ON m.caja_id = c.id
-        WHERE c.activa = 1
+        $whereCaja
+        GROUP BY c.id 
+        ORDER BY c.nombre
     ";
-
-    // Opcional: Si el operador solo debe ver saldos de sus movimientos, descomentar:
-    // if (strcasecmp($rol_sesion, 'admin') !== 0 && strcasecmp($rol_sesion, 'contador') !== 0) {
-    //     $sql .= " AND (m.usuario_id = $id_usuario_sesion OR m.usuario_id IS NULL)";
-    // }
-
-    $sql .= " GROUP BY c.id ORDER BY c.nombre";
 
     $res = $conn->query($sql);
     $data = [];
-    while($row = $res->fetch_assoc()){
-        $data[] = $row;
+    if ($res) {
+        while($row = $res->fetch_assoc()){
+            $data[] = $row;
+        }
     }
 
     echo json_encode($data);
@@ -57,9 +58,10 @@ if($accion == 'saldos'){
 
 
 // =======================
-// LISTAR
+// LISTAR MOVIMIENTOS
 // =======================
 if($accion == 'listar'){
+    header('Content-Type: application/json');
 
     $sql = "
         SELECT
@@ -72,17 +74,19 @@ if($accion == 'listar'){
         WHERE 1=1
     ";
 
-    // SEGURIDAD CRÍTICA: Si NO es Admin ni Contador, se restringe la lista a sus propios registros
+    // SEGURIDAD POR CAJA ASIGNADA: Si NO es Admin ni Contador, solo ve movimientos vinculados a su caja
     if (strcasecmp($rol_sesion, 'admin') !== 0 && strcasecmp($rol_sesion, 'contador') !== 0) {
-        $sql .= " AND m.usuario_id = $id_usuario_sesion";
+        $sql .= " AND c.usuario_id = $id_usuario_sesion";
     }
 
     $sql .= " ORDER BY m.fecha DESC, m.id DESC";
 
     $res = $conn->query($sql);
     $data = [];
-    while($row = $res->fetch_assoc()){
-        $data[] = $row;
+    if ($res) {
+        while($row = $res->fetch_assoc()){
+            $data[] = $row;
+        }
     }
 
     echo json_encode([
@@ -98,16 +102,36 @@ if($accion == 'listar'){
 if($accion == 'guardar'){
 
     $id = $_POST['id'] ?? '';
+    
+    // ---------------------------------------------------------------------
+    // VALIDACIÓN DE SEGURIDAD (EDICIÓN)
+    // Si no es Admin/Contador, no puede editar movimientos que no sean MANUALES o ajenos.
+    // ---------------------------------------------------------------------
+    if(!empty($id)){
+        if (strcasecmp($rol_sesion, 'admin') !== 0 && strcasecmp($rol_sesion, 'contador') !== 0) {
+            $check_res = $conn->query("SELECT usuario_id, origen FROM movimientos_caja WHERE id = " . (int)$id);
+            if ($check_res && $check_res->num_rows > 0) {
+                $mov = $check_res->fetch_assoc();
+                if ($mov['origen'] !== 'MANUAL' || $mov['usuario_id'] != $id_usuario_sesion) {
+                    header('HTTP/1.1 403 Forbidden');
+                    echo "ERROR: No tenés permisos para modificar este movimiento.";
+                    exit;
+                }
+            }
+        }
+    }
+    // ---------------------------------------------------------------------
+
     $fecha = $_POST['fecha'];
-    $caja_id = $_POST['caja_id'];
+    $caja_id = (int)$_POST['caja_id'];
     $tipo = $_POST['tipo'];
-    $concepto = $_POST['concepto'];
-    $comprobante = $_POST['comprobante'] ?? '';
-    $importe = $_POST['importe'];
-    $observaciones = $_POST['observaciones'] ?? '';
+    $concepto = $conn->real_escape_string(trim($_POST['concepto']));
+    $comprobante = $conn->real_escape_string(trim($_POST['comprobante'] ?? ''));
+    $importe = (float)$_POST['importe'];
+    $observaciones = $conn->real_escape_string(trim($_POST['observaciones'] ?? ''));
     $origen = $_POST['origen'] ?? 'MANUAL';
     
-    $referencia_id = !empty($_POST['referencia_id']) ? $_POST['referencia_id'] : "NULL";
+    $referencia_id = !empty($_POST['referencia_id']) ? (int)$_POST['referencia_id'] : "NULL";
     $archivo_nombre = null;
 
     // =======================
@@ -143,12 +167,10 @@ if($accion == 'guardar'){
     // UPDATE
     // =======================
     if($id){
-        // En los Updates mantenemos el control pero no es mandatorio cambiar el dueño, 
-        // aunque podrías forzar que guarde quién lo modificó por última vez si quisieras.
         $sql = "
             UPDATE movimientos_caja SET
                 fecha = '$fecha',
-                caja_id = '$caja_id',
+                caja_id = $caja_id,
                 tipo = '$tipo',
                 concepto = '$concepto',
                 comprobante = '$comprobante',
@@ -169,7 +191,6 @@ if($accion == 'guardar'){
         // =======================
         // INSERT
         // =======================
-        // REGISTRO DE DUEÑO: Guardamos el id del usuario logueado en la columna usuario_id
         $sql = "
             INSERT INTO movimientos_caja(
                 fecha,
@@ -185,7 +206,7 @@ if($accion == 'guardar'){
                 usuario_id
             ) VALUES (
                 '$fecha',
-                '$caja_id',
+                $caja_id,
                 '$tipo',
                 '$concepto',
                 '$comprobante',
@@ -213,7 +234,24 @@ if($accion == 'guardar'){
 // ELIMINAR
 // =======================
 if($accion == 'eliminar'){
-    $id = $_POST['id'];
+    $id = (int)$_POST['id'];
+
+    // ---------------------------------------------------------------------
+    // VALIDACIÓN DE SEGURIDAD (ELIMINAR)
+    // Si no es Admin/Contador, no puede eliminar movimientos que no sean MANUALES o ajenos.
+    // ---------------------------------------------------------------------
+    if (strcasecmp($rol_sesion, 'admin') !== 0 && strcasecmp($rol_sesion, 'contador') !== 0) {
+        $check_res = $conn->query("SELECT usuario_id, origen FROM movimientos_caja WHERE id = $id");
+        if ($check_res && $check_res->num_rows > 0) {
+            $mov = $check_res->fetch_assoc();
+            if ($mov['origen'] !== 'MANUAL' || $mov['usuario_id'] != $id_usuario_sesion) {
+                header('HTTP/1.1 403 Forbidden');
+                echo "ERROR: No tenés permisos para eliminar este movimiento.";
+                exit;
+            }
+        }
+    }
+    // ---------------------------------------------------------------------
 
     $res = $conn->query("SELECT archivo FROM movimientos_caja WHERE id = $id");
     $row = $res->fetch_assoc();

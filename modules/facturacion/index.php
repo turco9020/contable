@@ -15,6 +15,22 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
         </button>
     </div>
 
+    <!-- Pestañas de Navegación de Estados de Facturas -->
+<ul class="nav nav-tabs mb-3" id="tabFacturas" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active fw-semibold text-dark" id="cobrar-tab" data-bs-toggle="tab" data-bs-target="#cobrar" type="button" role="tab" onclick="filtrarPestaña('POR_COBRAR')">
+            <i class="bi bi-wallet2 me-1 text-secondary"></i> Por Cobrar 
+            <span class="badge bg-secondary ms-1" id="cant-cobrar">0</span>
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link fw-semibold text-dark" id="pagadas-tab" data-bs-toggle="tab" data-bs-target="#pagadas" type="button" role="tab" onclick="filtrarPestaña('PAGADAS')">
+            <i class="bi bi-check-circle me-1 text-secondary"></i> Pagadas 
+            <span class="badge bg-secondary ms-1" id="cant-pagadas">0</span>
+        </button>
+    </li>
+</ul>
+
     <div class="card p-3 shadow-sm">
         <div class="table-responsive">
             <table id="tablaFacturas" class="table table-bordered table-striped w-100">
@@ -152,18 +168,67 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 let tabla;
 let modalFactura;
 let globalClientesParaMapeo = [];
+let estadoPestañaActual = 'POR_COBRAR'; // Estado inicial por defecto
+
+// 1. FILTRO PERSONALIZADO PARA DATATABLES
+// Este buscador evalúa el registro antes de pintarlo según la pestaña activa
+$.fn.dataTable.ext.search.push(
+    function(settings, data, dataIndex, rowData) {
+        // Obtenemos el texto real del estado (columna index 7)
+        let estado = rowData.estado ? rowData.estado.toUpperCase() : 'DEBE';
+
+        if (estadoPestañaActual === 'POR_COBRAR') {
+            // Muestra lo pendiente
+            return (estado === 'DEBE' || estado === 'VER');
+        } else if (estadoPestañaActual === 'PAGADAS') {
+            // Muestra lo liquidado
+            return (estado === 'PAGADO');
+        }
+        return true;
+    }
+);
 
 document.addEventListener("DOMContentLoaded", function() {
     modalFactura = new bootstrap.Modal(document.getElementById('modalFactura'));
 
     cargarSelects();
 
+    // 2. INICIALIZACIÓN DE LA TABLA
     tabla = $('#tablaFacturas').DataTable({
         ajax: '/contable/ajax/facturacion.php?accion=listar',
         order: [[0, 'desc']],
         autoWidth: false,
         responsive: true,
         deferRender: true,
+        dom: '<"d-flex justify-content-between align-items-center mb-2"Bf>rtip',
+        buttons: [
+            {
+                extend: 'excelHtml5',
+                text: ' Excel',
+                className: 'btn btn-success btn-sm',
+                exportOptions: {
+                    columns: [0, 1, 2, 3, 4, 5, 6, 7]
+                }
+            },
+            {
+                extend: 'print',
+                text: ' Imprimir',
+                className: 'btn btn-secondary btn-sm',
+                exportOptions: {
+                    columns: [0, 1, 2, 3, 4, 5, 6, 7]
+                }
+            },
+            { 
+        extend: 'colvis', 
+        text: 'Columnas', 
+        className: 'btn btn-sm btn-secondary' 
+            }
+        ],
+        
+        // Este evento se ejecuta cada vez que la tabla se redibuja o carga datos nuevos
+        drawCallback: function(settings) {
+            actualizarBadgesPestañas(settings.aoData);
+        },
         columns: [
             { 
                 data: 'fecha',
@@ -313,7 +378,7 @@ document.addEventListener("DOMContentLoaded", function() {
                                     if(fragmentos[i]) {
                                         let matchV = fragmentos[i].match(/(\d{2})\/(\d{2})\/(\d{4})/);
                                         if(matchV) {
-                                            $('#fecha_vencimiento').val(`${matchV[3]}-${matchV[2]}-${matchV[1]}`);
+                                            $('#fecha_vencimiento').val(`${matchV[3]}-${matchV[2]}-${matchF[1]}`);
                                             break;
                                         }
                                     }
@@ -372,7 +437,7 @@ document.addEventListener("DOMContentLoaded", function() {
                                 }
                             }
 
-                            // 6. IMPORTES (Regex robustas para detectar formatos con comas y puntos)
+                            // 6. IMPORTES
                             let matchTotal = textoCompleto.match(/(?:Importe\s*Total|Total)[\s:]*\$\s*([\d.,]+)/i);
                             let matchNeto = textoCompleto.match(/(?:Neto\s*Gravado|Neto)[\s:]*\$\s*([\d.,]+)/i);
                             let matchIva = textoCompleto.match(/IVA\s*(?:21|10\.5)?%[\s:]*\$\s*([\d.,]+)/i);
@@ -427,7 +492,8 @@ function cargarSelects() {
 
 window.abrirModal = function() {
     $('.eval-aviso').remove();
-    $('#formFactura input, textarea, select').prop('disabled', false);
+    // CORRECCIÓN: Habilitamos solo los controles dentro del formulario sin alterar botones estructurales del modal
+    $('#formFactura').find('input, textarea, select').prop('disabled', false);
     $('#btnGuardar, #seccionEscaneo').show();
     $('#seccionArchivoReal').hide();
     $('#tituloModal').text('Nueva Factura de Venta');
@@ -441,13 +507,14 @@ window.abrirModal = function() {
 window.verFactura = function(data) {
     window.editarFactura(data);
     $('#tituloModal').text('Detalle de Factura (Solo Lectura)');
-    $('#formFactura input, textarea, select').prop('disabled', true);
+    // CORRECCIÓN: Deshabilitamos de forma segura los inputs internos para no romper la navegación ni cierres de Bootstrap
+    $('#formFactura').find('input, textarea, select').prop('disabled', true);
     $('#btnGuardar, #seccionEscaneo').hide();
 }
 
 window.editarFactura = function(data) {
     $('.eval-aviso').remove();
-    $('#formFactura input, textarea, select').prop('disabled', false);
+    $('#formFactura').find('input, textarea, select').prop('disabled', false);
     $('#btnGuardar').show();
     $('#seccionEscaneo').hide(); 
     $('#seccionArchivoReal').show();
@@ -456,8 +523,6 @@ window.editarFactura = function(data) {
     
     $('#id').val(data.id);
     $('#fecha').val(data.fecha);
-    $('#tipo_comprobante_id').val(data.tipo_comprobante_id);
-    $('#cliente_id').val(data.cliente_id);
     $('#punto_venta').val(data.punto_venta);
     $('#nro_factura').val(data.nro_factura);
     $('#fecha_vencimiento').val(data.fecha_vencimiento);
@@ -466,8 +531,15 @@ window.editarFactura = function(data) {
     $('#iva').val(data.iva);
     $('#total').val(data.total);
     $('#observaciones').val(data.observaciones);
-    $('#centro_costo_id').val(data.centro_costo_id);
     $('#estado').val(data.estado ? data.estado : 'DEBE');
+
+    // CORRECCIÓN SELECCIÓN DE SELECTS ASÍNCRONOS:
+    // El setTimeout le da 100 milisegundos de ventaja al DOM para renderizar las options de los select
+    setTimeout(() => {
+        $('#tipo_comprobante_id').val(data.tipo_comprobante_id);
+        $('#cliente_id').val(data.cliente_id);
+        $('#centro_costo_id').val(data.centro_costo_id);
+    }, 100);
 
     if(data.archivo){
         $('#archivo_actual').html(`<a href="/contable/uploads/facturacion/${data.archivo}" target="_blank" class="btn btn-sm btn-dark">Ver archivo actual</a>`);
@@ -485,7 +557,6 @@ $('#formFactura').submit(function(e) {
     e.preventDefault();
     let formData = new FormData(this);
 
-    // Si el usuario usó el asistente y no cargó nada en el input real, inyectamos el archivo del escaneo
     let inputReal = document.getElementById('archivo');
     let inputEscaneo = document.getElementById('archivo_escanear');
     
@@ -500,7 +571,7 @@ $('#formFactura').submit(function(e) {
         contentType: false,
         processData: false,
         success: function(resp) {
-            tabla.ajax.reload(null, false); // Mantiene la página actual tras recargar
+            tabla.ajax.reload(null, false);
             modalFactura.hide();
         }
     });
@@ -509,16 +580,17 @@ $('#formFactura').submit(function(e) {
 window.eliminarFactura = function(id) {
     Swal.fire({
         title: '¿Estás seguro?',
-        text: "Esta acción no se puede deshacer.",
+        text: "Esta acción no se puede deshacer y eliminará el registro contable.",
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#212529', // Gris oscuro/Negro unificado a tu Bootstrap Dark
+        confirmButtonColor: '#212529', 
         cancelButtonColor: '#6c757d',
         confirmButtonText: 'Sí, eliminar',
         cancelButtonText: 'Cancelar'
     }).then((result) => {
         if (result.isConfirmed) {
-            $.post('/contable/ajax/facturacion.php?accion=eliminar', { id }, function(resp) {
+            // CORRECCIÓN: Pasamos la variable estructurada id en el cuerpo del $.post de jQuery
+            $.post('/contable/ajax/facturacion.php?accion=eliminar', { id: id }, function(resp) {
                 Swal.fire({
                     icon: 'success',
                     title: 'Eliminado',
@@ -528,9 +600,42 @@ window.eliminarFactura = function(id) {
                 });
                 tabla.ajax.reload(null, false);
             }).fail(function() {
-                Swal.fire('Error', 'No se pudo eliminar el registro.', 'error');
+                Swal.fire('Error', 'No se pudo eliminar el registro contable.', 'error');
             });
         }
     });
+}
+
+// ==========================================
+// MÉTODOS DE CONTROL DE PESTAÑAS
+// ==========================================
+
+// Función que se gatilla al hacer click en los botones del tab
+window.filtrarPestaña = function(tipoPestaña) {
+    estadoPestañaActual = tipoPestaña;
+    // Le avisamos a DataTables que redibuje aplicando la lógica del buscador push()
+    tabla.draw();
+}
+
+// Cuenta la cantidad total de registros en bruto que vinieron del servidor
+function actualizarBadgesPestañas(datosFilas) {
+    let contadorCobrar = 0;
+    let contadorPagadas = 0;
+
+    datosFilas.forEach(function(fila) {
+        // Con _aData accedemos al objeto JSON nativo devuelto por el PHP
+        let factura = fila._aData;
+        let estado = factura.estado ? factura.estado.toUpperCase() : 'DEBE';
+
+        if (estado === 'DEBE' || estado === 'VER') {
+            contadorCobrar++;
+        } else if (estado === 'PAGADO') {
+            contadorPagadas++;
+        }
+    });
+
+    // Inyectamos los números en los badges HTML
+    $('#cant-cobrar').text(contadorCobrar);
+    $('#cant-pagadas').text(contadorPagadas);
 }
 </script>

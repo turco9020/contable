@@ -28,6 +28,7 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
                     <th>Concepto</th>
                     <th>Comprobante</th>
                     <th>Importe</th>
+                    <th>Usuario</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -170,7 +171,7 @@ document.addEventListener("DOMContentLoaded", function(){
                 text: ' Excel',
                 className: 'btn btn-success btn-sm',
                 exportOptions: {
-                    columns: [0, 1, 2, 3, 4, 5, 6]
+                    columns: [0, 1, 2, 3, 4, 5, 6, 7]
                 }
             },
             {
@@ -178,7 +179,7 @@ document.addEventListener("DOMContentLoaded", function(){
                 text: ' Imprimir',
                 className: 'btn btn-secondary btn-sm',
                 exportOptions: {
-                    columns: [0, 1, 2, 3, 4, 5, 6]
+                    columns: [0, 1, 2, 3, 4, 5, 6, 7]
                 }
             },
             { 
@@ -221,6 +222,13 @@ document.addEventListener("DOMContentLoaded", function(){
                 render: function(d){
                     return '$ ' + Number(d).toLocaleString('es-AR', {minimumFractionDigits:2});
                 }
+            },
+            {
+            data: 'usuario_nombre',
+            visible: true, // ◄ ESTO HACE QUE NO SE MUESTRE EN LA PANTALLA
+            render: function(d) {
+                return d ? `<span class="badge bg-light text-dark border fw-normal"><i class="bi bi-person"></i> ${d}</span>` : '<span class="badge bg-light text-dark border fw-normal"><i class="bi bi-person"></i>Sistema</span>';
+            }
             },
             {
                 data: null,

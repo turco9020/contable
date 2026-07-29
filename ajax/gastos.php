@@ -37,24 +37,16 @@ if($_GET['accion']=='listar'){
     }
 
     // Filtros dinámicos
-    if (!empty($_GET['f_desde'])) {
-        $where .= " AND g.fecha >= '".$_GET['f_desde']."'";
-    }
-    if (!empty($_GET['f_hasta'])) {
-        $where .= " AND g.fecha <= '".$_GET['f_hasta']."'";
-    }
-    if (!empty($_GET['f_centro'])) {
-        $where .= " AND g.centro_costo_id = '".$_GET['f_centro']."'";
-    }
-    if (!empty($_GET['f_categoria'])) {
-        $where .= " AND g.categoria_id = '".$_GET['f_categoria']."'";
-    }
-    if (!empty($_GET['f_obra'])) {
-        $where .= " AND g.obra_id = '".$_GET['f_obra']."'";
-    }
+    if (!empty($_GET['f_desde']))  $where .= " AND g.fecha >= '".$_GET['f_desde']."'";
+    if (!empty($_GET['f_hasta']))  $where .= " AND g.fecha <= '".$_GET['f_hasta']."'";
+    if (!empty($_GET['f_centro'])) $where .= " AND g.centro_costo_id = '".$_GET['f_centro']."'";
+    if (!empty($_GET['f_categoria']))$where .= " AND g.categoria_id = '".$_GET['f_categoria']."'";
+    if (!empty($_GET['f_obra']))      $where .= " AND g.obra_id = '".$_GET['f_obra']."'";
 
+    // AGREGADO: u.usuario AS usuario_nombre y su respectivo LEFT JOIN
     $sql = "SELECT g.*, t.nombre AS tipo_comprobante, m.nombre AS medio_pago, o.nombre AS obra, 
-            c.nombre AS centro, cat.nombre AS categoria, sub.nombre AS subcategoria, p.nombre AS proveedor
+            c.nombre AS centro, cat.nombre AS categoria, sub.nombre AS subcategoria, p.nombre AS proveedor,
+            IFNULL(u.usuario, 'Sistema') AS usuario_nombre
             FROM gastos g
             LEFT JOIN tipos_comprobante t ON t.id = g.tipo_comprobante_id
             LEFT JOIN medios_pago m ON m.id = g.medio_pago_id
@@ -63,6 +55,7 @@ if($_GET['accion']=='listar'){
             LEFT JOIN categorias cat ON cat.id = g.categoria_id
             LEFT JOIN subcategorias sub ON sub.id = g.subcategoria_id
             LEFT JOIN proveedores p ON p.id = g.proveedor_id
+            LEFT JOIN usuarios u ON u.id = g.usuario_id
             $where ORDER BY g.id DESC";
 
     $r = $conn->query($sql);
@@ -81,6 +74,7 @@ if($_GET['accion']=='obtener'){
 
     $id = (int)$_GET['id'];
 
+    // AGREGADO: u.usuario AS usuario_nombre y su respectivo LEFT JOIN
     $sql = "SELECT
                 g.*,
                 mc.caja_id,
@@ -90,7 +84,8 @@ if($_GET['accion']=='obtener'){
                 c.nombre AS centro,
                 cat.nombre AS categoria,
                 sub.nombre AS subcategoria,
-                p.nombre AS proveedor
+                p.nombre AS proveedor,
+                IFNULL(u.usuario, 'Sistema') AS usuario_nombre
             FROM gastos g
             LEFT JOIN movimientos_caja mc ON mc.origen='GASTO' AND mc.referencia_id=g.id
             LEFT JOIN tipos_comprobante t ON t.id = g.tipo_comprobante_id
@@ -100,9 +95,9 @@ if($_GET['accion']=='obtener'){
             LEFT JOIN categorias cat ON cat.id = g.categoria_id
             LEFT JOIN subcategorias sub ON sub.id = g.subcategoria_id
             LEFT JOIN proveedores p ON p.id = g.proveedor_id
+            LEFT JOIN usuarios u ON u.id = g.usuario_id
             WHERE g.id = $id";
 
-    // CORRECCIÓN: Respetamos los roles jerárquicos para abrir el registro
     if (strcasecmp($rol, 'admin') !== 0 && strcasecmp($rol, 'contador') !== 0) {
         $sql .= " AND g.usuario_id = $usuario";
     }

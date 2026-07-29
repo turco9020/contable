@@ -22,20 +22,24 @@ switch ($accion) {
         // --- 1. FILTRADO DE LA TABLA PRINCIPAL ---
         // Definición de las condiciones base por estado
         if ($pestana === 'RECIBIDOS') {
-            $condicionEstado = "estado = 'RECIBIDO'";
+            $condicionEstado = "ch.estado = 'RECIBIDO'";
         } elseif ($pestana === 'EMITIDOS') {
-            $condicionEstado = "estado = 'EMITIDO'";
+            $condicionEstado = "ch.estado = 'EMITIDO'";
         } elseif ($pestana === 'ENDOSADO') {
-            $condicionEstado = "estado = 'ENDOSADO'";
+            $condicionEstado = "ch.estado = 'ENDOSADO'";
         } else {
-            $condicionEstado = "estado IN ('COBRADO', 'PAGADO')";
+            $condicionEstado = "ch.estado IN ('COBRADO', 'PAGADO')";
         }
 
-        $sql = "SELECT * FROM cheques WHERE $condicionEstado";
+        // Cambiamos el SELECT * e incluimos el JOIN dinámico para auditar el usuario
+        $sql = "SELECT ch.*, u.usuario AS usuario_nombre 
+                FROM cheques ch
+                LEFT JOIN usuarios u ON u.id = ch.usuario_id 
+                WHERE $condicionEstado";
 
         // Si NO es Admin ni Contador, limitamos la visualización a sus propios registros
         if (strcasecmp($rol, 'admin') !== 0 && strcasecmp($rol, 'contador') !== 0) {
-            $sql .= " AND usuario_id = $usuario";
+            $sql .= " AND ch.usuario_id = $usuario";
         }
 
         $res = $conn->query($sql);
@@ -122,13 +126,25 @@ switch ($accion) {
         }
 
         if (empty($id)) {
-            // INSERTAR NUEVO (Agregamos la columna usuario_id a la consulta y al tipado "i")
+            // INSERTAR NUEVO
             $stmt = $conn->prepare("INSERT INTO cheques (tipo, estado, nro_cheque, fecha_emision, fecha_pago, importe, beneficiario, observaciones, archivo, usuario_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             $stmt->bind_param("sssssdsssi", $tipo, $estado, $nro_cheque, $fecha_emision, $fecha_pago, $importe, $beneficiario, $observaciones, $nombre_archivo, $usuario);
         } else {
-            // ACTUALIZAR EXISTENTE
-            $stmt = $conn->prepare("UPDATE cheques SET tipo = ?, estado = ?, nro_cheque = ?, fecha_emision = ?, fecha_pago = ?, importe = ?, beneficiario = ?, observaciones = ?, archivo = ? WHERE id = ?");
-            $stmt->bind_param("sssssdsssi", $tipo, $estado, $nro_cheque, $fecha_emision, $fecha_pago, $importe, $beneficiario, $observaciones, $nombre_archivo, $id);
+            // ACTUALIZAR EXISTENTE (Agregamos restricción por usuario_id si no es admin/contador)
+            $extra_where = "";
+            if (strcasecmp($rol, 'admin') !== 0 && strcasecmp($rol, 'contador') !== 0) {
+                $extra_where = " AND usuario_id = ?";
+            }
+            
+            $sql_update = "UPDATE cheques SET tipo = ?, estado = ?, nro_cheque = ?, fecha_emision = ?, fecha_pago = ?, importe = ?, beneficiario = ?, observaciones = ?, archivo = ? WHERE id = ?" . $extra_where;
+            
+            $stmt = $conn->prepare($sql_update);
+            
+            if (strcasecmp($rol, 'admin') !== 0 && strcasecmp($rol, 'contador') !== 0) {
+                $stmt->bind_param("sssssdsssii", $tipo, $estado, $nro_cheque, $fecha_emision, $fecha_pago, $importe, $beneficiario, $observaciones, $nombre_archivo, $id, $usuario);
+            } else {
+                $stmt->bind_param("sssssdsssi", $tipo, $estado, $nro_cheque, $fecha_emision, $fecha_pago, $importe, $beneficiario, $observaciones, $nombre_archivo, $id);
+            }
         }
 
         if ($stmt->execute()) {

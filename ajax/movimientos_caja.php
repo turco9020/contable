@@ -67,10 +67,12 @@ if($accion == 'listar'){
         SELECT
             m.*,
             c.nombre caja,
-            g.archivo AS gasto_archivo
+            g.archivo AS gasto_archivo,
+            u.usuario AS usuario_nombre
         FROM movimientos_caja m
         LEFT JOIN cajas c ON c.id = m.caja_id
         LEFT JOIN gastos g ON g.id = m.referencia_id AND m.origen = 'GASTO'
+        LEFT JOIN usuarios u ON u.id = m.usuario_id
         WHERE 1=1
     ";
 

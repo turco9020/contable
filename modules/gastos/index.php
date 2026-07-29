@@ -67,6 +67,7 @@ include '../../includes/sidebar.php';
                         <th>Obra</th>
                         <th>Categoria</th>
                         <th>Subcategoria</th>
+                        <th>Usuario</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -207,7 +208,7 @@ document.addEventListener("DOMContentLoaded", function() {
         text: 'Excel', 
         className: 'btn btn-sm btn-success',
         exportOptions: {
-            columns: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15] // Índices 0-15 (16 columnas)
+            columns: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16] // Índices 0-15 (16 columnas)
         }
     }
     ],
@@ -241,6 +242,13 @@ document.addEventListener("DOMContentLoaded", function() {
             { data: 'obra' },
             { data: 'categoria' },
             { data: 'subcategoria' },
+            {
+            data: 'usuario_nombre',
+            visible: true, // ◄ ESTO HACE QUE NO SE MUESTRE EN LA PANTALLA
+            render: function(d) {
+                return d ? `<span class="badge bg-light text-dark border fw-normal"><i class="bi bi-person"></i> ${d}</span>` : '<span class="badge bg-light text-dark border fw-normal"><i class="bi bi-person"></i>Sistema</span>';
+            }
+            },
             { 
                 data: null, 
                 orderable: false, 

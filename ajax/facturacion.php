@@ -25,6 +25,7 @@ if($accion == 'listar'){
     }
 
     // Consulta limpia adaptada a las columnas reales de tu base de datos
+   // Consulta limpia adaptada a las columnas reales de tu base de datos
     $sql = "
         SELECT 
             f.id,
@@ -42,6 +43,8 @@ if($accion == 'listar'){
             f.tipo_comprobante_id,
             f.centro_costo_id,
             f.estado,
+            f.usuario_id,
+            IFNULL(u.usuario, 'Sistema') AS usuario_nombre,
             IFNULL(c.nombre, 'SIN CLIENTE') AS cliente_nombre,
             IFNULL(tc.nombre, 'SIN TIPO') AS tipo_comprobante_nombre,
             IFNULL(cc.nombre, 'SIN CENTRO') AS centro_costo_nombre
@@ -49,6 +52,7 @@ if($accion == 'listar'){
         LEFT JOIN clientes c ON c.id = f.cliente_id
         LEFT JOIN tipos_comprobante tc ON tc.id = f.tipo_comprobante_id
         LEFT JOIN centros_costos cc ON cc.id = f.centro_costo_id
+        LEFT JOIN usuarios u ON u.id = f.usuario_id 
         $where
         ORDER BY f.fecha DESC, f.id DESC
     ";

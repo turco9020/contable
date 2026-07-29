@@ -54,6 +54,7 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
                         <th>Beneficiario</th>
                         <th>Observaciones</th>
                         <th>Dias</th>
+                        <th>Usuario</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -61,7 +62,7 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
                     <tr>
                         <th colspan="4" class="text-end">Total General:</th>
                         <th id="totalImporte" class="text-end text-dark">$ 0,00</th>
-                        <th colspan="6"></th>
+                        <th colspan="7"></th>
                     </tr>
                 </tfoot>
             </table>
@@ -162,7 +163,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 text: ' Excel',
                 className: 'btn btn-success btn-sm',
                 exportOptions: {
-                    columns: [0, 1, 2, 3, 4, 5, 6, 7, 8]
+                    columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
                 }
             },
             {
@@ -170,9 +171,14 @@ document.addEventListener("DOMContentLoaded", function() {
                 text: ' Imprimir',
                 className: 'btn btn-secondary btn-sm',
                 exportOptions: {
-                    columns: [0, 1, 2, 3, 4, 5, 6, 7, 8]
+                    columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
                 }
-            }
+            },
+            { 
+                 extend: 'colvis', 
+                 text: 'Columnas', 
+                 className: 'btn btn-sm btn-secondary' 
+            },
         ],
         ajax: {
             url: '/contable/ajax/cheques.php?accion=listar',
@@ -251,7 +257,7 @@ document.addEventListener("DOMContentLoaded", function() {
             { data: 'beneficiario' },
             { data: 'observaciones' },
             {
-                data: 'fecha_pago',
+                data: 'fecha_pago', // Columna días restantes
                 className: 'text-center fw-bold',
                 render: function(d, type, row) {
                     if (!d) return '-';
@@ -268,6 +274,13 @@ document.addEventListener("DOMContentLoaded", function() {
                     if (diasDiferencia <= 7) return `<span class="badge bg-danger text-white px-2 py-1">${diasDiferencia}</span>`;
                     return `<span class="text-dark">${diasDiferencia}</span>`;
                 }
+            },
+            {
+                     data: 'usuario_nombre',
+                     visible: true, // ◄ AHORA SÍ QUEDA OCULTA DE LA PANTALLA
+                    render: function(d) {
+                return d ? `<span class="badge bg-light text-dark border fw-normal"><i class="bi bi-person"></i> ${d}</span>` : '<span class="text-muted">Sistema</span>';
+                  }
             },
             {
                 data: null,

@@ -177,6 +177,33 @@ function cargarCajas(selector = '#caja_id'){
     },'json');
 }
 
+// Variable global para guardar las instancias del buscador y poder manipularlas
+let buscadoresTom = {};
+
+function aplicarBuscadores() {
+    // Lista de IDs de los selects a los que les queremos poner buscador
+    const IDs = ['#proveedor_id', '#centro_costo_id', '#obra_id', '#categoria_id'];
+    
+    IDs.forEach(id => {
+        let el = document.querySelector(id);
+        if (!el) return;
+
+        // Si ya tenía buscador, lo destruimos para actualizar los datos internos de forma segura
+        if (buscadoresTom[id]) {
+            buscadoresTom[id].destroy();
+        }
+
+        // Inicializamos el buscador con la estética de Bootstrap 5
+        buscadoresTom[id] = new TomSelect(el, {
+            create: false,
+            sortField: { field: "text", order: "asc" },
+            placeholder: "-- Seleccionar o Buscar --",
+            allowEmptyOption: true
+        });
+    });
+}
+
+// Modificamos abrirModal para que aplique los buscadores una vez cargados los datos
 window.abrirModal = function(){
     $('#formGasto')[0].reset();
     $('#id').val('');
@@ -186,7 +213,11 @@ window.abrirModal = function(){
     $('#formGasto button[type="submit"], #formGasto .btn-dark').show();
     
     $.when(cargarCentros(), cargarCajas(), cargarTipos(), cargarMedios(), cargarObras(), cargarCategorias(), cargarProveedores())
-     .done(() => { modalGasto.show(); });
+     .done(() => { 
+         modalGasto.show();
+         // ◄ Agregamos el llamado justo cuando los datos terminaron de inyectarse en el HTML
+         setTimeout(aplicarBuscadores, 200); 
+     });
 }
 
 document.addEventListener("DOMContentLoaded", function() {
@@ -252,15 +283,22 @@ document.addEventListener("DOMContentLoaded", function() {
             { 
                 data: null, 
                 orderable: false, 
+                className: 'text-end',
                 render: function(data) {
-                    let btnArchivo = data.archivo ? `<a href="/contable/uploads/gastos/${data.archivo}" target="_blank" class="btn btn-sm btn-outline-secondary" title="Ver Adjunto Gasto">📁</a>` : '';
+                    let btnArchivo = data.archivo ? `<a href="/contable/uploads/gastos/${data.archivo}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver Adjunto Gasto"><i class="bi bi-file-earmark-pdf"></i></a>` : '';
                     
                     return `
-                        <div class="d-flex gap-1 align-items-center">
+                        <div class="d-inline-flex gap-1 justify-content-end">
                             ${btnArchivo}
-                            <button class="btn btn-sm btn-secondary" onclick='ver(${JSON.stringify(data)})'>Ver</button>
-                            <button class="btn btn-sm btn-primary" onclick='editar(${JSON.stringify(data)})'>Editar</button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="eliminar(${data.id})">Eliminar</button>
+                            <button class="btn btn-sm btn-outline-secondary" title="Ver Gasto" onclick='ver(${JSON.stringify(data)})'>
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary" title="Editar Gasto" onclick='editar(${JSON.stringify(data)})'>
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" title="Eliminar Gasto" onclick="eliminar(${data.id})">
+                                <i class="bi bi-trash3"></i>
+                            </button>
                         </div>
                     `;
                 }
@@ -272,7 +310,10 @@ document.addEventListener("DOMContentLoaded", function() {
         tabla.columns.adjust().responsive.recalc();
     });
 
-    $('#categoria_id').on('change', function() { cargarSubcategorias($(this).val()); });
+    // Y reemplazala por esta versión compatible con el buscador:
+    $(document).on('change', '#categoria_id', function() {
+        cargarSubcategorias($(this).val());
+    });
 
     $('#neto, #iva, #ret_iibb, #otros_tributos').on('input', function() {
         const limpiarNum = (val) => {
@@ -324,43 +365,54 @@ document.addEventListener("DOMContentLoaded", function() {
         }, 500); 
     }
 
-    window.editar = function(data) {
-        $('#formGasto')[0].reset();
-        $('#formGasto input, select').prop('disabled', false); 
-        $('#formGasto button').show();
+    // Modificamos editar para que también actualice los buscadores con los valores seleccionados
+window.editar = function(data) {
+    $('#formGasto')[0].reset();
+    $('#formGasto input, select').prop('disabled', false); 
+    $('#formGasto button').show();
 
-        $.when(
-            cargarCentros(), cargarCajas(), cargarCategorias(), cargarProveedores(), 
-            cargarTipos(), cargarMedios(), cargarObras()
-        ).done(function() {
-            for (let k in data) {
-                let el = document.getElementById(k);
-                if (el && k !== 'archivo') { el.value = data[k]; }
-            }
-
-            $('#neto').trigger('input'); 
-
-            if(data.categoria_id) {
-                cargarSubcategorias(data.categoria_id).done(() => {
-                    $('#subcategoria_id').val(data.subcategoria_id);
-                });
-            }
-        });
-
-        if (data.archivo) {
-            $('#archivo_actual').html(`
-                <div class="alert alert-info py-1 px-2 mb-0 d-flex justify-content-between align-items-center">
-                    <small>Archivo: <b>${data.archivo}</b></small>
-                    <a href="/contable/uploads/gastos/${data.archivo}" target="_blank" class="btn btn-xs btn-dark">Ver</a>
-                </div>`);
-            $('#btnEliminarArchivo').show().data('id', data.id);
-        } else {
-            $('#archivo_actual').html('');
-            $('#btnEliminarArchivo').hide();
+    $.when(
+        cargarCentros(), cargarCajas(), cargarCategorias(), cargarProveedores(), 
+        cargarTipos(), cargarMedios(), cargarObras()
+    ).done(function() {
+        for (let k in data) {
+            let el = document.getElementById(k);
+            if (el && k !== 'archivo') { el.value = data[k]; }
         }
 
-        modalGasto.show();
+        $('#neto').trigger('input'); 
+
+        if(data.categoria_id) {
+            cargarSubcategorias(data.categoria_id).done(() => {
+                $('#subcategoria_id').val(data.subcategoria_id);
+            });
+        }
+
+        // ◄ Aplicamos los buscadores y sincronizamos Tom Select con los valores que cargó la base de datos
+        setTimeout(() => {
+            aplicarBuscadores();
+            // Le avisamos a Tom Select qué item está seleccionado actualmente
+            if (buscadoresTom['#proveedor_id']) buscadoresTom['#proveedor_id'].setValue(data.proveedor_id);
+            if (buscadoresTom['#centro_costo_id']) buscadoresTom['#centro_costo_id'].setValue(data.centro_costo_id);
+            if (buscadoresTom['#obra_id']) buscadoresTom['#obra_id'].setValue(data.obra_id);
+            if (buscadoresTom['#categoria_id']) buscadoresTom['#categoria_id'].setValue(data.categoria_id);
+        }, 200);
+    });
+
+    if (data.archivo) {
+        $('#archivo_actual').html(`
+            <div class="alert alert-info py-1 px-2 mb-0 d-flex justify-content-between align-items-center">
+                <small>Archivo: <b>${data.archivo}</b></small>
+                <a href="/contable/uploads/gastos/${data.archivo}" target="_blank" class="btn btn-xs btn-dark">Ver</a>
+            </div>`);
+        $('#btnEliminarArchivo').show().data('id', data.id);
+    } else {
+        $('#archivo_actual').html('');
+        $('#btnEliminarArchivo').hide();
     }
+
+    modalGasto.show();
+}
 
     // ELIMINAR GASTO CON DOBLE CHECK DE SWEETALERT2
     window.eliminar = function(id) {

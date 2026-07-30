@@ -233,15 +233,16 @@ document.addEventListener("DOMContentLoaded", function(){
             {
                 data: null,
                 orderable: false,
+                className: 'text-end',
                 render: function(d){
                     let btnArchivo = '';
                     if(d.origen === 'GASTO'){
                         if(d.gasto_archivo) {
-                            btnArchivo = `<a href="/contable/uploads/gastos/${d.gasto_archivo}" target="_blank" class="btn btn-sm btn-outline-secondary" title="Ver Adjunto Gasto">📁</a>`;
+                            btnArchivo = `<a href="/contable/uploads/gastos/${d.gasto_archivo}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver Adjunto Gasto"><i class="bi bi-file-earmark-pdf"></i></a>`;
                         }
                     } else {
                         if(d.archivo) {
-                            btnArchivo = `<a href="/contable/uploads/caja/${d.archivo}" target="_blank" class="btn btn-sm btn-outline-secondary" title="Ver Adjunto Caja">📁</a>`;
+                            btnArchivo = `<a href="/contable/uploads/caja/${d.archivo}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver Adjunto Caja"><i class="bi bi-file-earmark-pdf"></i></a>`;
                         }
                     }
 
@@ -253,21 +254,29 @@ document.addEventListener("DOMContentLoaded", function(){
 
                     if(esEditable){
                         return `
-                            <div class="d-flex gap-1 justify-content-end">
+                            <div class="d-inline-flex gap-1 justify-content-end">
                                 ${btnArchivo}
-                                <button class="btn btn-sm btn-secondary" onclick='verManual(${JSON.stringify(d)})'>Ver</button>
-                                <button class="btn btn-sm btn-primary" onclick='editar(${JSON.stringify(d)})'>Editar</button>
-                                <button class="btn btn-sm btn-outline-danger" onclick="eliminar(${d.id})">Eliminar</button>
+                                <button class="btn btn-sm btn-outline-secondary" title="Ver Movimiento" onclick='verManual(${JSON.stringify(d)})'>
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary" title="Editar Movimiento" onclick='editar(${JSON.stringify(d)})'>
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" title="Eliminar Movimiento" onclick="eliminar(${d.id})">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
                             </div>
                         `;
                     } else {
                         // Si está bloqueado, dejamos el botón "Ver" para auditoría y un aviso descriptivo
                         return `
-                            <div class="d-flex gap-1 align-items-center justify-content-end">
+                            <div class="d-inline-flex gap-1 align-items-center justify-content-end">
                                 ${btnArchivo}
-                                <button class="btn btn-sm btn-secondary" onclick='verManual(${JSON.stringify(d)})'>Ver</button>
-                                <span class="badge bg-light text-muted border" title="Movimiento automático del sistema o creado por otro usuario">
-                                    <i class="bi bi-lock-fill"></i> Bloqueado
+                                <button class="btn btn-sm btn-outline-secondary" title="Ver Movimiento" onclick='verManual(${JSON.stringify(d)})'>
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <span class="badge bg-light text-muted border py-1.5 px-2" title="Movimiento automático del sistema o creado por otro usuario" style="font-size: 0.75rem;">
+                                    <i class="bi bi-lock-fill text-secondary me-1"></i> Bloqueado
                                 </span>
                             </div>
                         `;
@@ -276,7 +285,6 @@ document.addEventListener("DOMContentLoaded", function(){
             }
         ]
     });
-
     $(window).on('resize', function () {
         tabla.columns.adjust().responsive.recalc();
     });

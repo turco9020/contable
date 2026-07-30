@@ -286,13 +286,19 @@ document.addEventListener("DOMContentLoaded", function() {
                 data: null,
                 orderable: false,
                 render: function(d) {
-                    let btnArchivo = d.archivo ? `<a href="/contable/uploads/cheques/${d.archivo}" target="_blank" class="btn btn-sm btn-outline-secondary">📁</a>` : '';
+                    let btnArchivo = d.archivo ? `<a href="/contable/uploads/cheques/${d.archivo}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver Adjunto Cheque"><i class="bi bi-file-earmark-pdf"></i></a>` : '';
                     return `
-                        <div class="d-flex gap-1">
+                        <div class="d-inline-flex gap-1">
                             ${btnArchivo}
-                            <button class="btn btn-sm btn-info" onclick='verCheque(${JSON.stringify(d)})'>Ver</button>
-                            <button class="btn btn-sm btn-secondary" onclick='editarCheque(${JSON.stringify(d)})'>Editar</button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="eliminarCheque(${d.id})">Eliminar</button>
+                            <button class="btn btn-sm btn-outline-secondary" title="Ver Cheque" onclick='verCheque(${JSON.stringify(d)})'>
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary" title="Editar Cheque" onclick='editarCheque(${JSON.stringify(d)})'>
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" title="Eliminar Cheque" onclick="eliminarCheque(${d.id})">
+                                <i class="bi bi-trash3"></i>
+                            </button>
                         </div>
                     `;
                 }

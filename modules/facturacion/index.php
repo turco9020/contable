@@ -16,20 +16,20 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
     </div>
 
     <!-- Pestañas de Navegación de Estados de Facturas -->
-<ul class="nav nav-tabs mb-3" id="tabFacturas" role="tablist">
-    <li class="nav-item" role="presentation">
-        <button class="nav-link active fw-semibold text-dark" id="cobrar-tab" data-bs-toggle="tab" data-bs-target="#cobrar" type="button" role="tab" onclick="filtrarPestaña('POR_COBRAR')">
-            <i class="bi bi-wallet2 me-1 text-secondary"></i> Por Cobrar 
-            <span class="badge bg-secondary ms-1" id="cant-cobrar">0</span>
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link fw-semibold text-dark" id="pagadas-tab" data-bs-toggle="tab" data-bs-target="#pagadas" type="button" role="tab" onclick="filtrarPestaña('PAGADAS')">
-            <i class="bi bi-check-circle me-1 text-secondary"></i> Pagadas 
-            <span class="badge bg-secondary ms-1" id="cant-pagadas">0</span>
-        </button>
-    </li>
-</ul>
+    <ul class="nav nav-tabs mb-3" id="tabFacturas" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-semibold text-dark" id="cobrar-tab" data-bs-toggle="tab" data-bs-target="#cobrar" type="button" role="tab" onclick="filtrarPestaña('POR_COBRAR')">
+                <i class="bi bi-wallet2 me-1 text-secondary"></i> Por Cobrar 
+                <span class="badge bg-secondary ms-1" id="cant-cobrar">0</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-semibold text-dark" id="pagadas-tab" data-bs-toggle="tab" data-bs-target="#pagadas" type="button" role="tab" onclick="filtrarPestaña('PAGADAS')">
+                <i class="bi bi-check-circle me-1 text-secondary"></i> Pagadas 
+                <span class="badge bg-secondary ms-1" id="cant-pagadas">0</span>
+            </button>
+        </li>
+    </ul>
 
     <div class="card p-3 shadow-sm">
         <div class="table-responsive">
@@ -57,9 +57,9 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
 
-            <div class="modal-header">
-                <h5 class="modal-title" id="tituloModal">Factura de Venta</h5>
-                <button class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold" id="tituloModal"><i class="bi bi-receipt me-2"></i>Factura Venta</h5>
+                <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
 
             <div class="modal-body">
@@ -169,20 +169,15 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 let tabla;
 let modalFactura;
 let globalClientesParaMapeo = [];
-let estadoPestañaActual = 'POR_COBRAR'; // Estado inicial por defecto
+let estadoPestañaActual = 'POR_COBRAR';
 
-// 1. FILTRO PERSONALIZADO PARA DATATABLES
-// Este buscador evalúa el registro antes de pintarlo según la pestaña activa
 $.fn.dataTable.ext.search.push(
     function(settings, data, dataIndex, rowData) {
-        // Obtenemos el texto real del estado (columna index 7)
         let estado = rowData.estado ? rowData.estado.toUpperCase() : 'DEBE';
 
         if (estadoPestañaActual === 'POR_COBRAR') {
-            // Muestra lo pendiente
             return (estado === 'DEBE' || estado === 'VER');
         } else if (estadoPestañaActual === 'PAGADAS') {
-            // Muestra lo liquidado
             return (estado === 'PAGADO');
         }
         return true;
@@ -194,7 +189,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
     cargarSelects();
 
-    // 2. INICIALIZACIÓN DE LA TABLA
     tabla = $('#tablaFacturas').DataTable({
         ajax: '/contable/ajax/facturacion.php?accion=listar',
         order: [[0, 'desc']],
@@ -208,7 +202,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 text: ' Excel',
                 className: 'btn btn-success btn-sm',
                 exportOptions: {
-                    columns: [0, 1, 2, 3, 4, 5, 6, 7, 8] // ◄ Mapea exacto las visibles + interna
+                    columns: [0, 1, 2, 3, 4, 5, 6, 7, 8]
                 }
             },
             {
@@ -225,8 +219,6 @@ document.addEventListener("DOMContentLoaded", function() {
                 className: 'btn btn-sm btn-secondary' 
             }
         ],
-        
-        // Este evento se ejecuta cada vez que la tabla se redibuja o carga datos nuevos
         drawCallback: function(settings) {
             actualizarBadgesPestañas(settings.aoData);
         },
@@ -276,7 +268,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     
                     if (diasRestantes < 0) {
                         let diasPasados = Math.abs(diasRestantes);
-                        return `<span class="text-danger fw-bold">Vencida hace ${diasPasados} ${diasPasados === 1 ? 'día' : 'días'}</span>`;
+                        return `<span class="text-danger fw-bold">Vencida ${diasPasados} ${diasPasados === 1 ? 'día' : 'días'}</span>`;
                     } else if (diasRestantes === 0) {
                         return '<span class="text-warning fw-bold">Vence hoy</span>';
                     } else {
@@ -302,23 +294,30 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
             },
             {
-            data: 'usuario_nombre',
-            visible: true, // ◄ ESTO HACE QUE NO SE MUESTRE EN LA PANTALLA
-            render: function(d) {
-                return d ? `<span class="badge bg-light text-dark border fw-normal"><i class="bi bi-person"></i> ${d}</span>` : '<span class="text-muted">Sistema</span>';
-            }
-              },
+                data: 'usuario_nombre',
+                visible: true,
+                render: function(d) {
+                    return d ? `<span class="badge bg-light text-dark border fw-normal"><i class="bi bi-person"></i> ${d}</span>` : '<span class="text-muted">Sistema</span>';
+                }
+            },
             {
                 data: null,
                 orderable: false,
+                className: 'text-center',
                 render: function(d) {
-                    let btnArchivo = d.archivo ? `<a href="/contable/uploads/facturacion/${d.archivo}" target="_blank" class="btn btn-sm btn-outline-secondary" title="Ver Adjunto">📁</a>` : '';
+                    let btnArchivo = d.archivo ? `<a href="/contable/uploads/facturacion/${d.archivo}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver Adjunto"><i class="bi bi-file-earmark-pdf"></i></a>` : '';
                     return `
-                        <div class="d-flex gap-1">
+                        <div class="d-inline-flex gap-1">
                             ${btnArchivo}
-                            <button class="btn btn-sm btn-secondary" onclick='verFactura(${JSON.stringify(d)})'>Ver</button>
-                            <button class="btn btn-sm btn-primary" onclick='editarFactura(${JSON.stringify(d)})'>Editar</button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="eliminarFactura(${d.id})">Eliminar</button>
+                            <button class="btn btn-sm btn-outline-secondary" title="Ver Factura" onclick='verFactura(${JSON.stringify(d)})'>
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary" title="Editar Factura" onclick='editarFactura(${JSON.stringify(d)})'>
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" title="Eliminar Factura" onclick="eliminarFactura(${d.id})">
+                                <i class="bi bi-trash3"></i>
+                            </button>
                         </div>
                     `;
                 }
@@ -337,7 +336,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     // ==========================================
-    // PARSER AFIP MEDIANTE PDF.JS
+    // PARSER AFIP MEDIANTE PDF.JS (REVISADO)
     // ==========================================
     $('#archivo_escanear').on('change', function(e) {
         let file = e.target.files[0];
@@ -379,14 +378,14 @@ document.addEventListener("DOMContentLoaded", function() {
                                 }
                             }
 
-                            // 2. FECHA VENCIMIENTO
+                            // 2. FECHA VENCIMIENTO (REPARADO BUG)
                             let indexVto = fragmentos.findIndex(f => f.toLowerCase().includes("vto. para el pago") || f.toLowerCase().includes("vto. para"));
                             if(indexVto !== -1) {
                                 for(let i = indexVto; i <= indexVto + 5; i++) {
                                     if(fragmentos[i]) {
                                         let matchV = fragmentos[i].match(/(\d{2})\/(\d{2})\/(\d{4})/);
                                         if(matchV) {
-                                            $('#fecha_vencimiento').val(`${matchV[3]}-${matchV[2]}-${matchF[1]}`);
+                                            $('#fecha_vencimiento').val(`${matchV[3]}-${matchV[2]}-${matchV[1]}`);
                                             break;
                                         }
                                     }
@@ -434,21 +433,21 @@ document.addEventListener("DOMContentLoaded", function() {
                             }
 
                             // 5. DETALLE
-                            if (textoCompleto.includes("Mant. Acued. Desvío Arijón")) {
-                                $('#detalle').val("Mant. Acued. Desvío Arijón; Rep. y reajuste prog.3585 Santo Tomé Certificado N°4-Según OC 4500062956");
+                            let matchDetalle = textoCompleto.match(/Producto\s*\/\s*Servicio\s*(.*?)\s*\d+,00/i) || 
+                                               textoCompleto.match(/Descripción\s*(.*?)\s*(?:Subtotal|Importe)/i) ||
+                                               textoCompleto.match(/c\/IVA\s*(.*?)\s*Importe\s*Otros/i);
+
+                            if (matchDetalle && matchDetalle[1]) {
+                                $('#detalle').val(matchDetalle[1].trim());
                             } else {
-                                let matchDetalle = textoCompleto.match(/Producto\s*\/\s*Servicio\s*(.*?)\s*\d+,00/i);
-                                if(matchDetalle) {
-                                    $('#detalle').val(matchDetalle[1].trim());
-                                } else {
-                                    $('#detalle').val("Carga automática AFIP: Verificar descripción interna.");
-                                }
+                                let fragDetalle = fragmentos.find(f => f.includes("MantAcued") || (f.length > 30 && !f.includes("Razón Social") && !f.includes("Domicilio")));
+                                $('#detalle').val(fragDetalle ? fragDetalle.trim() : "Carga automática AFIP: Verificar descripción interna.");
                             }
 
                             // 6. IMPORTES
-                            let matchTotal = textoCompleto.match(/(?:Importe\s*Total|Total)[\s:]*\$\s*([\d.,]+)/i);
-                            let matchNeto = textoCompleto.match(/(?:Neto\s*Gravado|Neto)[\s:]*\$\s*([\d.,]+)/i);
-                            let matchIva = textoCompleto.match(/IVA\s*(?:21|10\.5)?%[\s:]*\$\s*([\d.,]+)/i);
+                            let matchTotal = textoCompleto.match(/(?:Importe\s*Total|Total)[\s:]*\$?[\s:]*([\d.,]+)/i);
+                            let matchNeto = textoCompleto.match(/(?:Neto\s*Gravado|Neto)[\s:]*\$?[\s:]*([\d.,]+)/i);
+                            let matchIva = textoCompleto.match(/IVA\s*(?:21|10\.5)?%[\s:]*\$?[\s:]*([\d.,]+)/i);
 
                             if(matchNeto) {
                                 let neto = matchNeto[1].replace(/\./g, '').replace(',', '.');
@@ -500,7 +499,6 @@ function cargarSelects() {
 
 window.abrirModal = function() {
     $('.eval-aviso').remove();
-    // CORRECCIÓN: Habilitamos solo los controles dentro del formulario sin alterar botones estructurales del modal
     $('#formFactura').find('input, textarea, select').prop('disabled', false);
     $('#btnGuardar, #seccionEscaneo').show();
     $('#seccionArchivoReal').hide();
@@ -515,7 +513,6 @@ window.abrirModal = function() {
 window.verFactura = function(data) {
     window.editarFactura(data);
     $('#tituloModal').text('Detalle de Factura (Solo Lectura)');
-    // CORRECCIÓN: Deshabilitamos de forma segura los inputs internos para no romper la navegación ni cierres de Bootstrap
     $('#formFactura').find('input, textarea, select').prop('disabled', true);
     $('#btnGuardar, #seccionEscaneo').hide();
 }
@@ -541,8 +538,6 @@ window.editarFactura = function(data) {
     $('#observaciones').val(data.observaciones);
     $('#estado').val(data.estado ? data.estado : 'DEBE');
 
-    // CORRECCIÓN SELECCIÓN DE SELECTS ASÍNCRONOS:
-    // El setTimeout le da 100 milisegundos de ventaja al DOM para renderizar las options de los select
     setTimeout(() => {
         $('#tipo_comprobante_id').val(data.tipo_comprobante_id);
         $('#cliente_id').val(data.cliente_id);
@@ -558,9 +553,6 @@ window.editarFactura = function(data) {
     modalFactura.show();
 }
 
-// =========================================================
-// ENVÍO DE FORMULARIO - UNIFICACIÓN DE ADJUNTOS
-// =========================================================
 $('#formFactura').submit(function(e) {
     e.preventDefault();
     let formData = new FormData(this);
@@ -597,7 +589,6 @@ window.eliminarFactura = function(id) {
         cancelButtonText: 'Cancelar'
     }).then((result) => {
         if (result.isConfirmed) {
-            // CORRECCIÓN: Pasamos la variable estructurada id en el cuerpo del $.post de jQuery
             $.post('/contable/ajax/facturacion.php?accion=eliminar', { id: id }, function(resp) {
                 Swal.fire({
                     icon: 'success',
@@ -614,24 +605,16 @@ window.eliminarFactura = function(id) {
     });
 }
 
-// ==========================================
-// MÉTODOS DE CONTROL DE PESTAÑAS
-// ==========================================
-
-// Función que se gatilla al hacer click en los botones del tab
 window.filtrarPestaña = function(tipoPestaña) {
     estadoPestañaActual = tipoPestaña;
-    // Le avisamos a DataTables que redibuje aplicando la lógica del buscador push()
     tabla.draw();
 }
 
-// Cuenta la cantidad total de registros en bruto que vinieron del servidor
 function actualizarBadgesPestañas(datosFilas) {
     let contadorCobrar = 0;
     let contadorPagadas = 0;
 
     datosFilas.forEach(function(fila) {
-        // Con _aData accedemos al objeto JSON nativo devuelto por el PHP
         let factura = fila._aData;
         let estado = factura.estado ? factura.estado.toUpperCase() : 'DEBE';
 
@@ -642,7 +625,6 @@ function actualizarBadgesPestañas(datosFilas) {
         }
     });
 
-    // Inyectamos los números en los badges HTML
     $('#cant-cobrar').text(contadorCobrar);
     $('#cant-pagadas').text(contadorPagadas);
 }

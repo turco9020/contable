@@ -130,13 +130,22 @@ document.addEventListener("DOMContentLoaded", function(){
             {data:'whatsapp'},
             {data:'telefono'},
             {
-                data:null,
+                data: null,
                 orderable: false,
+                className: 'text-center',
                 render: function(data){
                     return `
-                        <button class="btn btn-sm btn-info" onclick='ver(${JSON.stringify(data)})'>Ver</button>
-                        <button class="btn btn-sm btn-secondary" onclick='editar(${JSON.stringify(data)})'>Editar</button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="eliminar(${data.id})">Eliminar</button>
+                        <div class="d-inline-flex gap-1">
+                            <button class="btn btn-sm btn-outline-secondary" title="Ver Cliente" onclick='ver(${JSON.stringify(data)})'>
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary" title="Editar Cliente" onclick='editar(${JSON.stringify(data)})'>
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" title="Eliminar Cliente" onclick="eliminar(${data.id})">
+                                <i class="bi bi-trash3"></i>
+                            </button>
+                        </div>
                     `;
                 }
             }

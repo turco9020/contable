@@ -15,6 +15,27 @@ if (isset($_POST['id'])) {
         exit;
     }
 
+    // 1) VERIFICAR SI EL USUARIO A ELIMINAR ES ADMINISTRADOR
+    $stmtCheck = $conn->prepare("SELECT rol_id FROM usuarios WHERE id = ?");
+    $stmtCheck->bind_param("i", $id);
+    $stmtCheck->execute();
+    $resCheck = $stmtCheck->get_result()->fetch_assoc();
+    $stmtCheck->close();
+
+    if ($resCheck) {
+        // Asumiendo que el rol_id de Administrador es 1 (Ajustar si tu DB usa otro ID para admin)
+        if (intval($resCheck['rol_id']) === 1) {
+            // Contar cuántos administradores quedan en total
+            $resCount = $conn->query("SELECT COUNT(*) as total FROM usuarios WHERE rol_id = 1");
+            $rowCount = $resCount->fetch_assoc();
+
+            if (intval($rowCount['total']) <= 1) {
+                echo json_encode(['success' => false, 'message' => 'Operación cancelada. Debe quedar al menos un Administrador activo en el sistema.']);
+                exit;
+            }
+        }
+    }
+
     $stmt = $conn->prepare("DELETE FROM usuarios WHERE id = ?");
     $stmt->bind_param("i", $id);
 

@@ -185,13 +185,22 @@ document.addEventListener("DOMContentLoaded", function(){
             {data:'observaciones', visible:false, defaultContent:''},
 
             {
-                data:null,
-                orderable:false,
+                data: null,
+                orderable: false,
+                className: 'text-center',
                 render: function(data){
                     return `
-                        <button class="btn btn-sm btn-secondary" onclick='ver(${JSON.stringify(data)})'>Ver</button>
-                        <button class="btn btn-sm btn-primary" onclick='editar(${JSON.stringify(data)})'>Editar</button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="eliminar(${data.id})">Eliminar</button>
+                        <div class="d-inline-flex gap-1">
+                            <button class="btn btn-sm btn-outline-secondary" title="Ver Proveedor" onclick='ver(${JSON.stringify(data)})'>
+                                <i class="bi bi-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary" title="Editar Proveedor" onclick='editar(${JSON.stringify(data)})'>
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" title="Eliminar Proveedor" onclick="eliminar(${data.id})">
+                                <i class="bi bi-trash3"></i>
+                            </button>
+                        </div>
                     `;
                 }
             }

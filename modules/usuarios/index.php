@@ -9,8 +9,8 @@ if (!esAdmin()) {
     exit;
 }
 
-// Obtener la lista de usuarios con sus respectivos roles para la tabla
-$queryUsuarios = "SELECT u.id, u.usuario, r.nombre as rol_nombre 
+// Obtener la lista de usuarios con sus respectivos roles para la tabla (Agregamos u.rol_id)
+$queryUsuarios = "SELECT u.id, u.usuario, u.rol_id, r.nombre as rol_nombre 
                   FROM usuarios u 
                   JOIN roles r ON u.rol_id = r.id 
                   ORDER BY u.id DESC";
@@ -19,12 +19,18 @@ $resultadoUsuarios = $conn->query($queryUsuarios);
 // Obtener los roles disponibles para cargarlos dinámicamente en el select del Modal
 $queryRoles = "SELECT id, nombre FROM roles ORDER BY nombre ASC";
 $resultadoRoles = $conn->query($queryRoles);
+
+// Volvemos a generar el array de roles para el modal secundario o reset, guardando en variable limpia
+$rolesSelect = [];
+while ($rol = $resultadoRoles->fetch_assoc()) {
+    $rolesSelect[] = $rol;
+}
 ?>
 
 <div class="content">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h4 class="fw-bold text-dark mb-0"><i class="bi bi-people text-secondary me-2"></i> Gestión de Usuarios</h4>
-        <button type="button" class="btn btn-dark d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#modalUsuario">
+        <button type="button" class="btn btn-dark d-flex align-items-center" onclick="abrirModalUsuario('NUEVO')">
             <i class="bi bi-person-plus-fill me-2"></i> Nuevo Usuario
         </button>
     </div>
@@ -43,7 +49,7 @@ $resultadoRoles = $conn->query($queryRoles);
                         </tr>
                     </thead>
                     <tbody>
-                        <?php while ($row = $resultadoUsuarios->fetch_assoc()): ?>
+                        <?php foreach ($resultadoUsuarios as $row): ?>
                             <tr>
                                 <td><?= $row['id'] ?></td>
                                 <td class="fw-semibold"><?= htmlspecialchars($row['usuario']) ?></td>
@@ -51,12 +57,20 @@ $resultadoRoles = $conn->query($queryRoles);
                                     <span class="badge bg-secondary px-2 py-1"><?= htmlspecialchars($row['rol_nombre']) ?></span>
                                 </td>
                                 <td class="text-center">
-                                    <button class="btn btn-sm btn-outline-danger" onclick="eliminarUsuario(<?= $row['id'] ?>)">
-                                        <i class="bi bi-trash3"></i>
-                                    </button>
+                                    <div class="d-inline-flex gap-1">
+                                        <button class="btn btn-sm btn-outline-secondary" title="Ver" onclick="abrirModalUsuario('VER', <?= $row['id'] ?>, '<?= htmlspecialchars($row['usuario']) ?>', <?= $row['rol_id'] ?>)">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-primary" title="Editar" onclick="abrirModalUsuario('EDITAR', <?= $row['id'] ?>, '<?= htmlspecialchars($row['usuario']) ?>', <?= $row['rol_id'] ?>)">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="eliminarUsuario(<?= $row['id'] ?>)">
+                                            <i class="bi bi-trash3"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
-                        <?php endwhile; ?>
+                        <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
@@ -65,7 +79,7 @@ $resultadoRoles = $conn->query($queryRoles);
 </div>
 
 <!-- =======================================================================
-     MODAL PARA AGREGAR NUEVO USUARIO
+     MODAL PARA NUEVO / VER / EDITAR USUARIO
      ======================================================================= -->
 <div class="modal fade" id="modalUsuario" data-bs-backdrop="static" tabindex="-1" aria-labelledby="modalUsuarioLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -77,30 +91,37 @@ $resultadoRoles = $conn->query($queryRoles);
             <form id="formUsuario">
                 <div class="modal-body">
                     <div id="alertaModal" class="alert alert-danger d-none"></div>
+                    <input type="hidden" name="id" id="usuario_id">
 
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Nombre de Usuario</label>
-                        <input type="text" name="user" class="form-control" placeholder="Ej: jgomez" required>
+                        <input type="text" name="user" id="input_user" class="form-control" placeholder="Ej: jgomez" required>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Contraseña</label>
-                        <input type="password" name="pass" class="form-control" placeholder="Mínimo 6 caracteres" required>
+                        <div class="input-group">
+                            <input type="password" name="pass" id="input_pass" class="form-control" placeholder="Mínimo 6 caracteres" required>
+                            <button class="btn btn-outline-secondary" type="button" id="btnTogglePassword" onclick="toggleMostrarContrasena()">
+                                <i class="bi bi-eye-fill" id="iconoPassword"></i>
+                            </button>
+                        </div>
+                        <div class="form-text text-muted d-none" id="ayudaPassword">Dejar en blanco si no desea modificar la contraseña actual.</div>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Asignar Rol</label>
-                        <select name="rol_id" class="form-select" required>
+                        <select name="rol_id" id="select_rol" class="form-select" required>
                             <option value="" selected disabled>Seleccione un rol...</option>
-                            <?php while ($rol = $resultadoRoles->fetch_assoc()): ?>
+                            <?php foreach ($rolesSelect as $rol): ?>
                                 <option value="<?= $rol['id'] ?>"><?= htmlspecialchars($rol['nombre']) ?></option>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-dark">Guardar Usuario</button>
+                    <button type="submit" class="btn btn-dark" id="btnGuardarUsuario">Guardar Usuario</button>
                 </div>
             </form>
         </div>
@@ -109,12 +130,12 @@ $resultadoRoles = $conn->query($queryRoles);
 
 <?php include '../../includes/footer.php'; ?>
 
-<!-- =======================================================================
-     LÓGICA JAVASCRIPT / DATATABLES / AJAX
-     ======================================================================= -->
 <script>
+let modalUsuarioBS;
+
 $(document).ready(function() {
-    // Inicializar DataTables con tu configuración nativa y en español
+    modalUsuarioBS = new bootstrap.Modal(document.getElementById('modalUsuario'));
+
     $('#tablaUsuarios').DataTable({
         responsive: true,
         order: [[0, 'desc']],
@@ -123,18 +144,20 @@ $(document).ready(function() {
         }
     });
 
-    // Procesar el formulario por AJAX
     $('#formUsuario').on('submit', function(e) {
         e.preventDefault();
         
+        // Determinamos el destino del archivo según si hay un ID cargado
+        let urlDestino = $('#usuario_id').val() ? 'editar_usuario.php' : 'procesar_usuario.php';
+        
         $.ajax({
-            url: 'procesar_usuario.php',
+            url: urlDestino,
             type: 'POST',
             data: $(this).serialize(),
             dataType: 'json',
             success: function(response) {
                 if(response.success) {
-                    location.reload(); // Recargamos para ver el nuevo usuario reflejado
+                    location.reload();
                 } else {
                     $('#alertaModal').removeClass('d-none').text(response.message);
                 }
@@ -146,6 +169,65 @@ $(document).ready(function() {
     });
 });
 
+function abrirModalUsuario(modo, id = null, usuario = '', rol_id = null) {
+    $('#alertaModal').addClass('d-none').text('');
+    $('#formUsuario')[0].reset();
+    
+    // Resetear input de password a tipo seguro oculto por defecto
+    $('#input_pass').attr('type', 'password');
+    $('#iconoPassword').removeClass('bi-eye-slash-fill').addClass('bi-eye-fill');
+
+    // Desbloquear campos por defecto
+    $('#formUsuario').find('input, select').prop('disabled', false);
+    $('#btnTogglePassword').prop('disabled', false);
+    $('#btnGuardarUsuario').show();
+    $('#ayudaPassword').addClass('d-none');
+    $('#input_pass').prop('required', true);
+
+    if (modo === 'NUEVO') {
+        $('#modalUsuarioLabel').html('<i class="bi bi-person-plus me-2"></i> Registrar Usuario');
+        $('#usuario_id').val('');
+        modalUsuarioBS.show();
+    } 
+    else if (modo === 'VER') {
+        $('#modalUsuarioLabel').html('<i class="bi bi-eye me-2"></i> Datos del Usuario');
+        $('#usuario_id').val(id);
+        $('#input_user').val(usuario);
+        $('#select_rol').val(rol_id);
+        $('#input_pass').val('********').prop('required', false);
+        
+        // Bloquear todo el formulario en vista de lectura
+        $('#formUsuario').find('input, select').prop('disabled', true);
+        $('#btnTogglePassword').prop('disabled', true);
+        $('#btnGuardarUsuario').hide();
+        modalUsuarioBS.show();
+    } 
+    else if (modo === 'EDITAR') {
+        $('#modalUsuarioLabel').html('<i class="bi bi-pencil me-2"></i> Editar Usuario');
+        $('#usuario_id').val(id);
+        $('#input_user').val(usuario);
+        $('#select_rol').val(rol_id);
+        
+        // En edición el password no es obligatorio
+        $('#input_pass').prop('required', false);
+        $('#ayudaPassword').removeClass('d-none');
+        modalUsuarioBS.show();
+    }
+}
+
+function toggleMostrarContrasena() {
+    let inputPass = $('#input_pass');
+    let icono = $('#iconoPassword');
+    
+    if (inputPass.attr('type') === 'password') {
+        inputPass.attr('type', 'text');
+        icono.removeClass('bi-eye-fill').addClass('bi-eye-slash-fill');
+    } else {
+        inputPass.attr('type', 'password');
+        icono.removeClass('bi-eye-slash-fill').addClass('bi-eye-fill');
+    }
+}
+
 function eliminarUsuario(id) {
     Swal.fire({
         title: '¿Confirmación requerida?',
@@ -154,12 +236,11 @@ function eliminarUsuario(id) {
         input: 'text',
         inputPlaceholder: 'Escribe ELIMINAR aquí...',
         showCancelButton: true,
-        confirmButtonColor: '#dc3545', // Rojo para acción destructiva
-        cancelButtonColor: '#212529',  // Gris oscuro para cancelar
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#212529',
         confirmButtonText: 'Confirmar eliminación',
         cancelButtonText: 'Cancelar',
         reverseButtons: true,
-        // Validación en tiempo real del texto ingresado
         inputValidator: (value) => {
             if (!value) {
                 return '¡Debes escribir la palabra de confirmación!';
@@ -169,7 +250,6 @@ function eliminarUsuario(id) {
             }
         }
     }).then((result) => {
-        // Si pasó la validación y el usuario hizo clic en confirmar
         if (result.isConfirmed) {
             $.ajax({
                 url: 'eliminar_usuario.php',

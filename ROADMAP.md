@@ -56,7 +56,7 @@ FUTUROS AGREGADOS, UN DASH PARA LA PARTE DE OPERADOR ARQUITECTURA, QUE PUEDA VER
 - [ ] Arqueo
 
 Admin / Contador: Ven todo (Cajas Centrales y todas las Cajas Chicas).  
-Operador: Únicamente ve la Caja Chica que tiene vinculada a su usuario_id. Ninguna más.  
+Usuario: Únicamente ve la Caja Chica que tiene vinculada a su usuario_id. Ninguna más. Se carga por Usuario la caja no por rol 
 ---
 
 # Próximos módulos

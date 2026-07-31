@@ -143,6 +143,21 @@ if($accion == 'listar_archivos') {
     echo json_encode(["success" => true, "archivos" => $archivos]);
 }
 
+// ================= TRAER FACTURAS ASOCIADAS A LA OBRA =================
+if($accion == 'listar_facturas') {
+    $obra_id = intval($_GET['obra_id'] ?? 0);
+    $facturas = [];
+
+    if($obra_id > 0) {
+        $res = $conn->query("SELECT id, nro_factura, total, fecha, archivo FROM facturas_venta WHERE obra_id = $obra_id ORDER BY fecha DESC");
+        while($row = $res->fetch_assoc()) {
+            $facturas[] = $row;
+        }
+    }
+    echo json_encode(["success" => true, "facturas" => $facturas]);
+    exit;
+}
+
 // ================= ELIMINAR UN ARCHIVO INDIVIDUAL =================
 if($accion == 'eliminar_archivo') {
     $id = intval($_POST['id'] ?? 0);
@@ -171,4 +186,5 @@ if($accion == 'eliminar'){
 
     echo "OK";
 }
+
 ?>

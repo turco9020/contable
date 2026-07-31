@@ -157,6 +157,14 @@ include '../../../includes/sidebar.php';
                                 <!-- Dinámico -->
                             </ul>
                         </div>
+                        <!-- Contenedor de Facturas de Venta Asignadas -->
+                        <div class="col-md-12 d-none mt-3" id="contenedorListaFacturas">
+                            <label class="form-label fw-semibold text-secondary"><i class="bi bi-receipt me-1"></i> Facturas de Venta Asociadas</label>
+                            <ul class="list-group" id="listaFacturasObra">
+                                <!-- Dinámico -->
+                            </ul>
+                        </div>
+
                     </div>
 
                 </div>
@@ -200,7 +208,9 @@ window.abrirModal = function(modo) {
     $('#formObra').find('input, select, textarea').prop('disabled', false);
     $('#btnGuardarObra').show();
     $('#wrapperPresupuesto, #wrapperRepositorio').show();
-
+    $('#listaFacturasObra').html('');
+    $('#contenedorListaFacturas').addClass('d-none');
+    
     if(modo === 'NUEVO') {
         $('#modalObraLabel').html('<i class="bi bi-plus-circle me-2"></i> Registrar Nueva Obra');
         cargarClientes();
@@ -208,13 +218,189 @@ window.abrirModal = function(modo) {
     }
 }
 
+// ==========================================
+// FUNCIONES DE CARGA Y HERRAMIENTAS (SCOPE GLOBAL)
+// ==========================================
+window.editar = function(id){
+    let d = tabla.rows().data().toArray().find(x => x.id == id);
+    if(!d) return;
+
+    $('#listaFacturasObra').html('');
+    $('#contenedorListaFacturas').addClass('d-none');    
+    $('#formObra')[0].reset();
+    $('#verPresupuestoActual').html('');
+    $('#listaArchivosObra').html('');
+    $('#formObra').find('input, select, textarea').prop('disabled', false);
+    $('#btnGuardarObra').show();
+    $('#wrapperPresupuesto, #wrapperRepositorio').show();
+    $('#modalObraLabel').html('<i class="bi bi-pencil me-2"></i> Editar Datos de Obra');
+
+    cargarClientes(function() {
+        $('#id').val(d.id);
+        $('#nombre').val(d.nombre);
+        $('#cliente_id').val(d.cliente_id);
+        $('#responsable').val(d.responsable);
+        $('#direccion').val(d.direccion);
+        $('#nro_oc').val(d.nro_oc);
+        $('#fecha_inicio').val(d.fecha_inicio);
+        $('#fecha_fin').val(d.fecha_fin);
+        $('#tipo_obra').val(d.tipo_obra);
+        $('#detalle').val(d.detalle);
+        $('#estado').val(d.estado);
+        $('#facturacion').val(d.facturacion);
+
+        if(d.presupuesto_archivo) {
+            $('#verPresupuestoActual').html(`
+                <a href="/contable/uploads/obras/${d.presupuesto_archivo}" target="_blank" class="btn btn-xs btn-link text-primary p-0">
+                    <i class="bi bi-file-earmark-pdf-fill"></i> Ver presupuesto actual
+                </a>
+            `);
+        }
+        window.cargarRepositorio(d.id);
+    });
+    modalObraBS.show();
+}
+
+window.verObra = function(id) {
+    window.editar(id);
+    setTimeout(() => {
+        $('#modalObraLabel').html('<i class="bi bi-eye me-2"></i> Detalles Completos de la Obra');
+        $('#formObra').find('input:not([type="file"]), select, textarea').prop('disabled', true);
+        $('#btnGuardarObra').hide();
+        $('#wrapperPresupuesto, #wrapperRepositorio').hide();
+        
+        let d = null;
+        tabla.rows().data().each(function(row) { if(row.id == id) d = row; });
+
+        // Limpiamos los contenedores antes de inyectar datos nuevos para evitar duplicación
+        $('#listaArchivosObra').html('');
+        $('#contenedorListaArchivos').addClass('d-none');
+
+        if(d && d.presupuesto_archivo) {
+            $('#contenedorListaArchivos').removeClass('d-none');
+            $('#listaArchivosObra').prepend(`
+                <li class="list-group-item list-group-item-dark d-flex justify-content-between align-items-center py-2 fw-semibold border-secondary">
+                    <a href="/contable/uploads/obras/${d.presupuesto_archivo}" target="_blank" class="text-decoration-none text-dark">
+                        <i class="bi bi-file-earmark-check-fill text-success me-2"></i> 📄 PRESUPUESTO ACEPTADO
+                    </a>
+                    <span class="badge bg-success rounded-pill">Principal</span>
+                </li>
+            `);
+        }
+
+        // Cargar los adjuntos dinámicos y las facturas vinculadas de forma asíncrona
+        window.cargarRepositorio(id);
+        window.cargarFacturasAsociadas(id);
+
+    }, 250);
+}
+
+window.cargarRepositorio = function(obraId) {
+    $.get('/contable/ajax/obras.php?accion=listar_archivos', { obra_id: obraId }, function(r) {
+        if(r.success && r.archivos.length > 0) {
+            $('#contenedorListaArchivos').removeClass('d-none'); 
+            let lista = $('#listaArchivosObra');
+            r.archivos.forEach(arc => {
+                lista.append(`
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                        <a href="/contable/uploads/obras/${arc.archivo}" target="_blank" class="text-decoration-none text-dark">
+                            <i class="bi bi-file-earmark text-primary me-2"></i> ${arc.nombre_original}
+                        </a>
+                        <button type="button" class="btn btn-sm text-danger p-0" title="Eliminar documento" onclick="eliminarArchivoRepo(${arc.id}, ${obraId})">
+                            <i class="bi bi-x-circle-fill"></i>
+                        </button>
+                    </li>
+                `);
+            });
+        }
+    }, 'json');
+}
+
+window.cargarFacturasAsociadas = function(obraId) {
+    $.get('/contable/ajax/obras.php?accion=listar_facturas', { obra_id: obraId }, function(r) {
+        let lista = $('#listaFacturasObra');
+        lista.empty();
+        
+        if(r.success && r.facturas.length > 0) {
+            $('#contenedorListaFacturas').removeClass('d-none');
+            r.facturas.forEach(fac => {
+                let totalFormateado = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(fac.total);
+                let fechaFormateada = fac.fecha.split('-').reverse().join('/');
+
+                // Validamos si la factura tiene un archivo adjunto asignado
+                let botonAdjunto = '';
+                if (fac.archivo) {
+                    botonAdjunto = `
+                        <a href="/contable/uploads/facturacion/${fac.archivo}" target="_blank" class="btn btn-sm btn-outline-danger py-0 px-2" title="Ver PDF Factura">
+                            <i class="bi bi-file-earmark-pdf"></i>
+                        </a>`;
+                } else {
+                    botonAdjunto = `
+                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" disabled title="Sin archivo adjunto">
+                            <i class="bi bi-eye-slash"></i>
+                        </button>`;
+                }
+
+                lista.append(`
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                        <div>
+                            <i class="bi bi-file-earmark-text text-success me-2"></i> 
+                            <span class="fw-semibold">${fac.nro_factura}</span> 
+                            <small class="text-muted ms-2">(${fechaFormateada})</small>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="fw-bold text-dark">${totalFormateado}</span>
+                            ${botonAdjunto}
+                        </div>
+                    </li>
+                `);
+            });
+        } else {
+            $('#contenedorListaFacturas').addClass('d-none');
+        }
+    }, 'json');
+}
+
+window.eliminarArchivoRepo = function(archivoId, obraId) {
+    if(confirm('¿Desea remover este archivo del repositorio?')) {
+        $.post('/contable/ajax/obras.php?accion=eliminar_archivo', { id: archivoId }, function() {
+            // Limpiamos la lista para recargarla limpia sin duplicados
+            $('#listaArchivosObra').html('');
+            window.cargarRepositorio(obraId);
+        }, 'json');
+    }
+}
+
+window.eliminar = function(id){
+    Swal.fire({
+        title: '¿Eliminar esta obra?',
+        text: "Se borrará permanentemente junto con su repositorio de archivos y presupuestos.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#212529',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.post('/contable/ajax/obras.php?accion=eliminar', {id}, () => {
+                Swal.fire({ icon: 'success', title: 'Eliminado', text: 'La obra se borró correctamente.', timer: 1500, showConfirmButton: false });
+                tabla.ajax.reload(null, false);
+            });
+        }
+    });
+}
+
+// ==========================================
+// INICIALIZACIÓN DEL DOM
+// ==========================================
 document.addEventListener("DOMContentLoaded", function(){
     modalObraBS = new bootstrap.Modal(document.getElementById('modalObra'));
 
     // 1. Filtro personalizado de DataTables basado en la pestaña activa
     $.fn.dataTable.ext.search.push(
         function(settings, data, dataIndex, rowData) {
-            let factura = rowData.facturacion; // Obtenemos el valor directo del objeto JSON
+            let factura = rowData.facturacion; 
             
             if (estadoFacturacionActual === 'POR_COBRAR') {
                 return factura === 'Por Cobrar';
@@ -250,10 +436,8 @@ document.addEventListener("DOMContentLoaded", function(){
                 className: 'btn btn-sm btn-secondary' 
             }
         ],
-        // 2. drawCallback para contar el total general del pool de datos AJAX
         drawCallback: function(settings) {
             let api = this.api();
-            // rows().data() tiene TODO el listado cargado en memoria antes de filtros en pantalla
             let datosCompletos = api.rows().data().toArray();
             
             let cantCobrar = datosCompletos.filter(x => x.facturacion === 'Por Cobrar').length;
@@ -314,7 +498,6 @@ document.addEventListener("DOMContentLoaded", function(){
         ]
     });
 
-    // ... Conservá el submit del formulario, verObra, editar, cargarRepositorio y eliminar ...
     $('#formObra').submit(function(e){
         e.preventDefault();
         let formData = new FormData(this);
@@ -330,119 +513,6 @@ document.addEventListener("DOMContentLoaded", function(){
             }
         });
     });
-
-    window.verObra = function(id) {
-        window.editar(id);
-        setTimeout(() => {
-            $('#modalObraLabel').html('<i class="bi bi-eye me-2"></i> Detalles Completos de la Obra');
-            $('#formObra').find('input:not([type="file"]), select, textarea').prop('disabled', true);
-            $('#btnGuardarObra').hide();
-            $('#wrapperPresupuesto, #wrapperRepositorio').hide();
-            
-            let d = null;
-            tabla.rows().data().each(function(row) { if(row.id == id) d = row; });
-
-            if(d && d.presupuesto_archivo) {
-                $('#contenedorListaArchivos').removeClass('d-none');
-                $('#listaArchivosObra').prepend(`
-                    <li class="list-group-item list-group-item-dark d-flex justify-content-between align-items-center py-2 fw-semibold border-secondary">
-                        <a href="/contable/uploads/obras/${d.presupuesto_archivo}" target="_blank" class="text-decoration-none text-dark">
-                            <i class="bi bi-file-earmark-check-fill text-success me-2"></i> 📄 PRESUPUESTO ACEPTADO
-                        </a>
-                        <span class="badge bg-success rounded-pill">Principal</span>
-                    </li>
-                `);
-            }
-        }, 250);
-    }
-
-    window.editar = function(id){
-        let d = tabla.rows().data().toArray().find(x => x.id == id);
-        if(!d) return;
-
-        $('#formObra')[0].reset();
-        $('#verPresupuestoActual').html('');
-        $('#listaArchivosObra').html('');
-        $('#formObra').find('input, select, textarea').prop('disabled', false);
-        $('#btnGuardarObra').show();
-        $('#wrapperPresupuesto, #wrapperRepositorio').show();
-        $('#modalObraLabel').html('<i class="bi bi-pencil me-2"></i> Editar Datos de Obra');
-
-        cargarClientes(function() {
-            $('#id').val(d.id);
-            $('#nombre').val(d.nombre);
-            $('#cliente_id').val(d.cliente_id);
-            $('#responsable').val(d.responsable);
-            $('#direccion').val(d.direccion);
-            $('#nro_oc').val(d.nro_oc);
-            $('#fecha_inicio').val(d.fecha_inicio);
-            $('#fecha_fin').val(d.fecha_fin);
-            $('#tipo_obra').val(d.tipo_obra);
-            $('#detalle').val(d.detalle);
-            $('#estado').val(d.estado);
-            $('#facturacion').val(d.facturacion);
-
-            if(d.presupuesto_archivo) {
-                $('#verPresupuestoActual').html(`
-                    <a href="/contable/uploads/obras/${d.presupuesto_archivo}" target="_blank" class="btn btn-xs btn-link text-primary p-0">
-                        <i class="bi bi-file-earmark-pdf-fill"></i> Ver presupuesto actual
-                    </a>
-                `);
-            }
-            cargarRepositorio(d.id);
-        });
-        modalObraBS.show();
-    }
-
-    function cargarRepositorio(obraId) {
-        $.get('/contable/ajax/obras.php?accion=listar_archivos', { obra_id: obraId }, function(r) {
-            if(r.success && r.archivos.length > 0) {
-                $('#contenedorListaArchivos').removeClass('d-none');
-                let lista = $('#listaArchivosObra');
-                lista.empty();
-                r.archivos.forEach(arc => {
-                    lista.append(`
-                        <li class="list-group-item d-flex justify-content-between align-items-center py-2">
-                            <a href="/contable/uploads/obras/${arc.archivo}" target="_blank" class="text-decoration-none text-dark">
-                                <i class="bi bi-file-earmark text-primary me-2"></i> ${arc.nombre_original}
-                            </a>
-                            <button type="button" class="btn btn-sm text-danger p-0" title="Eliminar documento" onclick="eliminarArchivoRepo(${arc.id}, ${obraId})">
-                                <i class="bi bi-x-circle-fill"></i>
-                            </button>
-                        </li>
-                    `);
-                });
-            }
-        }, 'json');
-    }
-
-    window.eliminarArchivoRepo = function(archivoId, obraId) {
-        if(confirm('¿Desea remover este archivo del repositorio?')) {
-            $.post('/contable/ajax/obras.php?accion=eliminar_archivo', { id: archivoId }, function() {
-                cargarRepositorio(obraId);
-            }, 'json');
-        }
-    }
-
-    window.eliminar = function(id){
-        Swal.fire({
-            title: '¿Eliminar esta obra?',
-            text: "Se borrará permanentemente junto con su repositorio de archivos y presupuestos.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#212529',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Sí, eliminar',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                $.post('/contable/ajax/obras.php?accion=eliminar', {id}, () => {
-                    Swal.fire({ icon: 'success', title: 'Eliminado', text: 'La obra se borró correctamente.', timer: 1500, showConfirmButton: false });
-                    tabla.ajax.reload(null, false);
-                });
-            }
-        });
-    }
 });
 </script>
 

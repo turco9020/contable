@@ -24,8 +24,7 @@ if($accion == 'listar'){
         $where .= " AND f.usuario_id = $usuario";
     }
 
-    // Consulta limpia adaptada a las columnas reales de tu base de datos
-   // Consulta limpia adaptada a las columnas reales de tu base de datos
+    // Consulta limpia adaptada con f.obra_id incorporado
     $sql = "
         SELECT 
             f.id,
@@ -42,6 +41,7 @@ if($accion == 'listar'){
             f.cliente_id,
             f.tipo_comprobante_id,
             f.centro_costo_id,
+            f.obra_id,
             f.estado,
             f.usuario_id,
             IFNULL(u.usuario, 'Sistema') AS usuario_nombre,
@@ -94,6 +94,10 @@ if($accion == 'guardar'){
     $centro_costo_id = (int)$_POST['centro_costo_id'];
     $estado = $conn->real_escape_string(trim($_POST['estado'] ?? 'DEBE'));
     
+    // CAPTURA Y PROCESAMIENTO DEL CAMPO NUEVO (OBRA)
+    // Si viene vacío del select, se almacena como un valor NULL en MySQL de manera segura
+    $obra_id = !empty($_POST['obra_id']) ? (int)$_POST['obra_id'] : "NULL";
+    
     // Procesar archivo
     $archivo_nombre = null;
     if(isset($_FILES['archivo']) && $_FILES['archivo']['error'] == 0){
@@ -123,6 +127,7 @@ if($accion == 'guardar'){
                     total=$total, 
                     observaciones='$observaciones',
                     centro_costo_id=$centro_costo_id,
+                    obra_id=$obra_id,
                     estado='$estado'";
 
         if($archivo_nombre){
@@ -138,12 +143,11 @@ if($accion == 'guardar'){
         
     } else {
         // NUEVO 
-        $sql = "INSERT INTO facturas_venta (fecha, tipo_comprobante_id, cliente_id, punto_venta, nro_factura, fecha_vencimiento, detalle, neto, iva, total, observaciones, centro_costo_id, archivo, estado, usuario_id) 
-                VALUES ('$fecha', $tipo_comprobante_id, $cliente_id, $punto_venta, $nro_factura, $fecha_vencimiento, '$detalle', $neto, $iva, $total, '$observaciones', $centro_costo_id, " . ($archivo_nombre ? "'$archivo_nombre'" : "NULL") . ", '$estado', $usuario)";
+        $sql = "INSERT INTO facturas_venta (fecha, tipo_comprobante_id, cliente_id, punto_venta, nro_factura, fecha_vencimiento, detalle, neto, iva, total, observaciones, centro_costo_id, obra_id, archivo, estado, usuario_id) 
+                VALUES ('$fecha', $tipo_comprobante_id, $cliente_id, $punto_venta, $nro_factura, $fecha_vencimiento, '$detalle', $neto, $iva, $total, '$observaciones', $centro_costo_id, $obra_id, " . ($archivo_nombre ? "'$archivo_nombre'" : "NULL") . ", '$estado', $usuario)";
     }
     
     if($conn->query($sql)){
-        // Si el UPDATE no afectó filas (porque el usuario_id no coincidía), tirará OK pero no cambiará nada en la BD
         echo json_encode(['status' => 'OK']);
     } else {
         echo json_encode(['status' => 'ERROR', 'msg' => $conn->error]);

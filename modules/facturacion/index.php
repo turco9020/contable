@@ -107,6 +107,12 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
                             <select name="centro_costo_id" id="centro_costo_id" class="form-select border-secondary text-dark" style="background-color: #fef9e7" required></select>
                         </div>
 
+                        <!-- NUEVO CAMPO: ASIGNACIÓN DE OBRA -->
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold text-dark"><i class="bi bi-cone-striped me-1"></i> Asignar a Obra (Opcional)</label>
+                            <select name="obra_id" id="obra_id" class="form-select border-dark"></select>
+                        </div>
+
                         <div class="col-md-4">
                             <label class="form-label">Estado de Pago</label>
                             <select name="estado" id="estado" class="form-select" required>
@@ -201,17 +207,13 @@ document.addEventListener("DOMContentLoaded", function() {
                 extend: 'excelHtml5',
                 text: ' Excel',
                 className: 'btn btn-success btn-sm',
-                exportOptions: {
-                    columns: [0, 1, 2, 3, 4, 5, 6, 7, 8]
-                }
+                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7, 8] }
             },
             {
                 extend: 'print',
                 text: ' Imprimir',
                 className: 'btn btn-secondary btn-sm',
-                exportOptions: {
-                    columns: [0, 1, 2, 3, 4, 5, 6, 7, 8]
-                }
+                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7, 8] }
             },
             { 
                 extend: 'colvis', 
@@ -336,7 +338,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     // ==========================================
-    // PARSER AFIP MEDIANTE PDF.JS (REVISADO)
+    // PARSER AFIP MEDIANTE PDF.JS
     // ==========================================
     $('#archivo_escanear').on('change', function(e) {
         let file = e.target.files[0];
@@ -378,7 +380,7 @@ document.addEventListener("DOMContentLoaded", function() {
                                 }
                             }
 
-                            // 2. FECHA VENCIMIENTO (REPARADO BUG)
+                            // 2. FECHA VENCIMIENTO
                             let indexVto = fragmentos.findIndex(f => f.toLowerCase().includes("vto. para el pago") || f.toLowerCase().includes("vto. para"));
                             if(indexVto !== -1) {
                                 for(let i = indexVto; i <= indexVto + 5; i++) {
@@ -479,22 +481,34 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
-function cargarSelects() {
-    $.get('/contable/ajax/clientes.php?accion=listar', function(r) {
+function cargarSelects(callback = null) {
+    let peticiones = [];
+
+    peticiones.push($.get('/contable/ajax/clientes.php?accion=listar', function(r) {
         let s = $('#cliente_id').empty().append('<option value="">Seleccione Cliente</option>');
         globalClientesParaMapeo = r.data ? r.data : [];
         globalClientesParaMapeo.forEach(c => s.append(`<option value="${c.id}">${c.nombre}</option>`));
-    }, 'json');
+    }, 'json'));
 
-    $.get('/contable/ajax/tipos_comprobante.php?accion=listar', function(r) {
+    peticiones.push($.get('/contable/ajax/tipos_comprobante.php?accion=listar', function(r) {
         let s = $('#tipo_comprobante_id').empty().append('<option value="">Seleccione Tipo</option>');
         if(r.data) r.data.forEach(x => s.append(`<option value="${x.id}">${x.nombre}</option>`));
-    }, 'json');
+    }, 'json'));
 
-    $.get('/contable/ajax/centros.php?accion=listar', function(r) {
+    peticiones.push($.get('/contable/ajax/centros.php?accion=listar', function(r) {
         let s = $('#centro_costo_id').empty().append('<option value="">Seleccione Centro</option>');
         if(r.data) r.data.forEach(x => s.append(`<option value="${x.id}">${x.nombre}</option>`));
-    }, 'json');
+    }, 'json'));
+
+    // NUEVA CARGA: LLENAR EL SELECT DE OBRAS ACTIVAS
+    peticiones.push($.get('/contable/ajax/obras.php?accion=listar', function(r) {
+        let s = $('#obra_id').empty().append('<option value="">-- Sin Obra Asignada --</option>');
+        if(r.data) r.data.forEach(x => s.append(`<option value="${x.id}">🚧 ${x.nombre} [ID: ${x.id}]</option>`));
+    }, 'json'));
+
+    if(callback) {
+        $.when.apply($, peticiones).then(callback);
+    }
 }
 
 window.abrirModal = function() {
@@ -507,6 +521,9 @@ window.abrirModal = function() {
     $('#estado').val('DEBE');
     $('#id').val('');
     $('#archivo_actual').html('');
+    
+    // Recarga los selects por consistencia al abrir
+    cargarSelects();
     modalFactura.show();
 }
 
@@ -538,11 +555,13 @@ window.editarFactura = function(data) {
     $('#observaciones').val(data.observaciones);
     $('#estado').val(data.estado ? data.estado : 'DEBE');
 
-    setTimeout(() => {
+    // Sincronizamos las llamadas asíncronas antes de setear los valores en los selectores
+    cargarSelects(function() {
         $('#tipo_comprobante_id').val(data.tipo_comprobante_id);
         $('#cliente_id').val(data.cliente_id);
         $('#centro_costo_id').val(data.centro_costo_id);
-    }, 100);
+        $('#obra_id').val(data.obra_id || ""); // MAPEO DEL ID DE OBRA
+    });
 
     if(data.archivo){
         $('#archivo_actual').html(`<a href="/contable/uploads/facturacion/${data.archivo}" target="_blank" class="btn btn-sm btn-dark">Ver archivo actual</a>`);

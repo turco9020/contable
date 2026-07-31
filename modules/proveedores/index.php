@@ -142,7 +142,7 @@ document.addEventListener("DOMContentLoaded", function(){
             {
                 extend: 'excel',
                 text: 'Excel',
-                className: 'btn btn-sm btn-secondary',
+                className: 'btn btn-sm btn-success',
                 exportOptions: {
                     columns: ':not(:last-child)'
                 }

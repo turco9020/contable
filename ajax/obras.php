@@ -24,7 +24,7 @@ function eliminarDirectorioCompleto($dir) {
 
 // ================= LISTAR OBRAS =================
 if($accion == 'listar'){
-    // Reemplazá 'u.nombre' por la columna real (ej: u.username, u.usuario, etc.)
+    // Se incluye 'o.responsable' y 'o.facturacion' en la consulta
     $sql = "SELECT o.*, c.nombre as cliente, u.usuario as usuario_nombre
             FROM obras o
             LEFT JOIN clientes c ON c.id = o.cliente_id
@@ -46,6 +46,7 @@ if($accion == 'guardar'){
 
     $nombre = $conn->real_escape_string($_POST['nombre']);
     $cliente_id = $_POST['cliente_id'] ? intval($_POST['cliente_id']) : 'NULL';
+    $responsable = $conn->real_escape_string($_POST['responsable']); // NUEVO
     $direccion = $conn->real_escape_string($_POST['direccion']);
     $nro_oc = $conn->real_escape_string($_POST['nro_oc']);
     $fecha_inicio = $conn->real_escape_string($_POST['fecha_inicio']);
@@ -53,31 +54,31 @@ if($accion == 'guardar'){
     $tipo_obra = $conn->real_escape_string($_POST['tipo_obra']);
     $detalle = $conn->real_escape_string($_POST['detalle']);
     $estado = $conn->real_escape_string($_POST['estado']);
+    $facturacion = $conn->real_escape_string($_POST['facturacion']); // NUEVO
 
     // Validamos y formateamos el ID de usuario usando la variable capturada arriba
     $usuario_id_db = ($usuario_logueado > 0) ? intval($usuario_logueado) : 'NULL';
 
     if($id){
-        // En la edición mantenemos los datos operativos. 
-        // Si querés guardar quién la modificó por última vez, podés agregar: usuario_id=$usuario_id_db
         $sql = "UPDATE obras SET
             nombre='$nombre',
             cliente_id=$cliente_id,
+            responsable='$responsable',
             direccion='$direccion',
             nro_oc='$nro_oc',
             fecha_inicio='$fecha_inicio',
             fecha_fin=$fecha_fin,
             tipo_obra='$tipo_obra',
             detalle='$detalle',
-            estado='$estado'
+            estado='$estado',
+            facturacion='$facturacion'
         WHERE id=$id";
         
         $conn->query($sql);
         $obra_id = $id;
     } else {
-        // En el registro nuevo usamos la variable homologada de forma segura
-        $sql = "INSERT INTO obras (nombre, cliente_id, direccion, nro_oc, fecha_inicio, fecha_fin, tipo_obra, detalle, estado, usuario_id)
-        VALUES ('$nombre',$cliente_id,'$direccion','$nro_oc','$fecha_inicio',$fecha_fin,'$tipo_obra','$detalle','$estado', $usuario_id_db)";
+        $sql = "INSERT INTO obras (nombre, cliente_id, responsable, direccion, nro_oc, fecha_inicio, fecha_fin, tipo_obra, detalle, estado, facturacion, usuario_id)
+        VALUES ('$nombre', $cliente_id, '$responsable', '$direccion', '$nro_oc', '$fecha_inicio', $fecha_fin, '$tipo_obra', '$detalle', '$estado', '$facturacion', $usuario_id_db)";
         
         $conn->query($sql);
         $obra_id = $conn->insert_id;

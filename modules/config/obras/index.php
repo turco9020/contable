@@ -15,6 +15,22 @@ include '../../../includes/sidebar.php';
         </button>
     </div>
 
+    <!-- Pestañas de Navegación de Estados de Facturas -->
+    <ul class="nav nav-tabs mb-3" id="tabFacturas" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-semibold text-dark" id="cobrar-tab" data-bs-toggle="tab" data-bs-target="#cobrar" type="button" role="tab" onclick="filtrarPestaña('POR_COBRAR')">
+                <i class="bi bi-wallet2 me-1 text-secondary"></i> Por Cobrar 
+                <span class="badge bg-secondary ms-1" id="cant-cobrar">0</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-semibold text-dark" id="pagadas-tab" data-bs-toggle="tab" data-bs-target="#pagadas" type="button" role="tab" onclick="filtrarPestaña('PAGADAS')">
+                <i class="bi bi-check-circle me-1 text-secondary"></i> Pagadas 
+                <span class="badge bg-secondary ms-1" id="cant-pagadas">0</span>
+            </button>
+        </li>
+    </ul>
+
     <!-- Contenedor de la Tabla -->
     <div class="card shadow-sm border-0 p-3">
         <div class="table-responsive">
@@ -59,31 +75,21 @@ include '../../../includes/sidebar.php';
                             <input name="nombre" id="nombre" class="form-control" required placeholder="Ej: Remodelación Oficinas">
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-semibold">Cliente Asignado</label>
-                            <select name="cliente_id" id="cliente_id" class="form-select" required></select>
+                            <label class="form-label fw-semibold">Dirección de la Obra</label>
+                            <input name="direccion" id="direccion" class="form-control" placeholder="Ej: Av. Santa Fe 1234">
                         </div>
 
                         <!-- Fila 2 -->
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-semibold">Dirección de la Obra</label>
-                            <input name="direccion" id="direccion" class="form-control" placeholder="Ej: Av. Santa Fe 1234">
+                            <label class="form-label fw-semibold">Cliente Asignado</label>
+                            <select name="cliente_id" id="cliente_id" class="form-select" required></select>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-semibold">N° de OC</label>
-                            <input name="nro_oc" id="nro_oc" class="form-control" placeholder="Ej: OC-2026-88">
+                            <label class="form-label fw-semibold">Responsable a Cargo</label>
+                            <input name="responsable" id="responsable" class="form-control" placeholder="Ej: Ing. Carlos Gómez">
                         </div>
 
                         <!-- Fila 3 -->
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-semibold">Fecha de Inicio</label>
-                            <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-semibold">Fecha de Fin (Estimada/Real)</label>
-                            <input type="date" name="fecha_fin" id="fecha_fin" class="form-control">
-                        </div>
-
-                        <!-- Fila 4 -->
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-semibold">Tipo de Obra</label>
                             <select name="tipo_obra" id="tipo_obra" class="form-select" required>
@@ -93,14 +99,37 @@ include '../../../includes/sidebar.php';
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">N° de OC</label>
+                            <input name="nro_oc" id="nro_oc" class="form-control" placeholder="Ej: OC-2026-88">
+                        </div>
+
+                        <!-- Fila 4 -->
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Fecha de Inicio</label>
+                            <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Fecha de Fin (Estimada/Real)</label>
+                            <input type="date" name="fecha_fin" id="fecha_fin" class="form-control">
+                        </div>
+
+                        <!-- Fila 5 -->
+                        <div class="col-md-6 mb-3">
                             <label class="form-label fw-semibold">Estado Operativo</label>
                             <select name="estado" id="estado" class="form-select" required>
                                 <option value="ACTIVA">🟢 ACTIVA</option>
                                 <option value="FINALIZADA">🔴 FINALIZADA</option>
                             </select>
                         </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-semibold">Facturación</label>
+                            <select name="facturacion" id="facturacion" class="form-select" required>
+                                <option value="Por Cobrar">⏳ Por Cobrar</option>
+                                <option value="Pagadas">💵 Pagadas</option>
+                            </select>
+                        </div>
 
-                        <!-- Fila 5: Detalles -->
+                        <!-- Fila 6: Detalles -->
                         <div class="col-md-12 mb-3">
                             <label class="form-label fw-semibold">Detalles / Memoria Descriptiva</label>
                             <textarea name="detalle" id="detalle" class="form-control" rows="2" placeholder="Notas sobre el alcance del proyecto..."></textarea>
@@ -143,6 +172,13 @@ include '../../../includes/sidebar.php';
 <script>
 let modalObraBS;
 let tabla;
+let estadoFacturacionActual = 'POR_COBRAR'; // Estado inicial por defecto
+
+// Función global para filtrar desde las pestañas
+window.filtrarPestaña = function(estado) {
+    estadoFacturacionActual = estado;
+    tabla.draw(); // Redibuja la tabla aplicando el filtro personalizado
+}
 
 function cargarClientes(callback = null){
     $.get('/contable/ajax/clientes.php?accion=listar', function(r){
@@ -175,6 +211,20 @@ window.abrirModal = function(modo) {
 document.addEventListener("DOMContentLoaded", function(){
     modalObraBS = new bootstrap.Modal(document.getElementById('modalObra'));
 
+    // 1. Filtro personalizado de DataTables basado en la pestaña activa
+    $.fn.dataTable.ext.search.push(
+        function(settings, data, dataIndex, rowData) {
+            let factura = rowData.facturacion; // Obtenemos el valor directo del objeto JSON
+            
+            if (estadoFacturacionActual === 'POR_COBRAR') {
+                return factura === 'Por Cobrar';
+            } else if (estadoFacturacionActual === 'PAGADAS') {
+                return factura === 'Pagadas';
+            }
+            return true;
+        }
+    );
+
     tabla = $('#tablaObras').DataTable({
         ajax: '/contable/ajax/obras.php?accion=listar',
         order: [[0, 'desc']],
@@ -186,17 +236,13 @@ document.addEventListener("DOMContentLoaded", function(){
                 extend: 'excelHtml5',
                 text: ' Excel',
                 className: 'btn btn-success btn-sm',
-                exportOptions: {
-                    columns: [0, 1, 2, 3, 4, 5, 6, 7, 8]
-                }
+                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7] }
             },
             {
                 extend: 'print',
                 text: ' Imprimir',
                 className: 'btn btn-secondary btn-sm',
-                exportOptions: {
-                    columns: [0, 1, 2, 3, 4, 5, 6, 7, 8]
-                }
+                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7] }
             },
             { 
                 extend: 'colvis', 
@@ -204,6 +250,18 @@ document.addEventListener("DOMContentLoaded", function(){
                 className: 'btn btn-sm btn-secondary' 
             }
         ],
+        // 2. drawCallback para contar el total general del pool de datos AJAX
+        drawCallback: function(settings) {
+            let api = this.api();
+            // rows().data() tiene TODO el listado cargado en memoria antes de filtros en pantalla
+            let datosCompletos = api.rows().data().toArray();
+            
+            let cantCobrar = datosCompletos.filter(x => x.facturacion === 'Por Cobrar').length;
+            let cantPagadas = datosCompletos.filter(x => x.facturacion === 'Pagadas').length;
+
+            $('#cant-cobrar').text(cantCobrar);
+            $('#cant-pagadas').text(cantPagadas);
+        },
         columns: [
             { data: 'id' },
             { data: 'nombre', className: 'fw-semibold' },
@@ -256,6 +314,7 @@ document.addEventListener("DOMContentLoaded", function(){
         ]
     });
 
+    // ... Conservá el submit del formulario, verObra, editar, cargarRepositorio y eliminar ...
     $('#formObra').submit(function(e){
         e.preventDefault();
         let formData = new FormData(this);
@@ -272,7 +331,6 @@ document.addEventListener("DOMContentLoaded", function(){
         });
     });
 
-    // ================= VER OBRA =================
     window.verObra = function(id) {
         window.editar(id);
         setTimeout(() => {
@@ -282,11 +340,7 @@ document.addEventListener("DOMContentLoaded", function(){
             $('#wrapperPresupuesto, #wrapperRepositorio').hide();
             
             let d = null;
-            tabla.rows().data().each(function(row) {
-                if(row.id == id) {
-                    d = row;
-                }
-            });
+            tabla.rows().data().each(function(row) { if(row.id == id) d = row; });
 
             if(d && d.presupuesto_archivo) {
                 $('#contenedorListaArchivos').removeClass('d-none');
@@ -302,13 +356,9 @@ document.addEventListener("DOMContentLoaded", function(){
         }, 250);
     }
 
-    // ================= EDITAR =================
     window.editar = function(id){
         let d = tabla.rows().data().toArray().find(x => x.id == id);
-        if(!d) {
-            console.error("No se encontraron los datos para la obra con ID: " + id);
-            return;
-        }
+        if(!d) return;
 
         $('#formObra')[0].reset();
         $('#verPresupuestoActual').html('');
@@ -322,6 +372,7 @@ document.addEventListener("DOMContentLoaded", function(){
             $('#id').val(d.id);
             $('#nombre').val(d.nombre);
             $('#cliente_id').val(d.cliente_id);
+            $('#responsable').val(d.responsable);
             $('#direccion').val(d.direccion);
             $('#nro_oc').val(d.nro_oc);
             $('#fecha_inicio').val(d.fecha_inicio);
@@ -329,6 +380,7 @@ document.addEventListener("DOMContentLoaded", function(){
             $('#tipo_obra').val(d.tipo_obra);
             $('#detalle').val(d.detalle);
             $('#estado').val(d.estado);
+            $('#facturacion').val(d.facturacion);
 
             if(d.presupuesto_archivo) {
                 $('#verPresupuestoActual').html(`

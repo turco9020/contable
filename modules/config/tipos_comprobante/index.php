@@ -4,7 +4,7 @@ include '../../../includes/sidebar.php';
 ?>
 
 <div class="topbar d-flex justify-content-between align-items-center">
-    <h5>Tipos de Comprobante</h5>
+    <h5 class="fw-bold"><i class="bi text-secondary me-2"></i>Tipos de Comprobantes</h5>
     <button class="btn btn-dark" onclick="abrirModal()">+ Nuevo</button>
 </div>
 

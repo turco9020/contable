@@ -14,7 +14,7 @@ if($res_users){
 ?>
 
 <div class="topbar d-flex justify-content-between align-items-center">
-    <h5>Cajas</h5>
+    <h5 class="fw-bold"><i class="bi text-secondary me-2"></i>Cajas</h5>
     <button class="btn btn-dark" onclick="abrirModal()">+ Nueva Caja</button>
 </div>
 

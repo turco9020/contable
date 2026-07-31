@@ -4,7 +4,7 @@ include '../../../includes/sidebar.php';
 ?>
 
 <div class="topbar d-flex justify-content-between">
-<h5>Categorías</h5>
+<h5 class="fw-bold"><i class="bi text-secondary me-2"></i>Categorias</h5>
 <button class="btn btn-dark" onclick="abrirModal()">+ Nuevo</button>
 </div>
 

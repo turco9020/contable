@@ -74,7 +74,7 @@ if($accion == 'listar'){
 }
 
 // =======================
-// GUARDAR / EDITAR
+// GUARDAR / EDITAR FACTURA
 // =======================
 if($accion == 'guardar'){
     header('Content-Type: application/json');
@@ -95,7 +95,6 @@ if($accion == 'guardar'){
     $estado = $conn->real_escape_string(trim($_POST['estado'] ?? 'DEBE'));
     
     // CAPTURA Y PROCESAMIENTO DEL CAMPO NUEVO (OBRA)
-    // Si viene vacío del select, se almacena como un valor NULL en MySQL de manera segura
     $obra_id = !empty($_POST['obra_id']) ? (int)$_POST['obra_id'] : "NULL";
     
     // Procesar archivo
@@ -156,7 +155,7 @@ if($accion == 'guardar'){
 }
 
 // =======================
-// ELIMINAR
+// ELIMINAR FACTURA
 // =======================
 if($accion == 'eliminar'){
     header('Content-Type: application/json');
@@ -180,8 +179,101 @@ if($accion == 'eliminar'){
         $conn->query("DELETE FROM facturas_venta WHERE id=$id $restriccion_usuario");
         echo json_encode(['status' => 'OK']);
     } else {
-        // Si no se encontró la fila (o no le pertenece al usuario) mandamos un error silencioso o controlado
         echo json_encode(['status' => 'ERROR', 'msg' => 'No autorizado o registro no encontrado.']);
+    }
+    exit;
+}
+
+// ==========================================
+// NUEVO: GUARDAR RETENCIÓN
+// ==========================================
+if($accion == 'guardar_retencion'){
+    header('Content-Type: application/json');
+    
+    $factura_id = (int)($_POST['ret_factura_id'] ?? 0);
+    $tipo_retencion_id = (int)($_POST['tipo_retencion_id'] ?? 0);
+    $nro_certificado = $conn->real_escape_string(trim($_POST['nro_certificado'] ?? ''));
+    $importe = (float)($_POST['importe_retencion'] ?? 0);
+    $fecha_retencion = $_POST['fecha_retencion'] ?? '';
+
+    if ($factura_id === 0 || $tipo_retencion_id === 0 || empty($fecha_retencion)) {
+        echo json_encode(['success' => false, 'message' => 'Faltan datos obligatorios.']);
+        exit;
+    }
+
+    // Procesar archivo adjunto del certificado
+    $archivo_nombre = null;
+    if (isset($_FILES['ret_archivo']) && $_FILES['ret_archivo']['error'] == 0) {
+        $ext = pathinfo($_FILES['ret_archivo']['name'], PATHINFO_EXTENSION);
+        $archivo_nombre = 'RET_' . $factura_id . '_' . time() . '_' . rand(1000,9999) . '.' . $ext;
+        $ruta_destino = $_SERVER['DOCUMENT_ROOT'] . '/contable/uploads/retenciones/';
+        
+        if (!file_exists($ruta_destino)) {
+            mkdir($ruta_destino, 0777, true);
+        }
+        
+        move_uploaded_file($_FILES['ret_archivo']['tmp_name'], $ruta_destino . $archivo_nombre);
+    }
+
+    $sql = "INSERT INTO retenciones_venta (factura_id, tipo_retencion_id, nro_certificado, importe, fecha_retencion, archivo, usuario_id) 
+            VALUES ($factura_id, $tipo_retencion_id, '$nro_certificado', $importe, '$fecha_retencion', " . ($archivo_nombre ? "'$archivo_nombre'" : "NULL") . ", $usuario)";
+
+    if($conn->query($sql)){
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'message' => $conn->error]);
+    }
+    exit;
+}
+
+// ==========================================
+// NUEVO: LISTAR RETENCIONES DE UNA FACTURA
+// ==========================================
+if($accion == 'listar_retenciones'){
+    header('Content-Type: application/json');
+    $factura_id = (int)($_GET['factura_id'] ?? 0);
+
+    $sql = "SELECT r.id, r.nro_certificado, r.importe, r.fecha_retencion, r.archivo, t.nombre AS tipo_nombre 
+            FROM retenciones_venta r
+            LEFT JOIN tipos_retenciones t ON r.tipo_retencion_id = t.id
+            WHERE r.factura_id = $factura_id 
+            ORDER BY r.id DESC";
+
+    $res = $conn->query($sql);
+    
+    if(!$res){
+        echo json_encode(["success" => false, "message" => $conn->error]);
+        exit;
+    }
+    
+    $data = [];
+    while($row = $res->fetch_assoc()){
+        $data[] = $row;
+    }
+    
+    echo json_encode(['success' => true, 'data' => $data]);
+    exit;
+}
+
+// ==========================================
+// NUEVO: ELIMINAR RETENCIÓN
+// ==========================================
+if($accion == 'eliminar_retencion'){
+    header('Content-Type: application/json');
+    $id = (int)$_POST['id'];
+
+    // Buscamos si la retención tiene un archivo físico asociado para eliminarlo
+    $res = $conn->query("SELECT archivo FROM retenciones_venta WHERE id=$id");
+    if($row = $res->fetch_assoc()){
+        if(!empty($row['archivo'])){
+            $path = $_SERVER['DOCUMENT_ROOT'] . '/contable/uploads/retenciones/' . $row['archivo'];
+            if(file_exists($path)) @unlink($path);
+        }
+        
+        $conn->query("DELETE FROM retenciones_venta WHERE id=$id");
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Registro no encontrado.']);
     }
     exit;
 }

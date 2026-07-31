@@ -194,6 +194,7 @@
             <a href="/contable/modules/config/centros/" class="menu-link">Centros de costo</a>
             <a href="/contable/modules/config/medios_pago/" class="menu-link">Medios de Pago</a>
             <a href="/contable/modules/config/tipos_comprobante/" class="menu-link">Tipos de Comprobante</a>
+            <a href="/contable/modules/config/retenciones/" class="menu-link">Tipos de Retenciones</a>
             <a href="/contable/modules/config/cajas/" class="menu-link">Cajas</a>
                 <hr>
                 <a href="/contable/modules/usuarios/" class="menu-link"><i class="bi bi-people"></i> Usuarios</a>

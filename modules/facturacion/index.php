@@ -165,6 +165,76 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
     </div>
 </div>
 
+<!-- MODAL GESTIÓN DE RETENCIONES -->
+<div class="modal fade" id="modalRetenciones" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-percent me-2"></i> Retenciones Aplicadas - Factura <span id="lblFacturaRetencion"></span></h5>
+                <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-4">
+                    <!-- Formulario de Carga Directa -->
+                    <div class="col-md-5 border-end">
+                        <h6 class="fw-bold mb-3 text-secondary">Cargar Certificado de Retención</h6>
+                        <form id="formRetencion" enctype="multipart/form-data">
+                            <input type="hidden" name="ret_factura_id" id="ret_factura_id">
+                            
+                            <div class="mb-2">
+                                <label class="form-label small fw-semibold">Tipo de Retención</label>
+                                <select name="tipo_retencion_id" id="ret_tipo_retencion_id" class="form-select form-select-sm" required>
+                                    <option value="">Cargando opciones...</option>
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-semibold">Nro. de Certificado / Comprobante</label>
+                                <input type="text" name="nro_certificado" class="form-control form-control-sm" placeholder="Ej: 001-23948" required>
+                            </div>
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold">Fecha Emisión</label>
+                                    <input type="date" name="fecha_retencion" id="ret_fecha" class="form-control form-control-sm" required>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold">Importe ($)</label>
+                                    <input type="number" step="0.01" name="importe_retencion" class="form-control form-control-sm" placeholder="0.00" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Adjuntar Comprobante (PDF / Imagen)</label>
+                                <input type="file" name="ret_archivo" class="form-control form-control-sm" accept="application/pdf,image/*">
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-dark w-100"><i class="bi bi-plus-circle me-1"></i> Registrar Retención</button>
+                        </form>
+                    </div>
+                    
+                    <!-- Listado en Tiempo Real -->
+                    <div class="col-md-7">
+                        <h6 class="fw-bold mb-3 text-secondary">Historial de Retenciones Declaradas</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered table-striped align-middle" style="font-size:0.85rem;">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Tipo</th>
+                                        <th>Certificado</th>
+                                        <th class="text-end">Monto</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyRetenciones">
+                                    <!-- Carga dinámica vía AJAX -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/footer.php'; ?>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
@@ -176,6 +246,11 @@ let tabla;
 let modalFactura;
 let globalClientesParaMapeo = [];
 let estadoPestañaActual = 'POR_COBRAR';
+
+// ==========================================
+// VARIABLES DE RETENCIONES
+// ==========================================
+let modalRetencionesBS;
 
 $.fn.dataTable.ext.search.push(
     function(settings, data, dataIndex, rowData) {
@@ -192,6 +267,33 @@ $.fn.dataTable.ext.search.push(
 
 document.addEventListener("DOMContentLoaded", function() {
     modalFactura = new bootstrap.Modal(document.getElementById('modalFactura'));
+    
+    // ==========================================
+    // INICIALIZACIÓN DEL MODAL DE RETENCIONES (PUNTO C)
+    // ==========================================
+    modalRetencionesBS = new bootstrap.Modal(document.getElementById('modalRetenciones'));
+    
+    // Handler para guardar retención de forma asíncrona[cite: 7]
+    $('#formRetencion').submit(function(e) {
+        e.preventDefault();
+        let formData = new FormData(this);
+        let facId = $('#ret_factura_id').val();
+        
+        $.ajax({
+            url: '/contable/ajax/facturacion.php?accion=guardar_retencion',
+            type: 'POST',
+            data: formData,
+            contentType: false,
+            processData: false,
+            success: function(r) {
+                $('#formRetencion')[0].reset();
+                $('#ret_factura_id').val(facId);
+                // Setea fecha actual por comodidad en la re-carga
+                $('#ret_fecha').val(new Date().toISOString().split('T')[0]); 
+                refrescarTablaRetenciones(facId);
+            }
+        });
+    });
 
     cargarSelects();
 
@@ -308,9 +410,13 @@ document.addEventListener("DOMContentLoaded", function() {
                 className: 'text-center',
                 render: function(d) {
                     let btnArchivo = d.archivo ? `<a href="/contable/uploads/facturacion/${d.archivo}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver Adjunto"><i class="bi bi-file-earmark-pdf"></i></a>` : '';
+                    
                     return `
                         <div class="d-inline-flex gap-1">
                             ${btnArchivo}
+                            <button class="btn btn-sm btn-outline-dark" title="Gestionar Retenciones" onclick="abrirModalRetenciones(${d.id}, '${d.punto_venta}-${d.nro_factura}')">
+                                <i class="bi bi-percent"></i>
+                            </button>
                             <button class="btn btn-sm btn-outline-secondary" title="Ver Factura" onclick='verFactura(${JSON.stringify(d)})'>
                                 <i class="bi bi-eye"></i>
                             </button>
@@ -500,7 +606,6 @@ function cargarSelects(callback = null) {
         if(r.data) r.data.forEach(x => s.append(`<option value="${x.id}">${x.nombre}</option>`));
     }, 'json'));
 
-    // NUEVA CARGA: LLENAR EL SELECT DE OBRAS ACTIVAS
     peticiones.push($.get('/contable/ajax/obras.php?accion=listar', function(r) {
         let s = $('#obra_id').empty().append('<option value="">-- Sin Obra Asignada --</option>');
         if(r.data) r.data.forEach(x => s.append(`<option value="${x.id}">🚧 ${x.nombre} [ID: ${x.id}]</option>`));
@@ -522,7 +627,6 @@ window.abrirModal = function() {
     $('#id').val('');
     $('#archivo_actual').html('');
     
-    // Recarga los selects por consistencia al abrir
     cargarSelects();
     modalFactura.show();
 }
@@ -555,12 +659,11 @@ window.editarFactura = function(data) {
     $('#observaciones').val(data.observaciones);
     $('#estado').val(data.estado ? data.estado : 'DEBE');
 
-    // Sincronizamos las llamadas asíncronas antes de setear los valores en los selectores
     cargarSelects(function() {
         $('#tipo_comprobante_id').val(data.tipo_comprobante_id);
         $('#cliente_id').val(data.cliente_id);
         $('#centro_costo_id').val(data.centro_costo_id);
-        $('#obra_id').val(data.obra_id || ""); // MAPEO DEL ID DE OBRA
+        $('#obra_id').val(data.obra_id || "");
     });
 
     if(data.archivo){
@@ -646,5 +749,70 @@ function actualizarBadgesPestañas(datosFilas) {
 
     $('#cant-cobrar').text(contadorCobrar);
     $('#cant-pagadas').text(contadorPagadas);
+}
+
+// ==========================================
+// FUNCIONES GLOBALES DE RETENCIONES (PUNTO C)
+// ==========================================
+window.abrirModalRetenciones = function(facturaId, nroFacturaCompleto) {
+    $('#formRetencion')[0].reset();
+    $('#ret_factura_id').val(facturaId);
+    $('#lblFacturaRetencion').text(nroFacturaCompleto);
+    $('#ret_fecha').val(new Date().toISOString().split('T')[0]); // Fecha de hoy por defecto
+    
+    // 1. Poblamos el select desde el nuevo módulo de configuración
+    $.get('/contable/ajax/tipos_retenciones.php?accion=listar', function(r) {
+        let select = $('#ret_tipo_retencion_id').empty();
+        select.append('<option value="">Seleccione un tipo...</option>');
+        if(r.data && r.data.length > 0) {
+            r.data.forEach(tipo => {
+                select.append(`<option value="${tipo.id}">${tipo.nombre}</option>`);
+            });
+        } else {
+            select.append('<option value="">No hay retenciones configuradas</option>');
+        }
+    }, 'json');
+
+    // 2. Cargamos el historial de retenciones de la factura
+    refrescarTablaRetenciones(facturaId);
+    modalRetencionesBS.show();
+}
+
+function refrescarTablaRetenciones(facturaId) {
+    $.get('/contable/ajax/facturacion.php?accion=listar_retenciones', { factura_id: facturaId }, function(r) {
+        let tbody = $('#tbodyRetenciones').empty();
+        if(r.success && r.data.length > 0) {
+            r.data.forEach(x => {
+                let fecha = x.fecha_retencion.split('-').reverse().join('/');
+                let monto = '$ ' + Number(x.importe).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+                let btnAdjunto = x.archivo ? `<a href="/contable/uploads/retenciones/${x.archivo}" target="_blank" class="btn btn-xs btn-outline-danger py-0 px-1" title="Ver Adjunto"><i class="bi bi-file-pdf"></i></a>` : '<span class="text-muted small">Sin archivo</span>';
+                
+                tbody.append(`
+                    <tr>
+                        <td>${fecha}</td>
+                        <td><span class="badge bg-light text-dark border">${x.tipo_nombre}</span></td>
+                        <td>${x.nro_certificado}</td>
+                        <td class="text-end fw-bold">${monto}</td>
+                        <td class="text-center">
+                            <div class="d-inline-flex gap-1">
+                                ${btnAdjunto}
+                                <button class="btn btn-xs btn-outline-danger py-0 px-1" onclick="eliminarRetencion(${x.id}, ${facturaId})"><i class="bi bi-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                `);
+            });
+        } else {
+            tbody.append('<tr><td colspan="5" class="text-center text-muted py-3">No hay retenciones cargadas para esta factura.</td></tr>');
+        }
+    }, 'json');
+}
+
+window.eliminarRetencion = function(id, facturaId) {
+    if(confirm('¿Desea eliminar este registro de retención?')) {
+        $.post('/contable/ajax/facturacion.php?accion=eliminar_retencion', { id: id }, function() {
+            refrescarTablaRetenciones(facturaId);
+        });
+    }
 }
 </script>

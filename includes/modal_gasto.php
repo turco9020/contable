@@ -27,15 +27,15 @@
                         </div>
                         <div class="col-md-2">
                             <label class="form-label small fw-bold">Obra</label>
-                            <select name="obra_id" id="obra_id" class="form-select"></select>
+                            <select name="obra_id" id="obra_id" class="form-select" required></select>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label small fw-bold">Categoría</label>
-                            <select name="categoria_id" id="categoria_id" class="form-select"></select>
+                            <select name="categoria_id" id="categoria_id" class="form-select" required></select>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label small fw-bold">Subcategoría</label>
-                            <select name="subcategoria_id" id="subcategoria_id" class="form-select"></select>
+                            <select name="subcategoria_id" id="subcategoria_id" class="form-select" required></select>
                         </div>
                     </div>
 
@@ -46,11 +46,11 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-bold">Proveedor</label>
-                            <select name="proveedor_id" id="proveedor_id" class="form-select"></select>
+                            <select name="proveedor_id" id="proveedor_id" class="form-select" required></select>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-bold">Tipo Comprobante</label>
-                            <select name="tipo_comprobante_id" id="tipo_comprobante_id" class="form-select"></select>
+                            <select name="tipo_comprobante_id" id="tipo_comprobante_id" class="form-select" required></select>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-bold">Número de Comprobante</label>
@@ -58,7 +58,7 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-bold">Medio de Pago</label>
-                            <select name="medio_pago_id" id="medio_pago_id" class="form-select"></select>
+                            <select name="medio_pago_id" id="medio_pago_id" class="form-select" required></select>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-bold">Caja Afectada</label>
@@ -76,7 +76,7 @@
                         </div>
                         <div class="col-12">
                             <label class="form-label small fw-bold">Detalle / Concepto</label>
-                            <input type="text" name="detalle" id="detalle" class="form-control" placeholder="Breve descripción del egreso...">
+                            <textarea name="detalle" id="detalle" class="form-control" placeholder="Breve descripción del egreso..." required></textarea>
                         </div>
                     </div>
 
@@ -87,7 +87,7 @@
                         </div>
                         <div class="col-md-2">
                             <label class="form-label small fw-semibold text-muted mb-1">Neto Gravado</label>
-                            <input name="neto" id="neto" class="form-control text-end" placeholder="0,00">
+                            <input name="neto" id="neto" class="form-control text-end" placeholder="0,00" required>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label small fw-semibold text-muted mb-1">IVA</label>

@@ -151,7 +151,7 @@
     if (
         strcasecmp($rol_actual, 'admin') === 0 || 
         strcasecmp($rol_actual, 'contador') === 0 || 
-        strcasecmp($rol_actual, 'operador') === 0
+        strcasecmp($rol_actual, 'arquitecto') === 0
     ): ?>
         <a href="/contable/modules/facturacion/"><i class="bi bi-receipt"></i> Facturación</a>
     <?php endif; ?>
@@ -169,10 +169,18 @@
 
         <div id="menuOperaciones" class="submenu">
 
-            <a href="/contable/modules/clientes/" class="menu-link"><i class="bi bi-person-badge"></i> Clientes</a>
-            <a href="/contable/modules/proveedores/" class="menu-link"><i class="bi bi-building-gear"></i> Proveedores</a>
-            <a href="/contable/modules/cheques/" class="menu-link"><i class="bi bi-postage-heart"></i> Cheques</a>
+        <a href="/contable/modules/proveedores/" class="menu-link"><i class="bi bi-building-gear"></i> Proveedores</a>    
 
+    <?php 
+    $rol_actual = $_SESSION['rol'] ?? '';
+    if (
+        strcasecmp($rol_actual, 'admin') === 0 || 
+        strcasecmp($rol_actual, 'contador') === 0 || 
+        strcasecmp($rol_actual, 'arquitecto') === 0
+    ): ?>
+        <a href="/contable/modules/clientes/" class="menu-link"><i class="bi bi-person-badge"></i> Clientes</a>
+        <a href="/contable/modules/cheques/" class="menu-link"><i class="bi bi-postage-heart"></i> Cheques</a>
+        <?php endif; ?>
         </div>
 
     </div>
@@ -186,8 +194,15 @@
 
         <div id="menuConfig" class="submenu">
 
+    <?php $rol_actual = $_SESSION['rol'] ?? '';
+         if (
+        strcasecmp($rol_actual, 'admin') === 0 || 
+        strcasecmp($rol_actual, 'contador') === 0 || 
+        strcasecmp($rol_actual, 'arquitecto') === 0
+            ): ?>
             <a href="/contable/modules/config/obras/" class="menu-link">Obras</a>
-
+            <?php endif; ?>
+            
             <?php if(esAdmin()): ?>
             <a href="/contable/modules/config/categorias/" class="menu-link">Categorías</a>
             <a href="/contable/modules/config/subcategorias/" class="menu-link">Subcategorías</a>

@@ -28,33 +28,40 @@ while ($rol = $resultadoRoles->fetch_assoc()) {
 ?>
 
 <div class="content">
+
+    <!-- CABECERA DE LA PÁGINA -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h4 class="fw-bold text-dark mb-0"><i class="bi bi-people text-secondary me-2"></i> Gestión de Usuarios</h4>
+        <h4 class="fw-bold text-dark mb-0">
+            <i class="bi bi-people text-secondary me-2"></i> Gestión de Usuarios
+        </h4>
         <button type="button" class="btn btn-dark d-flex align-items-center" onclick="abrirModalUsuario('NUEVO')">
             <i class="bi bi-person-plus-fill me-2"></i> Nuevo Usuario
         </button>
     </div>
 
-    <!-- Contenedor de la Tabla -->
-    <div class="card shadow-sm border-0">
-        <div class="card-body">
+    <!-- CONTENEDOR DE LA TABLA -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body p-3">
             <div class="table-responsive">
-                <table class="table table-striped table-hover align-middle w-100" id="tablaUsuarios">
+                <table class="table table-bordered table-striped align-middle w-100 mb-0" id="tablaUsuarios">
                     <thead class="table-dark">
                         <tr>
-                            <th>ID</th>
+                            <th style="width: 15%;">ID</th>
                             <th>Usuario</th>
                             <th>Rol Asignado</th>
-                            <th class="text-center">Acciones</th>
+                            <th style="width: 15%;" class="text-center">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($resultadoUsuarios as $row): ?>
                             <tr>
                                 <td><?= $row['id'] ?></td>
-                                <td class="fw-semibold"><?= htmlspecialchars($row['usuario']) ?></td>
+                                <td class="fw-bold text-lowercase">
+                                    <i class="bi bi-person-circle me-2 text-secondary"></i>
+                                    <?= htmlspecialchars($row['usuario']) ?>
+                                </td>
                                 <td>
-                                    <span class="badge bg-secondary px-2 py-1"><?= htmlspecialchars($row['rol_nombre']) ?></span>
+                                    <span class="badge bg-secondary px-2 py-1 text-uppercase"><?= htmlspecialchars($row['rol_nombre']) ?></span>
                                 </td>
                                 <td class="text-center">
                                     <div class="d-inline-flex gap-1">
@@ -76,30 +83,53 @@ while ($rol = $resultadoRoles->fetch_assoc()) {
             </div>
         </div>
     </div>
+
+    <!-- SECCIÓN INFORMATIVA SOBRIA: ALCANCE DE USUARIOS Y CONTRASEÑAS -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-dark text-white fw-bold py-3">
+            <i class="bi bi-info-circle me-2"></i> Guía de Alcance de Usuarios y Manejo de Contraseñas
+        </div>
+        <div class="card-body p-4 bg-light">
+            <div class="row">
+                <div class="col-12">
+                    <div class="p-3 bg-white rounded border border-secondary-subtle">
+                        <span class="fw-bold text-dark d-block mb-2 border-bottom pb-1">
+                            <i class="bi bi-key-fill me-1 text-secondary"></i> POLÍTICA DE CREDENCIALES Y ALCANCE DE ACCESO
+                        </span>
+                        <ul class="small text-muted mb-0 ps-3">
+                            <li class="mb-1"><strong>Usuarios:</strong> Cada usuario puede ver las Cajas asignadas a él, Gastos, Facturas y cheques que cree, no puede ver los de otros.</li>
+                            <li class="mb-1"><strong>Creación de Usuarios:</strong> Cada usuario está asociado directamente a un Rol que condiciona sus permisos de acceso a las distintas funcionalidades en el sistema.</li>
+                            <li class="mb-1"><strong>Mantener Contraseña Actual:</strong> Al presionar <span class="badge bg-outline-primary text-dark border">Editar</span> un usuario existente, deje el campo de contraseña <u>en blanco</u> si no requiere cambiarla. El sistema mantendrá la clave encriptada guardada previamente.</li>
+                            <li><strong>Modificación de Contraseña:</strong> Para restablecer las credenciales, ingrese la nueva contraseña en el campo correspondiente (mínimo 6 caracteres). El cambio surtirá efecto en el siguiente inicio de sesión.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
-<!-- =======================================================================
-     MODAL PARA NUEVO / VER / EDITAR USUARIO
-     ======================================================================= -->
+<!-- MODAL PARA NUEVO / VER / EDITAR USUARIO -->
 <div class="modal fade" id="modalUsuario" data-bs-backdrop="static" tabindex="-1" aria-labelledby="modalUsuarioLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
+        <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title" id="modalUsuarioLabel"><i class="bi bi-person-plus me-2"></i> Registrar Usuario</h5>
+                <h5 class="modal-title fw-bold" id="modalUsuarioLabel"><i class="bi bi-person-plus me-2"></i> Registrar Usuario</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="formUsuario">
-                <div class="modal-body">
+                <div class="modal-body p-4">
                     <div id="alertaModal" class="alert alert-danger d-none"></div>
                     <input type="hidden" name="id" id="usuario_id">
 
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Nombre de Usuario</label>
+                        <label class="form-label fw-bold small">Nombre de Usuario</label>
                         <input type="text" name="user" id="input_user" class="form-control" placeholder="Ej: jgomez" required>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Contraseña</label>
+                        <label class="form-label fw-bold small">Contraseña</label>
                         <div class="input-group">
                             <input type="password" name="pass" id="input_pass" class="form-control" placeholder="Mínimo 6 caracteres" required>
                             <button class="btn btn-outline-secondary" type="button" id="btnTogglePassword" onclick="toggleMostrarContrasena()">
@@ -110,7 +140,7 @@ while ($rol = $resultadoRoles->fetch_assoc()) {
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Asignar Rol</label>
+                        <label class="form-label fw-bold small">Asignar Rol</label>
                         <select name="rol_id" id="select_rol" class="form-select" required>
                             <option value="" selected disabled>Seleccione un rol...</option>
                             <?php foreach ($rolesSelect as $rol): ?>
@@ -120,8 +150,8 @@ while ($rol = $resultadoRoles->fetch_assoc()) {
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-dark" id="btnGuardarUsuario">Guardar Usuario</button>
+                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-dark px-4" id="btnGuardarUsuario">Guardar Usuario</button>
                 </div>
             </form>
         </div>
@@ -134,6 +164,17 @@ while ($rol = $resultadoRoles->fetch_assoc()) {
 let modalUsuarioBS;
 
 $(document).ready(function() {
+
+    // POPUP DE ADVERTENCIA AL INGRESAR A LA PÁGINA
+    Swal.fire({
+        title: '¡AVISO IMPORTANTE!',
+        text: 'Antes de realizar cualquier modificación en usuarios o roles, por favor lee atentamente la descripción y alcance de cada uno en la sección inferior.',
+        icon: 'warning',
+        confirmButtonText: 'Entendido, continuar',
+        confirmButtonColor: '#212529',
+        allowOutsideClick: false
+    });
+
     modalUsuarioBS = new bootstrap.Modal(document.getElementById('modalUsuario'));
 
     $('#tablaUsuarios').DataTable({
@@ -144,10 +185,14 @@ $(document).ready(function() {
         }
     });
 
+    // Convierte el nombre de usuario a minúsculas automáticamente
+    $(document).on('input', '#input_user', function(){
+        this.value = this.value.toLowerCase();
+    });
+
     $('#formUsuario').on('submit', function(e) {
         e.preventDefault();
         
-        // Determinamos el destino del archivo según si hay un ID cargado
         let urlDestino = $('#usuario_id').val() ? 'editar_usuario.php' : 'procesar_usuario.php';
         
         $.ajax({
@@ -173,11 +218,9 @@ function abrirModalUsuario(modo, id = null, usuario = '', rol_id = null) {
     $('#alertaModal').addClass('d-none').text('');
     $('#formUsuario')[0].reset();
     
-    // Resetear input de password a tipo seguro oculto por defecto
     $('#input_pass').attr('type', 'password');
     $('#iconoPassword').removeClass('bi-eye-slash-fill').addClass('bi-eye-fill');
 
-    // Desbloquear campos por defecto
     $('#formUsuario').find('input, select').prop('disabled', false);
     $('#btnTogglePassword').prop('disabled', false);
     $('#btnGuardarUsuario').show();
@@ -196,7 +239,6 @@ function abrirModalUsuario(modo, id = null, usuario = '', rol_id = null) {
         $('#select_rol').val(rol_id);
         $('#input_pass').val('********').prop('required', false);
         
-        // Bloquear todo el formulario en vista de lectura
         $('#formUsuario').find('input, select').prop('disabled', true);
         $('#btnTogglePassword').prop('disabled', true);
         $('#btnGuardarUsuario').hide();
@@ -208,7 +250,6 @@ function abrirModalUsuario(modo, id = null, usuario = '', rol_id = null) {
         $('#input_user').val(usuario);
         $('#select_rol').val(rol_id);
         
-        // En edición el password no es obligatorio
         $('#input_pass').prop('required', false);
         $('#ayudaPassword').removeClass('d-none');
         modalUsuarioBS.show();

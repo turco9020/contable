@@ -34,6 +34,8 @@ include '../../includes/sidebar.php';
                         <th>CP</th>
                         <th>Whatsapp</th>
                         <th>Contacto</th>
+                        <th>CBU</th>
+                        <th>Alias</th>
                         <th>Observaciones</th>
                         <th>Acciones</th>
                     </tr>
@@ -44,80 +46,119 @@ include '../../includes/sidebar.php';
 
 </div>
 
-<!-- MODAL COMPLETO -->
-<div class="modal fade" id="modalProveedor">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
+<!-- MODAL COMPLETO (Estilo Gastos) -->
+<div class="modal fade" id="modalProveedor" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content border-0 shadow-lg">
 
-            <div class="modal-header">
-                <h5 class="modal-title">Proveedor</h5>
-                <button class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold" id="tituloModal">
+                    <i class="bi bi-truck me-2"></i>Gestión de Proveedor
+                </h5>
+                <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
 
-            <div class="modal-body">
-                <form id="formProveedor">
+            <div class="modal-body p-4">
+                <form id="formProveedor" enctype="multipart/form-data">
 
                     <input type="hidden" name="id" id="id">
 
-                    <div class="row">
-
-                        <div class="col-md-6">
-                            <input type="text" name="nombre" id="nombre" class="form-control mb-2 fw-bold" placeholder="Nombre" required>
+                    <!-- SECCIÓN 1: INFORMACIÓN GENERAL -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-12">
+                            <h6 class="text-uppercase text-secondary fw-bold small border-bottom pb-1 mb-2">1. Información General</h6>
                         </div>
-
-                        <div class="col-md-6">
-                            <input type="text" name="cuit" id="cuit" class="form-control mb-2 fw-bold" placeholder="CUIT">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Nombre / Razón Social</label>
+                            <input type="text" name="nombre" id="nombre" class="form-control fw-bold" placeholder="Nombre completo o Razón Social" required>
                         </div>
-
-                        <div class="col-md-6">
-                            <select name="condicion_fiscal" id="condicion_fiscal" class="form-control mb-2">
-                                <option value="">Condición Fiscal</option>
-                                <option>RESPONSABLE INSCRIPTO</option>
-                                <option>MONOTRIBUTISTA</option>
-                                <option>EXENTO</option>
-                                <option>NN</option>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">CUIT</label>
+                            <input type="text" name="cuit" id="cuit" class="form-control fw-bold" placeholder="00-00000000-0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Condición Fiscal</label>
+                            <select name="condicion_fiscal" id="condicion_fiscal" class="form-select" required>
+                                <option value="">-- Seleccionar --</option>
+                                <option value="RESPONSABLE INSCRIPTO">RESPONSABLE INSCRIPTO</option>
+                                <option value="MONOTRIBUTISTA">MONOTRIBUTISTA</option>
+                                <option value="EXENTO">EXENTO</option>
+                                <option value="NN">NN</option>
                             </select>
                         </div>
-
                         <div class="col-md-6">
-                            <input type="text" name="producto_servicio" id="producto_servicio" class="form-control mb-2" placeholder="Producto / Servicio">
+                            <label class="form-label small fw-bold">Producto / Servicio</label>
+                            <input type="text" name="producto_servicio" id="producto_servicio" class="form-control" placeholder="Rubro o actividad principal" required>
                         </div>
-
                         <div class="col-md-6">
-                            <input type="text" name="direccion" id="direccion" class="form-control mb-2" placeholder="Dirección">
+                            <label class="form-label small fw-bold">Persona de Contacto</label>
+                            <input type="text" name="contacto" id="contacto" class="form-control" placeholder="Nombre del contacto comercial/operativo">
                         </div>
-
-                        <div class="col-md-6">
-                            <input type="text" name="localidad" id="localidad" class="form-control mb-2" placeholder="Localidad">
-                        </div>
-
-                        <div class="col-md-4">
-                            <input type="text" name="provincia" id="provincia" class="form-control mb-2" placeholder="Provincia">
-                        </div>
-
-                        <div class="col-md-2">
-                            <input type="text" name="cp" id="cp" class="form-control mb-2" placeholder="CP">
-                        </div>
-
-                        <div class="col-md-6">
-                            <input type="text" name="whatsapp" id="whatsapp" class="form-control mb-2" placeholder="Whatsapp">
-                        </div>
-
-                        <div class="col-md-6">
-                            <input type="text" name="telefono" id="telefono" class="form-control mb-2" placeholder="Teléfono">
-                        </div>
-
-                        <div class="col-md-6">
-                            <input type="text" name="contacto" id="contacto" class="form-control mb-2" placeholder="Persona de contacto">
-                        </div>
-
-                        <div class="col-md-12">
-                            <textarea name="observaciones" id="observaciones" class="form-control mb-2" placeholder="Observaciones"></textarea>
-                        </div>
-
                     </div>
 
-                    <button class="btn btn-dark w-100">Guardar</button>
+                    <!-- SECCIÓN 2: UBICACIÓN Y CONTACTO -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-12">
+                            <h6 class="text-uppercase text-secondary fw-bold small border-bottom pb-1 mb-2">2. Ubicación y Medios de Contacto</h6>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Dirección</label>
+                            <input type="text" name="direccion" id="direccion" class="form-control" placeholder="Calle y número" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Localidad</label>
+                            <input type="text" name="localidad" id="localidad" class="form-control" placeholder="Ciudad / Localidad" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Provincia</label>
+                            <input type="text" name="provincia" id="provincia" class="form-control" placeholder="Provincia" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold">CP</label>
+                            <input type="text" name="cp" id="cp" class="form-control" placeholder="Código Postal">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Teléfono</label>
+                            <input type="text" name="telefono" id="telefono" class="form-control" placeholder="Teléfono de línea o fijo" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">WhatsApp</label>
+                            <input type="text" name="whatsapp" id="whatsapp" class="form-control" placeholder="Número de celular con código de área">
+                        </div>
+                    </div>
+
+                    <!-- SECCIÓN 3: DATOS BANCARIOS Y ADJUNTO -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-12">
+                            <h6 class="text-uppercase text-secondary fw-bold small border-bottom pb-1 mb-2">3. Información Bancaria y Documentación</h6>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">CBU / CVU</label>
+                            <input type="text" name="cbu" id="cbu" class="form-control" placeholder="22 dígitos" maxlength="22">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Alias</label>
+                            <input type="text" name="alias" id="alias" class="form-control" placeholder="Ej: EMPRESA.PAGO.BANCO">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Archivo Adjunto</label>
+                            <input type="file" name="archivo" id="archivo" class="form-control">
+                            <div id="archivo_actual" class="mt-2"></div>
+                            <button type="button" id="btnEliminarArchivo" class="btn btn-sm btn-outline-danger w-100 mt-2" style="display:none;">
+                                <i class="bi bi-trash me-1"></i> Eliminar archivo actual
+                            </button>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-bold">Observaciones</label>
+                            <textarea name="observaciones" id="observaciones" class="form-control" rows="2" placeholder="Notas adicionales sobre este proveedor..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- BOTONES DE ACCIÓN -->
+                    <div class="d-flex justify-content-end gap-2 mt-3">
+                        <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-dark px-5">Guardar Proveedor</button>
+                    </div>
 
                 </form>
             </div>
@@ -130,8 +171,11 @@ include '../../includes/sidebar.php';
 
 <script>
 let tabla;
+let modalProveedor;
 
 document.addEventListener("DOMContentLoaded", function(){
+
+    modalProveedor = new bootstrap.Modal(document.getElementById('modalProveedor'));
 
     tabla = $('#tablaProveedores').DataTable({
         responsive: true,
@@ -182,15 +226,20 @@ document.addEventListener("DOMContentLoaded", function(){
             {data:'cp', visible:false, defaultContent:''},
             {data:'whatsapp', visible:false, defaultContent:''},
             {data:'contacto', visible:false, defaultContent:''},
+            {data:'cbu', visible:false, defaultContent:''},
+            {data:'alias', visible:false, defaultContent:''},
             {data:'observaciones', visible:false, defaultContent:''},
 
             {
                 data: null,
                 orderable: false,
-                className: 'text-center',
+                className: 'text-end',
                 render: function(data){
+                    let btnArchivo = data.archivo ? `<a href="/contable/uploads/proveedores/${data.archivo}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver Adjunto"><i class="bi bi-file-earmark-pdf"></i></a>` : '';
+
                     return `
                         <div class="d-inline-flex gap-1">
+                            ${btnArchivo}
                             <button class="btn btn-sm btn-outline-secondary" title="Ver Proveedor" onclick='ver(${JSON.stringify(data)})'>
                                 <i class="bi bi-eye"></i>
                             </button>
@@ -214,47 +263,98 @@ document.addEventListener("DOMContentLoaded", function(){
     window.abrirModal = function(){
         $('#formProveedor')[0].reset();
         $('#id').val('');
+        $('#archivo_actual').html('');
+        $('#btnEliminarArchivo').hide();
         $('#formProveedor input, textarea, select').prop('disabled', false);
-        $('#formProveedor button').show();
-        new bootstrap.Modal(document.getElementById('modalProveedor')).show();
+        $('#formProveedor button[type="submit"]').show();
+        modalProveedor.show();
     }
 
+    // ENVÍO DE FORMULARIO CON MULTIPART
     $('#formProveedor').submit(function(e){
         e.preventDefault();
 
-        $.post('/contable/ajax/proveedores.php?accion=guardar', $(this).serialize(), function(){
-            tabla.ajax.reload();
-            bootstrap.Modal.getInstance(document.getElementById('modalProveedor')).hide();
+        let formData = new FormData(this);
+
+        $.ajax({
+            url: '/contable/ajax/proveedores.php?accion=guardar',
+            type: 'POST',
+            data: formData,
+            contentType: false,
+            processData: false,
+            success: function(){
+                tabla.ajax.reload();
+                modalProveedor.hide();
+            }
         });
     });
 
     window.editar = function(data){
+        $('#formProveedor')[0].reset();
+        
         for(let k in data){
-            if(document.getElementById(k)){
+            if(document.getElementById(k) && k !== 'archivo'){
                 document.getElementById(k).value = data[k];
             }
         }
 
         $('#formProveedor input, textarea, select').prop('disabled', false);
-        $('#formProveedor button').show();
+        $('#formProveedor button[type="submit"]').show();
 
-        new bootstrap.Modal(document.getElementById('modalProveedor')).show();
+        if (data.archivo) {
+            $('#archivo_actual').html(`
+                <div class="alert alert-info py-1 px-2 mb-0 d-flex justify-content-between align-items-center">
+                    <small class="text-truncate">Archivo: <b>${data.archivo}</b></small>
+                    <a href="/contable/uploads/proveedores/${data.archivo}" target="_blank" class="btn btn-xs btn-dark">Ver</a>
+                </div>`);
+            $('#btnEliminarArchivo').show().data('id', data.id);
+        } else {
+            $('#archivo_actual').html('');
+            $('#btnEliminarArchivo').hide();
+        }
+
+        modalProveedor.show();
     }
 
     window.ver = function(data){
-        for(let k in data){
-            if(document.getElementById(k)){
-                document.getElementById(k).value = data[k];
-            }
-        }
-
-        $('#formProveedor input, textarea, select').prop('disabled', true);
-        $('#formProveedor button').hide();
-
-        new bootstrap.Modal(document.getElementById('modalProveedor')).show();
+        window.editar(data);
+        setTimeout(() => {
+            $('#formProveedor input, textarea, select').prop('disabled', true);
+            $('#formProveedor button[type="submit"], #btnEliminarArchivo').hide();
+        }, 100);
     }
 
-    // ACCIÓN ELIMINAR BLINDADA CON SWEETALERT2
+    // ELIMINAR ARCHIVO ADJUNTO
+    $(document).on('click', '#btnEliminarArchivo', function() {
+        let id = $(this).data('id');
+        
+        Swal.fire({
+            title: '¿Eliminar archivo adjunto?',
+            text: 'El documento se borrará permanentemente.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#212529',
+            confirmButtonText: 'Eliminar archivo',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post('/contable/ajax/proveedores.php?accion=eliminar_archivo', { id }, function() {
+                    Swal.fire({
+                        title: 'Adjunto Removido',
+                        text: 'El archivo fue eliminado con éxito.',
+                        icon: 'success',
+                        confirmButtonColor: '#212529'
+                    });
+                    $('#archivo_actual').html('');
+                    $('#btnEliminarArchivo').hide();
+                    tabla.ajax.reload();
+                });
+            }
+        });
+    });
+
+    // ELIMINAR PROVEEDOR COMPLETO
     window.eliminar = function(id) {
         Swal.fire({
             title: '¿Confirmación crítica?',
@@ -292,11 +392,11 @@ document.addEventListener("DOMContentLoaded", function(){
     }
 
     // MAYÚSCULAS AUTOMÁTICAS
-    $(document).on('input', 'input, textarea', function(){
+    $(document).on('input', 'input:not([type="file"]), textarea', function(){
         this.value = this.value.toUpperCase();
     });
 
-    // FORMATO CUIT
+    // FORMATO Y VALIDACIÓN DE CUIT Y CBU
     $('#cuit').on('input', function(){
         let val = this.value.replace(/\D/g, '').slice(0,11);
 
@@ -306,6 +406,10 @@ document.addEventListener("DOMContentLoaded", function(){
             val = val.replace(/^(\d{2})(\d{8})(\d{1})$/, '$1-$2-$3');
 
         this.value = val;
+    });
+
+    $('#cbu').on('input', function(){
+        this.value = this.value.replace(/\D/g, '').slice(0, 22);
     });
 
 });

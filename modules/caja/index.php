@@ -183,9 +183,9 @@ document.addEventListener("DOMContentLoaded", function(){
                 }
             },
             { 
-        extend: 'colvis', 
-        text: 'Columnas', 
-        className: 'btn btn-sm btn-secondary' 
+                extend: 'colvis', 
+                text: 'Columnas', 
+                className: 'btn btn-sm btn-secondary' 
             }
         ],
         columns: [
@@ -224,11 +224,11 @@ document.addEventListener("DOMContentLoaded", function(){
                 }
             },
             {
-            data: 'usuario_nombre',
-            visible: true, // ◄ ESTO HACE QUE NO SE MUESTRE EN LA PANTALLA
-            render: function(d) {
-                return d ? `<span class="badge bg-light text-dark border fw-normal"><i class="bi bi-person"></i> ${d}</span>` : '<span class="badge bg-light text-dark border fw-normal"><i class="bi bi-person"></i>Sistema</span>';
-            }
+                data: 'usuario_nombre',
+                visible: true,
+                render: function(d) {
+                    return d ? `<span class="badge bg-light text-dark border fw-normal"><i class="bi bi-person"></i> ${d}</span>` : '<span class="badge bg-light text-dark border fw-normal"><i class="bi bi-person"></i>Sistema</span>';
+                }
             },
             {
                 data: null,
@@ -246,11 +246,15 @@ document.addEventListener("DOMContentLoaded", function(){
                         }
                     }
 
-                    // CONTROL DE PERMISOS: Admin y Contador controlan todo. 
-                    // Operadores solo editan/eliminan si el origen es MANUAL y ellos son los creadores.
+                    // CONTROL DE PERMISOS MODIFICADO:
+                    // Si proviene de GASTO, se bloquea SIEMPRE para todos los usuarios.
+                    // Si es MANUAL, se edita si es admin/contador o si el usuario actual es el creador.
                     const rol = SESION_ROL.toLowerCase();
-                    const esEditable = (rol === 'admin' || rol === 'contador') || 
-                                       (d.origen === 'MANUAL' && d.usuario_id == SESION_USUARIO_ID);
+                    const esGasto = (d.origen === 'GASTO');
+                    const esEditable = !esGasto && (
+                        (rol === 'admin' || rol === 'contador') || 
+                        (d.origen === 'MANUAL' && d.usuario_id == SESION_USUARIO_ID)
+                    );
 
                     if(esEditable){
                         return `
@@ -268,14 +272,11 @@ document.addEventListener("DOMContentLoaded", function(){
                             </div>
                         `;
                     } else {
-                        // Si está bloqueado, dejamos el botón "Ver" para auditoría y un aviso descriptivo
+                        // Si viene de GASTO o está bloqueado, únicamente se renderiza el botón del adjunto (si existe) y la etiqueta de Bloqueado
                         return `
                             <div class="d-inline-flex gap-1 align-items-center justify-content-end">
                                 ${btnArchivo}
-                                <button class="btn btn-sm btn-outline-secondary" title="Ver Movimiento" onclick='verManual(${JSON.stringify(d)})'>
-                                    <i class="bi bi-eye"></i>
-                                </button>
-                                <span class="badge bg-light text-muted border py-1.5 px-2" title="Movimiento automático del sistema o creado por otro usuario" style="font-size: 0.75rem;">
+                                <span class="badge bg-light text-muted border py-1.5 px-2" title="Movimiento originado en Gastos o generado por otro usuario" style="font-size: 0.75rem;">
                                     <i class="bi bi-lock-fill text-secondary me-1"></i> Bloqueado
                                 </span>
                             </div>

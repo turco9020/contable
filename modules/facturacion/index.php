@@ -107,7 +107,6 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
                             <select name="centro_costo_id" id="centro_costo_id" class="form-select border-secondary text-dark" style="background-color: #fef9e7" required></select>
                         </div>
 
-                        <!-- NUEVO CAMPO: ASIGNACIÓN DE OBRA -->
                         <div class="col-md-8">
                             <label class="form-label fw-semibold text-dark"><i class="bi bi-cone-striped me-1"></i> Asignar a Obra (Opcional)</label>
                             <select name="obra_id" id="obra_id" class="form-select border-dark"></select>
@@ -273,7 +272,7 @@ document.addEventListener("DOMContentLoaded", function() {
     // ==========================================
     modalRetencionesBS = new bootstrap.Modal(document.getElementById('modalRetenciones'));
     
-    // Handler para guardar retención de forma asíncrona[cite: 7]
+    // Handler para guardar retención de forma asíncrona
     $('#formRetencion').submit(function(e) {
         e.preventDefault();
         let formData = new FormData(this);
@@ -407,7 +406,7 @@ document.addEventListener("DOMContentLoaded", function() {
             {
                 data: null,
                 orderable: false,
-                className: 'text-center',
+                className: 'text-end',
                 render: function(d) {
                     let btnArchivo = d.archivo ? `<a href="/contable/uploads/facturacion/${d.archivo}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver Adjunto"><i class="bi bi-file-earmark-pdf"></i></a>` : '';
                     
@@ -608,7 +607,7 @@ function cargarSelects(callback = null) {
 
     peticiones.push($.get('/contable/ajax/obras.php?accion=listar', function(r) {
         let s = $('#obra_id').empty().append('<option value="">-- Sin Obra Asignada --</option>');
-        if(r.data) r.data.forEach(x => s.append(`<option value="${x.id}">🚧 ${x.nombre} [ID: ${x.id}]</option>`));
+        if(r.data) r.data.forEach(x => s.append(`<option value="${x.id}">🚧 ${x.nombre}  [ID: ${x.id}]</option>`));
     }, 'json'));
 
     if(callback) {

@@ -83,7 +83,6 @@ include '../../includes/sidebar.php';
 <script>
 let modalGasto;
 let tabla;
-let buscadoresTom = {};
 
 window.aplicarFiltros = function() {
     tabla.ajax.reload();
@@ -148,20 +147,12 @@ function cargarCategorias(){
 }
 
 function cargarSubcategorias(categoria_id){
-    let s = $('#subcategoria_id');
-    
-    // Si ya existe instancia de TomSelect, destruirla para repoblar limpiamente
-    if (buscadoresTom['#subcategoria_id']) {
-        buscadoresTom['#subcategoria_id'].destroy();
-        delete buscadoresTom['#subcategoria_id'];
-    }
-
     if(!categoria_id){
-        s.html(`<option value="">-- Seleccionar --</option>`);
+        $('#subcategoria_id').html(`<option value="">-- Seleccionar --</option>`);
         return $.Deferred().resolve();
     }
-
-    return $.get('/contable/ajax/get_subcategorias.php', {categoria_id}, r=>{
+    return $.get('/contable/ajax/get_subcategorias.php',{categoria_id}, r=>{
+        let s=$('#subcategoria_id');
         s.empty().append(`<option value="">-- Seleccionar --</option>`);
         r.forEach(x=>{ s.append(`<option value="${x.id}">${x.nombre}</option>`); });
     },'json');
@@ -186,17 +177,23 @@ function cargarCajas(selector = '#caja_id'){
     },'json');
 }
 
+// Variable global para guardar las instancias del buscador y poder manipularlas
+let buscadoresTom = {};
+
 function aplicarBuscadores() {
-    const IDs = ['#proveedor_id', '#centro_costo_id', '#obra_id', '#categoria_id', '#subcategoria_id'];
+    // Lista de IDs de los selects a los que les queremos poner buscador
+    const IDs = ['#proveedor_id', '#centro_costo_id', '#obra_id', '#categoria_id'];
     
     IDs.forEach(id => {
         let el = document.querySelector(id);
         if (!el) return;
 
+        // Si ya tenía buscador, lo destruimos para actualizar los datos internos de forma segura
         if (buscadoresTom[id]) {
             buscadoresTom[id].destroy();
         }
 
+        // Inicializamos el buscador con la estética de Bootstrap 5
         buscadoresTom[id] = new TomSelect(el, {
             create: false,
             sortField: { field: "text", order: "asc" },
@@ -206,6 +203,7 @@ function aplicarBuscadores() {
     });
 }
 
+// Modificamos abrirModal para que aplique los buscadores una vez cargados los datos
 window.abrirModal = function(){
     $('#formGasto')[0].reset();
     $('#id').val('');
@@ -216,10 +214,9 @@ window.abrirModal = function(){
     
     $.when(cargarCentros(), cargarCajas(), cargarTipos(), cargarMedios(), cargarObras(), cargarCategorias(), cargarProveedores())
      .done(() => { 
-         cargarSubcategorias('').done(() => {
-             modalGasto.show();
-             setTimeout(aplicarBuscadores, 150); 
-         });
+         modalGasto.show();
+         // ◄ Agregamos el llamado justo cuando los datos terminaron de inyectarse en el HTML
+         setTimeout(aplicarBuscadores, 200); 
      });
 }
 
@@ -233,27 +230,27 @@ document.addEventListener("DOMContentLoaded", function() {
         dom: 'Bfrtip',
         order: [[1, 'desc']],
         buttons: [
-            { 
-                extend: 'excel', 
-                text: 'Excel', 
-                className: 'btn btn-sm btn-success',
-                exportOptions: {
-                    columns: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
-                }
-            },
-            {   extend: 'print', 
-                text: 'Imprimir', 
-                className: 'btn btn-sm btn-secondary',
-                exportOptions: {
-                    columns: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
-                }
-            },
-            { 
-                extend: 'colvis', 
-                text: 'Columnas', 
-                className: 'btn btn-sm btn-secondary' 
-            }
-        ],
+    { 
+        extend: 'excel', 
+        text: 'Excel', 
+        className: 'btn btn-sm btn-success',
+        exportOptions: {
+            columns: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16] // Índices 0-15 (16 columnas)
+        }
+    },
+    {   extend: 'print', 
+        text: 'Imprimir', 
+        className: 'btn btn-sm btn-secondary',
+        exportOptions: {
+            columns: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16] // Índices 0-15 (16 columnas)
+        }
+    },
+    { 
+        extend: 'colvis', 
+        text: 'Columnas', 
+        className: 'btn btn-sm btn-secondary' 
+    }
+    ],
         ajax: {
             url: '/contable/ajax/gastos.php?accion=listar',
             data: function(d) {
@@ -275,7 +272,7 @@ document.addEventListener("DOMContentLoaded", function() {
             { data: 'medio_pago', className: 'none' },
             { data: 'proveedor', defaultContent: '' },
             { data: 'detalle', className: 'none' },
-            { data: 'neto', className: 'none', render: d => renderMoneda(d) },
+            { data: 'neto', className: 'text-end', render: d => renderMoneda(d) },
             { data: 'iva', className: 'text-end', render: d => renderMoneda(d) },
             { data: 'ret_iibb', className: 'none', render: d => renderMoneda(d) },
             { data: 'otros_tributos', className: 'none', render: d => renderMoneda(d) },
@@ -285,11 +282,11 @@ document.addEventListener("DOMContentLoaded", function() {
             { data: 'categoria' },
             { data: 'subcategoria' },
             {
-                data: 'usuario_nombre',
-                visible: true,
-                render: function(d) {
-                    return d ? `<span class="badge bg-light text-dark border fw-normal"><i class="bi bi-person"></i> ${d}</span>` : '<span class="badge bg-light text-dark border fw-normal"><i class="bi bi-person"></i>Sistema</span>';
-                }
+            data: 'usuario_nombre',
+            visible: true, // ◄ ESTO HACE QUE NO SE MUESTRE EN LA PANTALLA
+            render: function(d) {
+                return d ? `<span class="badge bg-light text-dark border fw-normal"><i class="bi bi-person"></i> ${d}</span>` : '<span class="badge bg-light text-dark border fw-normal"><i class="bi bi-person"></i>Sistema</span>';
+            }
             },
             { 
                 data: null, 
@@ -321,20 +318,9 @@ document.addEventListener("DOMContentLoaded", function() {
         tabla.columns.adjust().responsive.recalc();
     });
 
-    // Evento al cambiar la categoría: refresca subcategorías y reactiva el buscador en ese campo
+    // Y reemplazala por esta versión compatible con el buscador:
     $(document).on('change', '#categoria_id', function() {
-        let catId = $(this).val();
-        cargarSubcategorias(catId).done(() => {
-            let el = document.querySelector('#subcategoria_id');
-            if (el) {
-                buscadoresTom['#subcategoria_id'] = new TomSelect(el, {
-                    create: false,
-                    sortField: { field: "text", order: "asc" },
-                    placeholder: "-- Seleccionar o Buscar --",
-                    allowEmptyOption: true
-                });
-            }
-        });
+        cargarSubcategorias($(this).val());
     });
 
     $('#neto, #iva, #ret_iibb, #otros_tributos').on('input', function() {
@@ -383,67 +369,57 @@ document.addEventListener("DOMContentLoaded", function() {
         window.editar(data);
         setTimeout(() => {
             $('#formGasto input, select').prop('disabled', true);
-            Object.keys(buscadoresTom).forEach(key => {
-                if(buscadoresTom[key]) buscadoresTom[key].disable();
-            });
             $('#formGasto button[type="submit"], #btnEliminarArchivo').hide();
         }, 500); 
     }
 
-    window.editar = function(data) {
-        $('#formGasto')[0].reset();
-        $('#formGasto input, select').prop('disabled', false); 
-        $('#formGasto button').show();
+window.editar = function(data) {
+    $('#formGasto')[0].reset();
+    $('#formGasto input, select').prop('disabled', false); 
+    $('#formGasto button').show();
 
-        $.when(
-            cargarCentros(), cargarCajas(), cargarCategorias(), cargarProveedores(), 
-            cargarTipos(), cargarMedios(), cargarObras()
-        ).done(function() {
-            // Llenamos los inputs y selects base
-            for (let k in data) {
-                let el = document.getElementById(k);
-                if (el && k !== 'archivo') { el.value = data[k]; }
-            }
-
-            $('#neto').trigger('input'); 
-
-            // Cargar subcategorías pasándole la categoría actual del gasto
-            let promesaSubcat = data.categoria_id ? cargarSubcategorias(data.categoria_id) : cargarSubcategorias('');
-
-            promesaSubcat.done(() => {
-                // Sincronizamos select nativo primero
-                $('#subcategoria_id').val(data.subcategoria_id);
-
-                // Aplicamos los buscadores a los demás campos
-                aplicarBuscadores();
-
-                // Seteamos explícitamente los valores en TomSelect
-                if (buscadoresTom['#proveedor_id']) buscadoresTom['#proveedor_id'].setValue(data.proveedor_id, true);
-                if (buscadoresTom['#centro_costo_id']) buscadoresTom['#centro_costo_id'].setValue(data.centro_costo_id, true);
-                if (buscadoresTom['#obra_id']) buscadoresTom['#obra_id'].setValue(data.obra_id, true);
-                if (buscadoresTom['#categoria_id']) buscadoresTom['#categoria_id'].setValue(data.categoria_id, true);
-                
-                // Forzamos el valor de subcategoría en TomSelect después de que sus <option> ya existen
-                if (buscadoresTom['#subcategoria_id'] && data.subcategoria_id) {
-                    buscadoresTom['#subcategoria_id'].setValue(data.subcategoria_id, true);
-                }
-            });
-        });
-
-        if (data.archivo) {
-            $('#archivo_actual').html(`
-                <div class="alert alert-info py-1 px-2 mb-0 d-flex justify-content-between align-items-center">
-                    <small>Archivo: <b>${data.archivo}</b></small>
-                    <a href="/contable/uploads/gastos/${data.archivo}" target="_blank" class="btn btn-xs btn-dark">Ver</a>
-                </div>`);
-            $('#btnEliminarArchivo').show().data('id', data.id);
-        } else {
-            $('#archivo_actual').html('');
-            $('#btnEliminarArchivo').hide();
+    $.when(
+        cargarCentros(), cargarCajas(), cargarCategorias(), cargarProveedores(), 
+        cargarTipos(), cargarMedios(), cargarObras()
+    ).done(function() {
+        for (let k in data) {
+            let el = document.getElementById(k);
+            if (el && k !== 'archivo') { el.value = data[k]; }
         }
 
-        modalGasto.show();
+        $('#neto').trigger('input'); 
+
+        if(data.categoria_id) {
+            cargarSubcategorias(data.categoria_id).done(() => {
+                $('#subcategoria_id').val(data.subcategoria_id);
+            });
+        }
+
+        // ◄ Aplicamos los buscadores y sincronizamos Tom Select con los valores que cargó la base de datos
+        setTimeout(() => {
+            aplicarBuscadores();
+            // Le avisamos a Tom Select qué item está seleccionado actualmente
+            if (buscadoresTom['#proveedor_id']) buscadoresTom['#proveedor_id'].setValue(data.proveedor_id);
+            if (buscadoresTom['#centro_costo_id']) buscadoresTom['#centro_costo_id'].setValue(data.centro_costo_id);
+            if (buscadoresTom['#obra_id']) buscadoresTom['#obra_id'].setValue(data.obra_id);
+            if (buscadoresTom['#categoria_id']) buscadoresTom['#categoria_id'].setValue(data.categoria_id);
+        }, 200);
+    });
+
+    if (data.archivo) {
+        $('#archivo_actual').html(`
+            <div class="alert alert-info py-1 px-2 mb-0 d-flex justify-content-between align-items-center">
+                <small>Archivo: <b>${data.archivo}</b></small>
+                <a href="/contable/uploads/gastos/${data.archivo}" target="_blank" class="btn btn-xs btn-dark">Ver</a>
+            </div>`);
+        $('#btnEliminarArchivo').show().data('id', data.id);
+    } else {
+        $('#archivo_actual').html('');
+        $('#btnEliminarArchivo').hide();
     }
+
+    modalGasto.show();
+}
 
     // ELIMINAR GASTO CON DOBLE CHECK DE SWEETALERT2
     window.eliminar = function(id) {

@@ -1,5 +1,4 @@
 <?php
-// Arrancamos la sesión de forma segura para poder verificar los roles e IDs de usuario
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -18,7 +17,6 @@ $rol_sesion = $_SESSION['rol'] ?? '';
 if($accion == 'saldos'){
     header('Content-Type: application/json');
 
-    // Restricción base por rol: Admin/Contador ven todo, Operador ve solo su caja asignada
     $whereCaja = "WHERE c.activa = 1";
     if (strcasecmp($rol_sesion, 'admin') !== 0 && strcasecmp($rol_sesion, 'contador') !== 0) {
         $whereCaja .= " AND c.usuario_id = $id_usuario_sesion";
@@ -76,7 +74,6 @@ if($accion == 'listar'){
         WHERE 1=1
     ";
 
-    // SEGURIDAD POR CAJA ASIGNADA: Si NO es Admin ni Contador, solo ve movimientos vinculados a su caja
     if (strcasecmp($rol_sesion, 'admin') !== 0 && strcasecmp($rol_sesion, 'contador') !== 0) {
         $sql .= " AND c.usuario_id = $id_usuario_sesion";
     }
@@ -104,10 +101,93 @@ if($accion == 'listar'){
 if($accion == 'guardar'){
 
     $id = $_POST['id'] ?? '';
-    
+    $tipo = $_POST['tipo'];
+
     // ---------------------------------------------------------------------
-    // VALIDACIÓN DE SEGURIDAD (EDICIÓN)
-    // Si no es Admin/Contador, no puede editar movimientos que no sean MANUALES o ajenos.
+    // LOGICA ESPECIAL PARA TRANSFERENCIAS NUEVAS
+    // Genera automáticamente los dos asientos en simultáneo con transacción
+    // ---------------------------------------------------------------------
+    if($tipo === 'TRANSFERENCIA' && empty($id)){
+        $caja_origen_id = (int)$_POST['caja_origen_id'];
+        $caja_destino_id = (int)$_POST['caja_destino_id'];
+
+        if($caja_origen_id === $caja_destino_id){
+            header('HTTP/1.1 400 Bad Request');
+            echo "La caja de origen y la caja de destino no pueden ser la misma.";
+            exit;
+        }
+
+        $fecha = $_POST['fecha'];
+        $concepto_base = $conn->real_escape_string(trim($_POST['concepto']));
+        $comprobante = $conn->real_escape_string(trim($_POST['comprobante'] ?? ''));
+        $importe = (float)$_POST['importe'];
+        $observaciones = $conn->real_escape_string(trim($_POST['observaciones'] ?? ''));
+
+        // Obtener nombres de las cajas
+        $resOrigen = $conn->query("SELECT nombre FROM cajas WHERE id = $caja_origen_id");
+        $resDestino = $conn->query("SELECT nombre FROM cajas WHERE id = $caja_destino_id");
+        $nombreOrigen = $resOrigen ? $resOrigen->fetch_assoc()['nombre'] : '';
+        $nombreDestino = $resDestino ? $resDestino->fetch_assoc()['nombre'] : '';
+
+        // Subir archivo adjunto si viene alguno
+        $archivo_nombre = null;
+        if(isset($_FILES['archivo']) && $_FILES['archivo']['error'] == 0){
+            $ext = strtolower(pathinfo($_FILES['archivo']['name'], PATHINFO_EXTENSION));
+            if(in_array($ext, ['pdf', 'jpg', 'jpeg', 'png'])){
+                $nombre = time().'_'.rand(1000,9999).'.'.$ext;
+                $ruta = $_SERVER['DOCUMENT_ROOT'].'/contable/uploads/caja/'.$nombre;
+                if(move_uploaded_file($_FILES['archivo']['tmp_name'], $ruta)){
+                    $archivo_nombre = $nombre;
+                }
+            }
+        }
+
+        $conn->begin_transaction();
+
+        try {
+            // 1. Asiento de EGRESO
+            $conceptoEgreso = "Transferencia enviada a $nombreDestino - " . $concepto_base;
+            $sqlEgreso = "
+                INSERT INTO movimientos_caja(
+                    fecha, caja_id, tipo, concepto, comprobante, archivo, 
+                    importe, observaciones, origen, usuario_id
+                ) VALUES (
+                    '$fecha', $caja_origen_id, 'EGRESO', '$conceptoEgreso', '$comprobante', 
+                    ".($archivo_nombre ? "'$archivo_nombre'" : "NULL").",
+                    '$importe', '$observaciones', 'TRANSFERENCIA', '$id_usuario_sesion'
+                )
+            ";
+            if(!$conn->query($sqlEgreso)){
+                throw new Exception($conn->error);
+            }
+
+            // 2. Asiento de INGRESO
+            $conceptoIngreso = "Transferencia recibida de $nombreOrigen - " . $concepto_base;
+            $sqlIngreso = "
+                INSERT INTO movimientos_caja(
+                    fecha, caja_id, tipo, concepto, comprobante, archivo, 
+                    importe, observaciones, origen, usuario_id
+                ) VALUES (
+                    '$fecha', $caja_destino_id, 'INGRESO', '$conceptoIngreso', '$comprobante', 
+                    ".($archivo_nombre ? "'$archivo_nombre'" : "NULL").",
+                    '$importe', '$observaciones', 'TRANSFERENCIA', '$id_usuario_sesion'
+                )
+            ";
+            if(!$conn->query($sqlIngreso)){
+                throw new Exception($conn->error);
+            }
+
+            $conn->commit();
+            echo "OK";
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo "ERROR: " . $e->getMessage();
+        }
+        exit;
+    }
+
+    // ---------------------------------------------------------------------
+    // VALIDACIÓN DE SEGURIDAD PARA EDICIÓN DE MOVIMIENTO INDIVIDUAL
     // ---------------------------------------------------------------------
     if(!empty($id)){
         if (strcasecmp($rol_sesion, 'admin') !== 0 && strcasecmp($rol_sesion, 'contador') !== 0) {
@@ -122,11 +202,9 @@ if($accion == 'guardar'){
             }
         }
     }
-    // ---------------------------------------------------------------------
 
     $fecha = $_POST['fecha'];
     $caja_id = (int)$_POST['caja_id'];
-    $tipo = $_POST['tipo'];
     $concepto = $conn->real_escape_string(trim($_POST['concepto']));
     $comprobante = $conn->real_escape_string(trim($_POST['comprobante'] ?? ''));
     $importe = (float)$_POST['importe'];
@@ -136,9 +214,7 @@ if($accion == 'guardar'){
     $referencia_id = !empty($_POST['referencia_id']) ? (int)$_POST['referencia_id'] : "NULL";
     $archivo_nombre = null;
 
-    // =======================
-    // ARCHIVO
-    // =======================
+    // Subida / Reemplazo de archivo para guardado individual
     if(isset($_FILES['archivo']) && $_FILES['archivo']['error'] == 0){
         $ext = strtolower(pathinfo($_FILES['archivo']['name'], PATHINFO_EXTENSION));
         $permitidos = ['pdf', 'jpg', 'jpeg', 'png'];
@@ -147,7 +223,6 @@ if($accion == 'guardar'){
             $nombre = time().'_'.rand(1000,9999).'.'.$ext;
             $ruta = $_SERVER['DOCUMENT_ROOT'].'/contable/uploads/caja/'.$nombre;
 
-            // REEMPLAZAR ARCHIVO
             if($id){
                 $res = $conn->query("SELECT archivo FROM movimientos_caja WHERE id = $id");
                 $old = $res->fetch_assoc();
@@ -165,10 +240,8 @@ if($accion == 'guardar'){
         }
     }
 
-    // =======================
-    // UPDATE
-    // =======================
     if($id){
+        // UPDATE INDIVIDUAL
         $sql = "
             UPDATE movimientos_caja SET
                 fecha = '$fecha',
@@ -190,9 +263,7 @@ if($accion == 'guardar'){
         $sql .= " WHERE id = $id";
 
     } else {
-        // =======================
-        // INSERT
-        // =======================
+        // INSERT INDIVIDUAL
         $sql = "
             INSERT INTO movimientos_caja(
                 fecha,
@@ -238,10 +309,6 @@ if($accion == 'guardar'){
 if($accion == 'eliminar'){
     $id = (int)$_POST['id'];
 
-    // ---------------------------------------------------------------------
-    // VALIDACIÓN DE SEGURIDAD (ELIMINAR)
-    // Si no es Admin/Contador, no puede eliminar movimientos que no sean MANUALES o ajenos.
-    // ---------------------------------------------------------------------
     if (strcasecmp($rol_sesion, 'admin') !== 0 && strcasecmp($rol_sesion, 'contador') !== 0) {
         $check_res = $conn->query("SELECT usuario_id, origen FROM movimientos_caja WHERE id = $id");
         if ($check_res && $check_res->num_rows > 0) {
@@ -253,7 +320,6 @@ if($accion == 'eliminar'){
             }
         }
     }
-    // ---------------------------------------------------------------------
 
     $res = $conn->query("SELECT archivo FROM movimientos_caja WHERE id = $id");
     $row = $res->fetch_assoc();

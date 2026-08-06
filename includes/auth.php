@@ -10,28 +10,32 @@ if (!isset($_SESSION['id'])) {
     exit;
 }
 
-// Tu función esAdmin mejorada (strcasecmp compara sin importar mayúsculas/minúsculas)
-function esAdmin() {
-    return isset($_SESSION['rol']) && strcasecmp($_SESSION['rol'], 'admin') === 0;
+// Declaración protegida para la función esAdmin
+if (!function_exists('esAdmin')) {
+    function esAdmin() {
+        return isset($_SESSION['rol']) && strcasecmp($_SESSION['rol'], 'admin') === 0;
+    }
 }
 
-/**
- * Nueva función flexible para validar múltiples roles autorizados en tus módulos
- */
-function tieneRol($rolesPermitidos) {
-    if (!isset($_SESSION['rol'])) {
-        return false;
+// Declaración protegida para la función tieneRol
+if (!function_exists('tieneRol')) {
+    /**
+     * Nueva función flexible para validar múltiples roles autorizados en tus módulos
+     */
+    function tieneRol($rolesPermitidos) {
+        if (!isset($_SESSION['rol'])) {
+            return false;
+        }
+        
+        if (!is_array($rolesPermitidos)) {
+            $rolesPermitidos = [$rolesPermitidos];
+        }
+        
+        // Pasamos todo a minúsculas para que la comparación sea 100% segura
+        $rolUsuario = strtolower($_SESSION['rol']);
+        $rolesPermitidosMin = array_map('strtolower', $rolesPermitidos);
+        
+        return in_array($rolUsuario, $rolesPermitidosMin);
     }
-    
-    if (!is_array($rolesPermitidos)) {
-        $rolesPermitidos = [$rolesPermitidos];
-    }
-    
-    // Pasamos todo a minúsculas para que la comparación sea 100% segura
-    $rolUsuario = strtolower($_SESSION['rol']);
-    $rolesPermitidosMin = array_map('strtolower', $rolesPermitidos);
-    
-    // CORREGIDO: in_array con guion bajo
-    return in_array($rolUsuario, $rolesPermitidosMin);
 }
 ?>

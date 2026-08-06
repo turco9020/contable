@@ -120,6 +120,14 @@ include __DIR__ . '/auth.php';
            white-space: nowrap;
         }
 
+.card-caja {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.card-caja:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 .5rem 1rem rgba(0,0,0,.15) !important;
+}
+
     </style>
     
     <!-- SweetAlert2 para confirmaciones elegantes -->

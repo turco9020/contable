@@ -136,14 +136,12 @@
 </button>
 <div class="sidebar-overlay" id="mobileSidebarOverlay"></div>
 
-<!-- Tu HTML original intacto con los accesos por roles corregidos -->
 <div class="sidebar" id="sidebarMenu"> 
 
     <h5 class="text-center mt-3">RG CONTABLE</h5>
     <hr>
 
     <a href="/contable/index.php"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
-
 
     <!-- ACCESO A FACTURACIÓN COMPARTIDO -->
     <?php 
@@ -159,6 +157,21 @@
     <a href="/contable/modules/gastos/"><i class="bi bi-cart3"></i> Gastos</a>
 
     <a href="/contable/modules/caja/"><i class="bi bi-cash-coin"></i> Cajas</a>
+
+    <!-- EXCLUSIVO PARA ADMINISTRADORES: REPORTES -->
+    <?php if (esAdmin()): ?>
+        <a href="/contable/modules/reportes/"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
+    <?php endif; ?>
+
+    <!-- ================= VENCIMIENTOS ================= -->
+    <?php 
+    $rol_actual = $_SESSION['rol'] ?? '';
+    if (
+        strcasecmp($rol_actual, 'admin') === 0 || 
+        strcasecmp($rol_actual, 'contador') === 0 
+    ): ?>
+        <a href="/contable/modules/vencimientos/"><i class="bi bi-calendar-date"></i> Vencimientos</a>
+    <?php endif; ?>
 
     <!-- ================= OPERACIONES ================= -->
     <div class="menu-section">

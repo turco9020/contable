@@ -36,13 +36,13 @@ if($res_users){
 </div>
 
 <!-- MODAL -->
-
 <div class="modal fade" id="modalCaja">
 <div class="modal-dialog">
 <div class="modal-content">
 
 <div class="modal-header">
-    <h5>Caja</h5>
+    <h5 class="modal-title" id="modalTitle">Caja</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 </div>
 
 <div class="modal-body">
@@ -59,10 +59,11 @@ if($res_users){
            required>
 
     <label>Descripción</label>
-    <input type="text"
-           class="form-control mb-2"
-           id="descripcion"
-           name="descripcion">
+    <textarea class="form-control mb-2"
+              id="descripcion"
+              name="descripcion"
+              rows="3"
+              style="resize: vertical;"></textarea>
 
     <label>Asignar a Usuario (Caja Chica)</label>
     <select class="form-control mb-2" id="usuario_id" name="usuario_id">
@@ -82,8 +83,12 @@ if($res_users){
 
     </select>
 
-    <button class="btn btn-dark w-100">
+    <button type="submit" id="btnGuardar" class="btn btn-dark w-100">
         Guardar
+    </button>
+    
+    <button type="button" id="btnCerrar" class="btn btn-dark w-100 mt-2" style="display:none;" onclick="cerrarModal()">
+        Cerrar
     </button>
 
 </form>
@@ -134,6 +139,12 @@ document.addEventListener("DOMContentLoaded", function(){
                 render:function(d){
 
                     return `
+                    <button class="btn btn-sm btn-outline-secondary"
+                        title="Ver Caja"
+                        onclick='verCaja(${JSON.stringify(d)})'>
+                        <i class="bi bi-eye"></i> Ver
+                    </button>
+
                     <button class="btn btn-sm btn-primary"
                         onclick='editar(${JSON.stringify(d)})'>
                         Editar
@@ -151,62 +162,81 @@ document.addEventListener("DOMContentLoaded", function(){
 
 });
 
+// Función para cerrar modal
+function cerrarModal() {
+    modalCaja.hide();
+}
+
 // NUEVO
-
 function abrirModal(){
-
     $('#formCaja')[0].reset();
+    $('#formCaja input, select').prop('disabled', false); // Desbloquea campos
+    $('#btnGuardar').show();                              // Muestra el botón Guardar
+    $('#btnCerrar').hide();                              // Oculta el botón Cerrar
+    $('#modalTitle').text('Nueva Caja');                 // Cambia el título
     $('#id').val('');
-    $('#usuario_id').val(''); // Reseteamos a Caja Central por defecto
+    $('#usuario_id').val(''); 
+
+    modalCaja.show();
+}
+
+// VER CAJA (Solo lectura y oculta el botón Guardar)
+window.verCaja = function(d){
+    $('#formCaja')[0].reset();
+    $('#formCaja input, select').prop('disabled', true);  // Bloquea campos
+    $('#btnGuardar').hide();                              // OCULTA el botón Guardar
+    $('#btnCerrar').show();                              // MUESTRA el botón Cerrar
+    $('#modalTitle').text('Ver Caja');                   // Cambia el título
+
+    $('#id').val(d.id);
+    $('#nombre').val(d.nombre);
+    $('#descripcion').val(d.descripcion);
+    $('#usuario_id').val(d.usuario_id ? d.usuario_id : '');
+    $('#activa').val(d.activa);
+
+    modalCaja.show();
+}
+
+// EDITAR
+window.editar = function(d){
+    $('#formCaja')[0].reset();
+    $('#formCaja input, select').prop('disabled', false); // Desbloquea campos
+    $('#btnGuardar').show();                              // Muestra el botón Guardar
+    $('#btnCerrar').hide();                              // Oculta el botón Cerrar
+    $('#modalTitle').text('Editar Caja');                // Cambia el título
+
+    $('#id').val(d.id);
+    $('#nombre').val(d.nombre);
+    $('#descripcion').val(d.descripcion);
+    $('#usuario_id').val(d.usuario_id ? d.usuario_id : '');
+    $('#activa').val(d.activa);
 
     modalCaja.show();
 }
 
 // GUARDAR
-
 $('#formCaja').submit(function(e){
-
     e.preventDefault();
 
     $.post(
         '/contable/ajax/cajas.php?accion=guardar',
         $(this).serialize(),
         function(){
-
             tabla.ajax.reload();
-
             modalCaja.hide();
         }
     );
-
 });
 
-// EDITAR
-
-window.editar = function(d){
-
-    $('#id').val(d.id);
-    $('#nombre').val(d.nombre);
-    $('#descripcion').val(d.descripcion);
-    $('#usuario_id').val(d.usuario_id ? d.usuario_id : ''); // Asigna el usuario o deja vacío si es NULL
-    $('#activa').val(d.activa);
-
-    modalCaja.show();
-}
-
 // ELIMINAR
-
 window.eliminar = function(id){
-
     if(!confirm('¿CUIDADO!!!!! - Eliminar caja?')) return;
-
-    if(prompt('Escribí OK') != 'OK') return;
+    if(prompt('Escribí ELIMINAR') != 'ELIMINAR') return;
 
     $.post(
         '/contable/ajax/cajas.php?accion=eliminar',
         {id},
         function(){
-
             tabla.ajax.reload();
         }
     );

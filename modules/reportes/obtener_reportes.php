@@ -83,79 +83,172 @@ switch ($tipo) {
         }
         $totalG = 0;
         while ($r = $res->fetch_assoc()) {
-            if (isset($r['Total'])) $totalG += $r['Total'];
-            if (isset($r['total'])) $totalG += $r['total'];
+            if (isset($r['Total'])) $totalG += (float)$r['Total'];
+            else if (isset($r['total'])) $totalG += (float)$r['total'];
             $response['data'][] = $r;
         }
         $response['total'] = $totalG;
         break;
 
     // ==========================================
-    // 2. COMPRAS Y GASTOS (gastos)
+    // 2. COMPRAS Y GASTOS (gastos_generales)
     // ==========================================
     case 'gastos_generales':
     case 'compras_proveedor':
     case 'compras_obra':
     case 'compras_centro':
         $w = ["1=1"];
-        if (!empty($f_desde)) $w[] = "g.fecha >= '" . $conn->real_escape_string($f_desde) . "'";
-        if (!empty($f_hasta)) $w[] = "g.fecha <= '" . $conn->real_escape_string($f_hasta) . "'";
-        if (!empty($obra_id)) $w[] = "g.obra_id = " . intval($obra_id);
-        if (!empty($centro_id)) $w[] = "g.centro_costo_id = " . intval($centro_id);
-        if (!empty($cat_id)) $w[] = "g.categoria_id = " . intval($cat_id);
-        if (!empty($subcat_id)) $w[] = "g.subcategoria_id = " . intval($subcat_id);
-        if (!empty($prov_id)) $w[] = "g.proveedor_id = " . intval($prov_id);
-        if (!empty($caja_id)) $w[] = "g.caja_id = " . intval($caja_id);
+        if (!empty($f_desde))    $w[] = "g.fecha >= '" . $conn->real_escape_string($f_desde) . "'";
+        if (!empty($f_hasta))    $w[] = "g.fecha <= '" . $conn->real_escape_string($f_hasta) . "'";
+        if (!empty($obra_id))    $w[] = "g.obra_id = " . intval($obra_id);
+        if (!empty($centro_id))  $w[] = "g.centro_costo_id = " . intval($centro_id);
+        if (!empty($cat_id))     $w[] = "g.categoria_id = " . intval($cat_id);
+        if (!empty($subcat_id))  $w[] = "g.subcategoria_id = " . intval($subcat_id);
+        if (!empty($prov_id))    $w[] = "g.proveedor_id = " . intval($prov_id);
+        if (!empty($caja_id))    $w[] = "g.caja_id = " . intval($caja_id);
         if (!empty($usuario_id)) $w[] = "g.usuario_id = " . intval($usuario_id);
         $whereSql = implode(" AND ", $w);
 
         if ($tipo === 'compras_proveedor') {
-            $q = "SELECT pr.nombre AS Proveedor, COUNT(g.id) AS Cant_Gastos, SUM(g.total) AS Total
+            $q = "SELECT IFNULL(pr.nombre, 'Sin Proveedor') AS Proveedor, COUNT(g.id) AS Cant_Gastos, SUM(g.total) AS Total
                   FROM gastos g
                   LEFT JOIN proveedores pr ON g.proveedor_id = pr.id
                   WHERE $whereSql GROUP BY g.proveedor_id ORDER BY Total DESC";
             $response['columns'] = ['Proveedor', 'Cant. Compras', 'Total Comprado ($)'];
         } elseif ($tipo === 'compras_obra') {
-            $q = "SELECT o.nombre AS Obra, COUNT(g.id) AS Cant_Gastos, SUM(g.total) AS Total
+            $q = "SELECT IFNULL(o.nombre, 'Sin Obra') AS Obra, COUNT(g.id) AS Cant_Gastos, SUM(g.total) AS Total
                   FROM gastos g
                   LEFT JOIN obras o ON g.obra_id = o.id
                   WHERE $whereSql GROUP BY g.obra_id ORDER BY Total DESC";
             $response['columns'] = ['Obra / Proyecto', 'Cant. Compras', 'Total Gastado ($)'];
         } elseif ($tipo === 'compras_centro') {
-            $q = "SELECT cc.nombre AS Centro_Costo, COUNT(g.id) AS Cant_Gastos, SUM(g.total) AS Total
+            $q = "SELECT IFNULL(cc.nombre, 'Sin Centro') AS Centro_Costo, COUNT(g.id) AS Cant_Gastos, SUM(g.total) AS Total
                   FROM gastos g
                   LEFT JOIN centros_costos cc ON g.centro_costo_id = cc.id
                   WHERE $whereSql GROUP BY g.centro_costo_id ORDER BY Total DESC";
             $response['columns'] = ['Centro de Costo', 'Cant. Compras', 'Total Gastado ($)'];
         } else {
-            $q = "SELECT g.fecha, pr.nombre AS Proveedor, c.nombre AS Categoria, sub.nombre AS Subcategoria,
-                         o.nombre AS Obra, cc.nombre AS Centro, g.detalle, g.total
+            $q = "SELECT g.fecha AS fecha, 
+                         IFNULL(cc.nombre, 'Sin Centro') AS centro_costo,
+                         IFNULL(g.detalle, '-') AS detalle, 
+                         IFNULL(g.neto, 0) AS neto, 
+                         IFNULL(g.iva, 0) AS iva,
+                         g.total AS total
                   FROM gastos g
-                  LEFT JOIN proveedores pr ON g.proveedor_id = pr.id
-                  LEFT JOIN categorias c ON g.categoria_id = c.id
-                  LEFT JOIN subcategorias sub ON g.subcategoria_id = sub.id
-                  LEFT JOIN obras o ON g.obra_id = o.id
                   LEFT JOIN centros_costos cc ON g.centro_costo_id = cc.id
-                  WHERE $whereSql ORDER BY g.fecha DESC";
-            $response['columns'] = ['Fecha', 'Proveedor', 'Categoría', 'Subcategoría', 'Obra', 'Centro Costo', 'Detalle', 'Total ($)'];
+                  WHERE $whereSql 
+                  ORDER BY g.fecha DESC";
+
+            $response['columns'] = ['Fecha', 'Centro de Costo', 'Detalle', 'Neto ($)', 'IVA ($)', 'Total ($)'];
         }
 
         $res = $conn->query($q);
         if (!$res) {
-            echo json_encode(['status' => false, 'message' => 'Error SQL: ' . $conn->error]);
+            echo json_encode(['status' => false, 'message' => 'Error SQL en Gastos: ' . $conn->error]);
             exit;
         }
-        $totalG = 0;
+
+        // Acumuladores de totales
+        $totalNeto  = 0;
+        $totalIva   = 0;
+        $totalG     = 0;
+
         while ($r = $res->fetch_assoc()) {
-            if (isset($r['Total'])) $totalG += $r['Total'];
-            if (isset($r['total'])) $totalG += $r['total'];
-            $response['data'][] = $r;
+            $neto  = floatval($r['neto'] ?? 0);
+            $iva   = floatval($r['iva'] ?? 0);
+            $total = floatval($r['total'] ?? 0);
+
+            $totalNeto += $neto;
+            $totalIva  += $iva;
+            $totalG    += $total;
+
+            if ($tipo === 'gastos_generales') {
+                $response['data'][] = [
+                    'fecha'   => date('d/m/Y', strtotime($r['fecha'])), // Formato fecha amigable
+                    'centro'  => $r['centro_costo'],
+                    'detalle' => $r['detalle'],
+                    'neto'    => '$ ' . number_format($neto, 2, ',', '.'),
+                    'iva'     => '$ ' . number_format($iva, 2, ',', '.'),
+                    'total'   => '$ ' . number_format($total, 2, ',', '.')
+                ];
+            } else {
+                $response['data'][] = $r;
+            }
         }
-        $response['total'] = $totalG;
+
+        // Retornamos totales individuales ya formateados
+        $response['total_neto'] = '$ ' . number_format($totalNeto, 2, ',', '.');
+        $response['total_iva']  = '$ ' . number_format($totalIva, 2, ',', '.');
+        $response['total']      = '$ ' . number_format($totalG, 2, ',', '.');
         break;
 
     // ==========================================
-    // 3. RESUMEN ANUAL E INCIDENCIA DE GASTOS
+    // 3. GASTOS VS VENTAS (COMPARATIVO Y MARGEN)
+    // ==========================================
+    case 'gastos_vs_ventas':
+        // Filtros para Ventas
+        $wVentas = ["1=1"];
+        if (!empty($f_desde)) $wVentas[] = "fecha >= '" . $conn->real_escape_string($f_desde) . "'";
+        if (!empty($f_hasta)) $wVentas[] = "fecha <= '" . $conn->real_escape_string($f_hasta) . "'";
+        if (!empty($obra_id)) $wVentas[] = "obra_id = " . intval($obra_id);
+        if (!empty($centro_id)) $wVentas[] = "centro_costo_id = " . intval($centro_id);
+        if (!empty($cliente_id)) $wVentas[] = "cliente_id = " . intval($cliente_id);
+        $whereVentas = implode(" AND ", $wVentas);
+
+        // Filtros para Compras / Gastos
+        $wCompras = ["1=1"];
+        if (!empty($f_desde)) $wCompras[] = "fecha >= '" . $conn->real_escape_string($f_desde) . "'";
+        if (!empty($f_hasta)) $wCompras[] = "fecha <= '" . $conn->real_escape_string($f_hasta) . "'";
+        if (!empty($obra_id)) $wCompras[] = "obra_id = " . intval($obra_id);
+        if (!empty($centro_id)) $wCompras[] = "centro_costo_id = " . intval($centro_id);
+        if (!empty($prov_id)) $wCompras[] = "proveedor_id = " . intval($prov_id);
+        $whereCompras = implode(" AND ", $wCompras);
+
+        // Consultar Ventas
+        $qVentas = "SELECT IFNULL(SUM(neto),0) AS neto, IFNULL(SUM(iva),0) AS iva, IFNULL(SUM(total),0) AS total FROM facturas_venta WHERE $whereVentas";
+        $rV = $conn->query($qVentas)->fetch_assoc();
+
+        // Consultar Gastos
+        $qCompras = "SELECT IFNULL(SUM(neto),0) AS neto, IFNULL(SUM(iva),0) AS iva, IFNULL(SUM(total),0) AS total FROM gastos WHERE $whereCompras";
+        $rC = $conn->query($qCompras)->fetch_assoc();
+
+        $totalVentas = (float)$rV['total'];
+        $totalGastos = (float)$rC['total'];
+        $resultadoNeto = $totalVentas - $totalGastos;
+
+        $response['columns'] = ['Concepto', 'Neto Gravado ($)', 'IVA ($)', 'Total Acumulado ($)', 'Margen / Estado'];
+
+        $response['data'] = [
+            [
+                'concepto' => 'TOTAL VENTAS (Ingresos)',
+                'neto' => number_format($rV['neto'], 2, '.', ''),
+                'iva' => number_format($rV['iva'], 2, '.', ''),
+                'total' => number_format($totalVentas, 2, '.', ''),
+                'estado' => '<span class="badge bg-success">Ingreso</span>'
+            ],
+            [
+                'concepto' => 'TOTAL GASTOS (Egresos)',
+                'neto' => number_format($rC['neto'], 2, '.', ''),
+                'iva' => number_format($rC['iva'], 2, '.', ''),
+                'total' => number_format($totalGastos, 2, '.', ''),
+                'estado' => '<span class="badge bg-danger">Egreso</span>'
+            ],
+            [
+                'concepto' => 'RESULTADO OPERATIVO NETO',
+                'neto' => number_format($rV['neto'] - $rC['neto'], 2, '.', ''),
+                'iva' => number_format($rV['iva'] - $rC['iva'], 2, '.', ''),
+                'total' => number_format($resultadoNeto, 2, '.', ''),
+                'estado' => $resultadoNeto >= 0 
+                    ? '<b class="text-success">GANANCIA: $ ' . number_format($resultadoNeto, 2, '.', '') . '</b>' 
+                    : '<b class="text-danger">PÉRDIDA: $ ' . number_format(abs($resultadoNeto), 2, '.', '') . '</b>'
+            ]
+        ];
+
+        $response['total'] = $resultadoNeto;
+        break;
+
+    // ==========================================
+    // 4. RESUMEN ANUAL E INCIDENCIA DE GASTOS
     // ==========================================
     case 'resumen_anual_gastos':
         $w = ["1=1"];
@@ -181,7 +274,7 @@ switch ($tipo) {
         }
         $totalG = 0;
         while ($r = $res->fetch_assoc()) {
-            $totalG += $r['Total_Gasto'];
+            $totalG += (float)$r['Total_Gasto'];
             $response['data'][] = [
                 'categoria' => $r['Categoria'] ?? 'Sin Categoría',
                 'monto' => number_format($r['Total_Gasto'], 2, '.', ''),
@@ -192,7 +285,7 @@ switch ($tipo) {
         break;
 
     // ==========================================
-    // 4. HISTÓRICO DE MOVIMIENTOS DE CAJA
+    // 5. HISTÓRICO DE MOVIMIENTOS DE CAJA
     // ==========================================
     case 'historico_cajas':
         $w = ["1=1"];
@@ -217,14 +310,14 @@ switch ($tipo) {
         }
         $totalG = 0;
         while ($r = $res->fetch_assoc()) {
-            $totalG += $r['importe'];
+            $totalG += (float)$r['importe'];
             $response['data'][] = $r;
         }
         $response['total'] = $totalG;
         break;
 
     // ==========================================
-    // 5. RETENCIONES DE VENTA
+    // 6. RETENCIONES DE VENTA
     // ==========================================
     case 'informe_retenciones':
         $w = ["1=1"];
@@ -249,14 +342,14 @@ switch ($tipo) {
         }
         $totalG = 0;
         while ($r = $res->fetch_assoc()) {
-            $totalG += $r['importe'];
+            $totalG += (float)$r['importe'];
             $response['data'][] = $r;
         }
         $response['total'] = $totalG;
         break;
 
     // ==========================================
-    // 6. HISTÓRICO DE CHEQUES
+    // 7. HISTÓRICO DE CHEQUES
     // ==========================================
     case 'informe_cheques':
         $w = ["1=1"];
@@ -278,14 +371,14 @@ switch ($tipo) {
         }
         $totalG = 0;
         while ($r = $res->fetch_assoc()) {
-            $totalG += $r['importe'];
+            $totalG += (float)$r['importe'];
             $response['data'][] = $r;
         }
         $response['total'] = $totalG;
         break;
 
     // ==========================================
-    // 7. AUDITORÍA / USUARIOS
+    // 8. AUDITORÍA / USUARIOS
     // ==========================================
     case 'historico_usuarios':
         $w = ["1=1"];
@@ -311,7 +404,7 @@ switch ($tipo) {
         break;
    
     // ==========================================
-    // 8. POSICIÓN FISCAL IVA (VENTAS VS COMPRAS)
+    // 9. POSICIÓN FISCAL IVA (VENTAS VS COMPRAS)
     // ==========================================
     case 'posicion_iva':
         // Filtros para Ventas
@@ -344,7 +437,7 @@ switch ($tipo) {
 
         $ivaVentas = (float)$resVentas['iva_ventas'];
         $ivaCompras = (float)$resCompras['iva_compras'];
-        $saldoIVA = $ivaVentas - $ivaCompras; // Positivo = Saldo a Pagar (Débito) | Negativo = Saldo a Favor (Crédito)
+        $saldoIVA = $ivaVentas - $ivaCompras;
 
         $response['columns'] = ['Concepto', 'Neto Gravado ($)', 'IVA Fiscal ($)', 'Total Facturado ($)', 'Resultado Posición IVA'];
 
@@ -374,7 +467,6 @@ switch ($tipo) {
             ]
         ];
 
-        // Se envía el saldo directo
         $response['total'] = $saldoIVA;
         break;    
 }

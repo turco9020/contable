@@ -38,6 +38,7 @@ $cajas = $conn->query("SELECT id, nombre FROM cajas ORDER BY nombre ASC");
                     <div class="col-md-6">
                         <label class="form-label fw-bold text-secondary">1. Seleccione el Tipo de Reporte</label>
                         <select name="tipo_reporte" id="tipo_reporte" class="form-select form-select-lg border-dark fw-semibold">
+                            <option value="gastos_vs_ventas">Gastos vs. Ventas (Resultado Operativo Netos)</option>
                             <option value="posicion_iva">Posición Fiscal IVA (IVA Ventas vs. IVA Compras)</option>
                             <option value="gastos_generales">Gastos y Compras (Detallado)</option>
                             <option value="ventas_generales">Ventas y Facturación (Detallado)</option>
@@ -288,17 +289,41 @@ function consultarReporte() {
             // 5. Construir el <tfoot>
             let tfootHtml = '';
             if (res.total !== undefined && res.total !== null) {
-                let colCount = res.columns.length;
-                let colspanLeft = colCount > 1 ? colCount - 1 : 1;
-                
-                tfootHtml = `<tfoot class="table-secondary fw-bold"><tr>`;
-                if (colCount > 1) {
-                    tfootHtml += `<td colspan="${colspanLeft}" class="text-end">TOTAL ACUMULADO:</td>`;
-                    tfootHtml += `<td class="text-end fw-bold">$ ${parseFloat(res.total).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>`;
+
+                // Si el reporte trae totales desglosados (como Neto e IVA)
+                if (res.total_neto !== undefined && res.total_iva !== undefined) {
+                    tfootHtml = `
+                        <tfoot class="table-secondary fw-bold">
+                            <tr>
+                                <td colspan="3" class="text-end">TOTALES ACUMULADOS:</td>
+                                <td class="text-end fw-bold text-nowrap">${res.total_neto}</td>
+                                <td class="text-end fw-bold text-nowrap">${res.total_iva}</td>
+                                <td class="text-end fw-bold text-nowrap">${res.total}</td>
+                            </tr>
+                        </tfoot>`;
                 } else {
-                    tfootHtml += `<td class="text-end fw-bold">TOTAL: $ ${parseFloat(res.total).toLocaleString('es-AR', {minimumFractionDigits: 2})}</td>`;
+                    // Fallback genérico para reportes que solo traen un total final
+                    let colCount = res.columns.length;
+                    let colspanLeft = colCount > 1 ? colCount - 1 : 1;
+
+                    // Limpiamos el valor por si viene formateado desde PHP
+                    let rawTotal = typeof res.total === 'string' 
+                        ? parseFloat(res.total.replace(/[^0-9.-]+/g, "")) 
+                        : res.total;
+
+                    let totalFormateado = isNaN(rawTotal) 
+                        ? res.total 
+                        : '$ ' + rawTotal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+                    tfootHtml = `<tfoot class="table-secondary fw-bold"><tr>`;
+                    if (colCount > 1) {
+                        tfootHtml += `<td colspan="${colspanLeft}" class="text-end">TOTAL ACUMULADO:</td>`;
+                        tfootHtml += `<td class="text-end fw-bold text-nowrap">${totalFormateado}</td>`;
+                    } else {
+                        tfootHtml += `<td class="text-end fw-bold text-nowrap">TOTAL: ${totalFormateado}</td>`;
+                    }
+                    tfootHtml += `</tr></tfoot>`;
                 }
-                tfootHtml += `</tr></tfoot>`;
             }
 
             // 6. Inyectar HTML

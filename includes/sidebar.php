@@ -8,6 +8,33 @@
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif !important;
     z-index: 1040;
     transition: transform 0.3s ease !important; /* Animación fluida al colapsar en móvil */
+
+    /* SOLUCIÓN AL SCROLL Y VISIBILIDAD DE OPCIONES */
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 260px !important;            /* Ancho estándar del menú sidebar */
+    height: 100vh !important;           /* Ocupa el 100% del alto de la ventana */
+    overflow-y: auto !important;        /* Permite scroll vertical interno */
+    display: flex !important;
+    flex-direction: column !important;
+    padding-bottom: 2rem !important;    /* Espacio extra al final para scroll holgado */
+}
+
+/* Personalización de la barra de desplazamiento interna (Scrollbar fina y discreta) */
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+.sidebar::-webkit-scrollbar-track {
+    background: #1e2229;
+}
+.sidebar::-webkit-scrollbar-thumb {
+    background: #2f3640;
+    border-radius: 3px;
+}
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: #4a5568;
 }
 
 /* Título superior */
@@ -111,6 +138,23 @@
     height: 100vh;
     background: rgba(0,0,0,0.4);
     z-index: 1030;
+}
+
+/* Espaciado para el contenido principal en pantallas de escritorio */
+@media (min-width: 992px) {
+    .content {
+        margin-left: 260px !important; /* Mismo ancho definido para el sidebar */
+        width: calc(100% - 260px) !important;
+        transition: margin-left 0.3s ease !important;
+    }
+}
+
+/* En móviles el margen vuelve a 0 porque el sidebar se oculta */
+@media (max-width: 991.98px) {
+    .content {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
 }
 
 /* Cuando la pantalla mide menos de 992px aplicamos el colapso */

@@ -1,19 +1,26 @@
 <?php
 include '../../includes/header.php';
 include '../../includes/sidebar.php';
+
+$esAdmin = isset($_SESSION['rol']) && strcasecmp($_SESSION['rol'], 'admin') === 0;
 ?>
 
 <div class="content">
 
-    <!-- CABECERA DEL MÓDULO (Estilo unificado) -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h4 class="fw-bold text-dark mb-0">
-            <i class="bi bi-calculator text-secondary me-2"></i> Gestión de Gastos
-        </h4>
+    <!-- CABECERA DEL MÓDULO -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold text-dark mb-0">
+        <i class="bi bi-calculator text-secondary me-2"></i> Gestión de Gastos
+    </h4>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-success d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#modalImportarAFIP">
+            <i class="bi bi-file-earmark-spreadsheet me-2"></i> Importar AFIP
+        </button>
         <button class="btn btn-dark d-flex align-items-center" onclick="abrirModal()">
             <i class="bi bi-plus-circle me-2"></i> Nuevo Gasto
         </button>
     </div>
+</div>
 
     <!-- SECCIÓN DE FILTROS -->
     <div class="card p-3 shadow-sm mb-3 border-0">
@@ -45,7 +52,7 @@ include '../../includes/sidebar.php';
         </div>
     </div>
 
-    <!-- CONTENEDOR DE LA TABLA (Card Limpia) -->
+    <!-- CONTENEDOR DE LA TABLA -->
     <div class="card p-3 shadow-sm border-0">
         <div class="table-responsive">
             <table id="tablaGastos" class="table table-bordered table-striped w-100">
@@ -68,6 +75,7 @@ include '../../includes/sidebar.php';
                         <th>Categoria</th>
                         <th>Subcategoria</th>
                         <th>Usuario</th>
+                        <th>Estado</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -78,12 +86,14 @@ include '../../includes/sidebar.php';
 </div>
 
 <?php include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/modal_gasto.php'; ?>
+<?php include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/modal_importar.php'; ?>
 <?php include '../../includes/footer.php'; ?>
 
 <script>
 let modalGasto;
 let tabla;
 let buscadoresTom = {};
+const esAdmin = <?php echo $esAdmin ? 'true' : 'false'; ?>;
 
 window.aplicarFiltros = function() {
     tabla.ajax.reload();
@@ -150,7 +160,6 @@ function cargarCategorias(){
 function cargarSubcategorias(categoria_id){
     let s = $('#subcategoria_id');
     
-    // Si ya existe instancia de TomSelect, destruirla para repoblar limpiamente
     if (buscadoresTom['#subcategoria_id']) {
         buscadoresTom['#subcategoria_id'].destroy();
         delete buscadoresTom['#subcategoria_id'];
@@ -238,14 +247,14 @@ document.addEventListener("DOMContentLoaded", function() {
                 text: 'Excel', 
                 className: 'btn btn-sm btn-success',
                 exportOptions: {
-                    columns: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
+                    columns: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17]
                 }
             },
             {   extend: 'print', 
                 text: 'Imprimir', 
                 className: 'btn btn-sm btn-secondary',
                 exportOptions: {
-                    columns: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
+                    columns: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17]
                 }
             },
             { 
@@ -291,6 +300,15 @@ document.addEventListener("DOMContentLoaded", function() {
                     return d ? `<span class="badge bg-light text-dark border fw-normal"><i class="bi bi-person"></i> ${d}</span>` : '<span class="badge bg-light text-dark border fw-normal"><i class="bi bi-person"></i>Sistema</span>';
                 }
             },
+            {
+                data: 'estado_validacion',
+                render: function(d) {
+                    if (d === 'PENDIENTE') {
+                        return '<span class="badge bg-warning text-dark"><i class="bi bi-clock-history me-1"></i>Pendiente</span>';
+                    }
+                    return '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Aprobado</span>';
+                }
+            },
             { 
                 data: null, 
                 orderable: false, 
@@ -298,8 +316,18 @@ document.addEventListener("DOMContentLoaded", function() {
                 render: function(data) {
                     let btnArchivo = data.archivo ? `<a href="/contable/uploads/gastos/${data.archivo}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver Adjunto Gasto"><i class="bi bi-file-earmark-pdf"></i></a>` : '';
                     
+                    let btnAprobar = '';
+                    if (esAdmin && data.estado_validacion === 'PENDIENTE') {
+                        btnAprobar = `
+                            <button class="btn btn-sm btn-success" title="Aprobar Gasto (> $800k)" onclick="aprobarGasto(${data.id})">
+                                <i class="bi bi-check-lg"></i>
+                            </button>
+                        `;
+                    }
+
                     return `
                         <div class="d-inline-flex gap-1 justify-content-end">
+                            ${btnAprobar}
                             ${btnArchivo}
                             <button class="btn btn-sm btn-outline-secondary" title="Ver Gasto" onclick='ver(${JSON.stringify(data)})'>
                                 <i class="bi bi-eye"></i>
@@ -321,7 +349,6 @@ document.addEventListener("DOMContentLoaded", function() {
         tabla.columns.adjust().responsive.recalc();
     });
 
-    // Evento al cambiar la categoría: refresca subcategorías y reactiva el buscador en ese campo
     $(document).on('change', '#categoria_id', function() {
         let catId = $(this).val();
         cargarSubcategorias(catId).done(() => {
@@ -372,12 +399,59 @@ document.addEventListener("DOMContentLoaded", function() {
             data: formData,
             contentType: false,
             processData: false,
+            dataType: 'json',
             success: function(resp) {
                 tabla.ajax.reload();
                 modalGasto.hide();
+
+                if (resp.estado_validacion === 'PENDIENTE') {
+                    Swal.fire({
+                        title: 'Gasto registrado',
+                        text: 'Al superar los $800.000, el gasto ha quedado registrado en estado "Pendiente de Validación" hasta ser verificado por el Administrador.',
+                        icon: 'info',
+                        confirmButtonColor: '#212529'
+                    });
+                } else {
+                    Swal.fire({
+                        title: '¡Guardado!',
+                        text: 'El gasto fue guardado correctamente.',
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                }
             }
         });
     });
+
+    window.aprobarGasto = function(id) {
+        Swal.fire({
+            title: '¿Validar este gasto?',
+            text: 'Confirmas que revisaste este gasto de gran porte y autorizas su validación.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#198754',
+            cancelButtonColor: '#212529',
+            confirmButtonText: 'Sí, validar gasto',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post('/contable/ajax/gastos.php?accion=aprobar', { id }, function(res) {
+                    if (res.status === 'OK') {
+                        Swal.fire({
+                            title: '¡Aprobado!',
+                            text: 'El gasto ha sido validado exitosamente.',
+                            icon: 'success',
+                            confirmButtonColor: '#212529'
+                        });
+                        tabla.ajax.reload();
+                    } else {
+                        Swal.fire('Error', res.message || 'No se pudo validar.', 'error');
+                    }
+                }, 'json');
+            }
+        });
+    }
 
     window.ver = function(data) {
         window.editar(data);
@@ -399,7 +473,6 @@ document.addEventListener("DOMContentLoaded", function() {
             cargarCentros(), cargarCajas(), cargarCategorias(), cargarProveedores(), 
             cargarTipos(), cargarMedios(), cargarObras()
         ).done(function() {
-            // Llenamos los inputs y selects base
             for (let k in data) {
                 let el = document.getElementById(k);
                 if (el && k !== 'archivo') { el.value = data[k]; }
@@ -407,23 +480,17 @@ document.addEventListener("DOMContentLoaded", function() {
 
             $('#neto').trigger('input'); 
 
-            // Cargar subcategorías pasándole la categoría actual del gasto
             let promesaSubcat = data.categoria_id ? cargarSubcategorias(data.categoria_id) : cargarSubcategorias('');
 
             promesaSubcat.done(() => {
-                // Sincronizamos select nativo primero
                 $('#subcategoria_id').val(data.subcategoria_id);
-
-                // Aplicamos los buscadores a los demás campos
                 aplicarBuscadores();
 
-                // Seteamos explícitamente los valores en TomSelect
                 if (buscadoresTom['#proveedor_id']) buscadoresTom['#proveedor_id'].setValue(data.proveedor_id, true);
                 if (buscadoresTom['#centro_costo_id']) buscadoresTom['#centro_costo_id'].setValue(data.centro_costo_id, true);
                 if (buscadoresTom['#obra_id']) buscadoresTom['#obra_id'].setValue(data.obra_id, true);
                 if (buscadoresTom['#categoria_id']) buscadoresTom['#categoria_id'].setValue(data.categoria_id, true);
                 
-                // Forzamos el valor de subcategoría en TomSelect después de que sus <option> ya existen
                 if (buscadoresTom['#subcategoria_id'] && data.subcategoria_id) {
                     buscadoresTom['#subcategoria_id'].setValue(data.subcategoria_id, true);
                 }
@@ -445,7 +512,6 @@ document.addEventListener("DOMContentLoaded", function() {
         modalGasto.show();
     }
 
-    // ELIMINAR GASTO CON DOBLE CHECK DE SWEETALERT2
     window.eliminar = function(id) {
         Swal.fire({
             title: '¿Eliminar este gasto?',
@@ -490,7 +556,6 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
-// ELIMINAR ADJUNTO CON SWEETALERT2
 $(document).on('click', '#btnEliminarArchivo', function() {
     let id = $(this).data('id');
     
@@ -531,3 +596,5 @@ $(document).on('click', '#btnEliminarArchivo', function() {
     });
 });
 </script>
+<!-- Script de Importación AFIP -->
+<script src="/contable/assets/js/gastos_importar.js"></script>

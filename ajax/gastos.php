@@ -4,21 +4,14 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 include '../config/database.php';
 
-// Limpiar buffer para evitar espacios en blanco en el JSON
 if (ob_get_length()) ob_clean();
 
 $usuario = $_SESSION['id'] ?? 0;
 $rol = $_SESSION['rol'] ?? 'user';
 
-/**
- * Función para convertir montos con formato argentino (1.250,50) 
- * a formato SQL (1250.50)
- */
 function limpiarMonto($valor) {
     if (empty($valor)) return 0;
-    // Quitamos los puntos de miles
     $limpio = str_replace('.', '', $valor);
-    // Cambiamos la coma decimal por punto
     $limpio = str_replace(',', '.', $limpio);
     return (float)$limpio;
 }
@@ -29,21 +22,18 @@ function limpiarMonto($valor) {
 if($_GET['accion']=='listar'){
     header('Content-Type: application/json');
     
-    // CORRECCIÓN: Si es Admin o Contador ve todo. Si no, se restringe a su ID.
     if (strcasecmp($rol, 'admin') === 0 || strcasecmp($rol, 'contador') === 0) {
         $where = "WHERE 1=1";
     } else {
         $where = "WHERE g.usuario_id=$usuario";
     }
 
-    // Filtros dinámicos
-    if (!empty($_GET['f_desde']))  $where .= " AND g.fecha >= '".$_GET['f_desde']."'";
-    if (!empty($_GET['f_hasta']))  $where .= " AND g.fecha <= '".$_GET['f_hasta']."'";
-    if (!empty($_GET['f_centro'])) $where .= " AND g.centro_costo_id = '".$_GET['f_centro']."'";
-    if (!empty($_GET['f_categoria']))$where .= " AND g.categoria_id = '".$_GET['f_categoria']."'";
+    if (!empty($_GET['f_desde']))     $where .= " AND g.fecha >= '".$_GET['f_desde']."'";
+    if (!empty($_GET['f_hasta']))     $where .= " AND g.fecha <= '".$_GET['f_hasta']."'";
+    if (!empty($_GET['f_centro']))    $where .= " AND g.centro_costo_id = '".$_GET['f_centro']."'";
+    if (!empty($_GET['f_categoria'])) $where .= " AND g.categoria_id = '".$_GET['f_categoria']."'";
     if (!empty($_GET['f_obra']))      $where .= " AND g.obra_id = '".$_GET['f_obra']."'";
 
-    // AGREGADO: u.usuario AS usuario_nombre y su respectivo LEFT JOIN
     $sql = "SELECT g.*, t.nombre AS tipo_comprobante, m.nombre AS medio_pago, o.nombre AS obra, 
             c.nombre AS centro, cat.nombre AS categoria, sub.nombre AS subcategoria, p.nombre AS proveedor,
             IFNULL(u.usuario, 'Sistema') AS usuario_nombre
@@ -66,26 +56,17 @@ if($_GET['accion']=='listar'){
     exit;
 }
 
-// =======================
-// OBTENER UN GASTO
-// =======================
+/* =========================
+   OBTENER UN GASTO
+========================= */
 if($_GET['accion']=='obtener'){
     header('Content-Type: application/json');
-
     $id = (int)$_GET['id'];
 
-    // AGREGADO: u.usuario AS usuario_nombre y su respectivo LEFT JOIN
-    $sql = "SELECT
-                g.*,
-                mc.caja_id,
-                t.nombre AS tipo_comprobante,
-                m.nombre AS medio_pago,
-                o.nombre AS obra,
-                c.nombre AS centro,
-                cat.nombre AS categoria,
-                sub.nombre AS subcategoria,
-                p.nombre AS proveedor,
-                IFNULL(u.usuario, 'Sistema') AS usuario_nombre
+    $sql = "SELECT g.*, mc.caja_id, t.nombre AS tipo_comprobante, m.nombre AS medio_pago,
+                   o.nombre AS obra, c.nombre AS centro, cat.nombre AS categoria, 
+                   sub.nombre AS subcategoria, p.nombre AS proveedor,
+                   IFNULL(u.usuario, 'Sistema') AS usuario_nombre
             FROM gastos g
             LEFT JOIN movimientos_caja mc ON mc.origen='GASTO' AND mc.referencia_id=g.id
             LEFT JOIN tipos_comprobante t ON t.id = g.tipo_comprobante_id
@@ -126,15 +107,21 @@ if($_GET['accion']=='guardar'){
     $otros_tributos = limpiarMonto($_POST['otros_tributos']);
 
     $tipo_comprobante_id = !empty($_POST['tipo_comprobante_id']) ? $_POST['tipo_comprobante_id'] : "NULL";
-    $medio_pago_id = !empty($_POST['medio_pago_id']) ? $_POST['medio_pago_id'] : "NULL";
-    $caja_id = !empty($_POST['caja_id']) ? $_POST['caja_id'] : "NULL";
-    $obra_id = !empty($_POST['obra_id']) ? $_POST['obra_id'] : "NULL";
-    $centro_costo_id = !empty($_POST['centro_costo_id']) ? $_POST['centro_costo_id'] : "NULL";
-    $categoria_id = !empty($_POST['categoria_id']) ? $_POST['categoria_id'] : "NULL";
-    $subcategoria_id = !empty($_POST['subcategoria_id']) ? $_POST['subcategoria_id'] : "NULL";
-    $proveedor_id = !empty($_POST['proveedor_id']) ? $_POST['proveedor_id'] : "NULL";
+    $medio_pago_id       = !empty($_POST['medio_pago_id']) ? $_POST['medio_pago_id'] : "NULL";
+    $caja_id             = !empty($_POST['caja_id']) ? $_POST['caja_id'] : "NULL";
+    $obra_id             = !empty($_POST['obra_id']) ? $_POST['obra_id'] : "NULL";
+    $centro_costo_id     = !empty($_POST['centro_costo_id']) ? $_POST['centro_costo_id'] : "NULL";
+    $categoria_id        = !empty($_POST['categoria_id']) ? $_POST['categoria_id'] : "NULL";
+    $subcategoria_id     = !empty($_POST['subcategoria_id']) ? $_POST['subcategoria_id'] : "NULL";
+    $proveedor_id        = !empty($_POST['proveedor_id']) ? $_POST['proveedor_id'] : "NULL";
     
     $numero_comprobante = $_POST['numero_comprobante'] ?? '';
+
+    // Lógica de Validación > $800.000
+    $estado_val = 'APROBADO';
+    if ($total >= 800000 && strcasecmp($rol, 'admin') !== 0) {
+        $estado_val = 'PENDIENTE';
+    }
 
     // --- PROCESAR ARCHIVO ---
     $archivo_nombre = null;
@@ -172,24 +159,26 @@ if($_GET['accion']=='guardar'){
                 subcategoria_id=$subcategoria_id, proveedor_id=$proveedor_id,
                 medio_pago_id=$medio_pago_id, obra_id=$obra_id";
         
+        if (strcasecmp($rol, 'admin') !== 0 && $total >= 800000) {
+            $sql .= ", estado_validacion='PENDIENTE'";
+        }
         if($archivo_nombre) $sql .= ", archivo='$archivo_nombre'";
         $sql .= " WHERE id=$id";
     } else {
-        // INSERT (Guardamos al usuario creador en la base de datos)
+        // INSERT
         $sql = "INSERT INTO gastos (fecha, detalle, total, tipo_comprobante_id, numero_comprobante, 
                 neto, iva, ret_iibb, otros_tributos, caja_id, centro_costo_id, categoria_id, subcategoria_id, 
-                proveedor_id, medio_pago_id, obra_id, archivo, usuario_id) 
+                proveedor_id, medio_pago_id, obra_id, archivo, usuario_id, estado_validacion) 
                 VALUES ('$fecha', '$detalle', '$total', $tipo_comprobante_id, '$numero_comprobante', 
                 '$neto', '$iva', '$ret_iibb', '$otros_tributos', $caja_id, $centro_costo_id, $categoria_id, 
                 $subcategoria_id, $proveedor_id, $medio_pago_id, $obra_id, 
-                ".($archivo_nombre ? "'$archivo_nombre'" : "NULL").", $usuario)";
+                ".($archivo_nombre ? "'$archivo_nombre'" : "NULL").", $usuario, '$estado_val')";
     }
 
     $ok = $conn->query($sql);
 
     if($ok){
         if($id){
-            // ACTUALIZA MOVIMIENTO DE CAJA
             if($caja_id != "NULL"){
                 $concepto = "GASTO #".$id;
                 $conn->query("UPDATE movimientos_caja SET
@@ -201,12 +190,10 @@ if($_GET['accion']=='guardar'){
                               WHERE origen='GASTO' AND referencia_id=$id");
             }
         }else{
-            // INSERT NUEVO MOVIMIENTO
             if($caja_id != "NULL"){
                 $gasto_id = $conn->insert_id;
                 $concepto = "GASTO #".$gasto_id;
 
-                // CORRECCIÓN: Inyectamos el $usuario también en el movimiento de caja automático
                 $conn->query("INSERT INTO movimientos_caja(
                                 fecha, caja_id, tipo, concepto, comprobante, importe, origen, referencia_id, usuario_id
                               ) VALUES(
@@ -214,9 +201,27 @@ if($_GET['accion']=='guardar'){
                               )");
             }
         }
-        echo "OK";
+        echo json_encode(["status" => "OK", "estado_validacion" => $estado_val]);
     }else{
-        echo "ERROR: ".$conn->error;
+        echo json_encode(["status" => "ERROR", "message" => $conn->error]);
+    }
+    exit;
+}
+
+/* =========================
+   APROBAR GASTO (SOLO ADMIN)
+========================= */
+if($_GET['accion']=='aprobar'){
+    header('Content-Type: application/json');
+    if (strcasecmp($rol, 'admin') !== 0) {
+        echo json_encode(["status" => "ERROR", "message" => "No posee permisos de administrador."]);
+        exit;
+    }
+    $id = (int)($_POST['id'] ?? 0);
+    if($conn->query("UPDATE gastos SET estado_validacion='APROBADO' WHERE id=$id")){
+        echo json_encode(["status" => "OK"]);
+    }else{
+        echo json_encode(["status" => "ERROR", "message" => $conn->error]);
     }
     exit;
 }
@@ -244,7 +249,6 @@ if($_GET['accion']=='eliminar_archivo'){
 if($_GET['accion']=='eliminar'){
     $id = (int)($_POST['id'] ?? 0);
 
-    // ELIMINAR ARCHIVO FÍSICO
     $res = $conn->query("SELECT archivo FROM gastos WHERE id = $id");
     $row = $res->fetch_assoc();
 
@@ -253,10 +257,8 @@ if($_GET['accion']=='eliminar'){
         if(file_exists($ruta)) unlink($ruta);
     }
 
-    // ELIMINAR MOVIMIENTO DE CAJA
     $conn->query("DELETE FROM movimientos_caja WHERE origen='GASTO' AND referencia_id=$id");
 
-    // ELIMINAR GASTO
     if($conn->query("DELETE FROM gastos WHERE id=$id")){
         echo "OK";
     }else{

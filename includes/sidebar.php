@@ -1,28 +1,31 @@
 <!-- Cargamos los iconos con la URL robusta de cdnjs -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css">
+<!-- Favicon -->
+<link rel="icon" type="image/x-icon" href="/contable/assets/img/favicon.ico">
 
 <style>
 /* ================= PERSONALIZACIÓN ESTÉTICA ================= */
 .sidebar {
-    background-color: #1e2229 !important; /* Gris oscuro mate */
+    background-color: #1e2229 !important;
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif !important;
     z-index: 1040;
-    transition: transform 0.3s ease !important; /* Animación fluida al colapsar en móvil */
+    transition: transform 0.3s ease !important;
 
-    /* SOLUCIÓN AL SCROLL Y VISIBILIDAD DE OPCIONES */
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
     bottom: 0 !important;
-    width: 260px !important;            /* Ancho estándar del menú sidebar */
-    height: 100vh !important;           /* Ocupa el 100% del alto de la ventana */
-    overflow-y: auto !important;        /* Permite scroll vertical interno */
+    width: 260px !important;
+    height: 100vh !important;
+    overflow-y: auto !important;
     display: flex !important;
     flex-direction: column !important;
-    padding-bottom: 2rem !important;    /* Espacio extra al final para scroll holgado */
+    padding: 0 !important;             
+    margin: 0 !important;              
+    padding-bottom: 2rem !important;
 }
 
-/* Personalización de la barra de desplazamiento interna (Scrollbar fina y discreta) */
+/* Personalización de la barra de desplazamiento */
 .sidebar::-webkit-scrollbar {
     width: 6px;
 }
@@ -37,23 +40,39 @@
     background: #4a5568;
 }
 
-/* Título superior */
-.sidebar h5 {
-    color: #ffffff !important;
-    font-weight: 700 !important;
-    letter-spacing: 1px !important;
-    font-size: 1.1rem !important;
+/* Logo - Ajustado para eliminar espacios sobrantes */
+.sidebar-logo-container {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 10px 0 !important; /* Espaciado interno controlado y simétrico */
+    margin: 0 !important;
+    flex-shrink: 0 !important;
 }
 
-/* Líneas divisorias sutiles */
+.sidebar-logo {
+    width: 190px !important;     /* Reducido para mejor proporción en sidebar de 260px */
+    height: auto !important;    /* Mantiene la proporción original sin estirar */
+    max-height: 110px !important; /* Límite estricto de altura */
+    object-fit: contain !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+}
+
+/* HR - PEGADO AL LOGO */
 .sidebar hr {
     border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
     opacity: 1 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    flex-shrink: 0 !important;
 }
 
 /* Enlaces principales del menú */
 .sidebar a {
-    color: #b8c1cc !important; /* Gris elegante para el texto */
+    color: #b8c1cc !important;
     font-size: 0.925rem !important;
     font-weight: 500 !important;
     padding: 0.7rem 1rem !important;
@@ -64,9 +83,8 @@
     text-decoration: none !important;
 }
 
-/* ÍCONOS TOTALMENTE HOMOGÉNEOS: Todos en el mismo tono gris */
 .sidebar a i {
-    color: #b8c1cc !important; /* Forzamos el mismo tono gris de operaciones/configuraciones */
+    color: #b8c1cc !important;
     margin-right: 12px !important;
     font-size: 1.1rem !important;
     min-width: 20px !important;
@@ -74,16 +92,14 @@
     vertical-align: middle !important;
 }
 
-/* Hover (Pasar el mouse) */
 .sidebar a:hover {
     color: #ffffff !important;
     background-color: rgba(255, 255, 255, 0.05) !important;
 }
 .sidebar a:hover i {
-    color: #ffffff !important; /* El ícono también se ilumina en blanco al pasar el mouse */
+    color: #ffffff !important;
 }
 
-/* Ítem activo (Pantalla actual) */
 .sidebar a.active {
     color: #ffffff !important;
     background-color: #2f3640 !important;
@@ -95,7 +111,6 @@
     color: #ffffff !important;
 }
 
-/* Encabezados de secciones colapsables */
 .menu-section > a {
     font-size: 0.8rem !important;
     letter-spacing: 0.8px !important;
@@ -104,15 +119,13 @@
     margin-top: 0.5rem !important;
 }
 
-/* Submenús internos */
 .submenu a {
     font-size: 0.875rem !important;
     padding-left: 2.5rem !important;
     color: #a0aab5 !important;
 }
 
-/* ================= COMPORTAMIENTO RESPONSIVO EXCLUSIVO PARA MÓVILES ================= */
-/* Botón Hamburguesa (Oculto en PC por defecto) */
+/* ================= COMPORTAMIENTO RESPONSIVO ================= */
 .sidebar-toggler {
     display: none;
     position: fixed;
@@ -128,7 +141,6 @@
     cursor: pointer;
 }
 
-/* Capa oscura de fondo para cerrar el menú al hacer clic fuera */
 .sidebar-overlay {
     display: none;
     position: fixed;
@@ -140,36 +152,30 @@
     z-index: 1030;
 }
 
-/* Espaciado para el contenido principal en pantallas de escritorio */
 @media (min-width: 992px) {
     .content {
-        margin-left: 260px !important; /* Mismo ancho definido para el sidebar */
+        margin-left: 260px !important;
         width: calc(100% - 260px) !important;
         transition: margin-left 0.3s ease !important;
     }
 }
 
-/* En móviles el margen vuelve a 0 porque el sidebar se oculta */
 @media (max-width: 991.98px) {
     .content {
         margin-left: 0 !important;
         width: 100% !important;
     }
-}
-
-/* Cuando la pantalla mide menos de 992px aplicamos el colapso */
-@media (max-width: 991.98px) {
     .sidebar {
-        transform: translateX(-100%); /* Saca el sidebar de la pantalla hacia la izquierda */
+        transform: translateX(-100%);
     }
     .sidebar.mobile-open {
-        transform: translateX(0); /* Lo vuelve a introducir cuando se abre */
+        transform: translateX(0);
     }
     .sidebar-toggler {
-        display: block; /* Hacemos visible el botón de tres líneas */
+        display: block;
     }
     .sidebar-overlay.mobile-open {
-        display: block; /* Muestra el fondo oscuro */
+        display: block;
     }
 }
 </style>
@@ -182,12 +188,14 @@
 
 <div class="sidebar" id="sidebarMenu"> 
 
-    <h5 class="text-center mt-3">RG CONTABLE</h5>
+    <!-- Logo ajustado -->
+    <div class="sidebar-logo-container">
+        <img src="/contable/assets/img/logo.png" alt="RG Contable" class="sidebar-logo">
+    </div>
     <hr>
 
     <a href="/contable/index.php"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
 
-    <!-- ACCESO A FACTURACIÓN COMPARTIDO -->
     <?php 
     $rol_actual = $_SESSION['rol'] ?? '';
     if (
@@ -199,15 +207,12 @@
     <?php endif; ?>
 
     <a href="/contable/modules/gastos/"><i class="bi bi-cart3"></i> Gastos</a>
-
     <a href="/contable/modules/caja/"><i class="bi bi-cash-coin"></i> Cajas</a>
 
-    <!-- EXCLUSIVO PARA ADMINISTRADORES: REPORTES -->
     <?php if (esAdmin()): ?>
         <a href="/contable/modules/reportes/"><i class="bi bi-file-earmark-bar-graph"></i> Reportes</a>
     <?php endif; ?>
 
-    <!-- ================= VENCIMIENTOS ================= -->
     <?php 
     $rol_actual = $_SESSION['rol'] ?? '';
     if (
@@ -217,73 +222,58 @@
         <a href="/contable/modules/vencimientos/"><i class="bi bi-calendar-date"></i> Vencimientos</a>
     <?php endif; ?>
 
-    <!-- ================= OPERACIONES ================= -->
     <div class="menu-section">
-
         <a href="#" onclick="toggleMenuOperaciones(event)">
             <i class="bi bi-bar-chart-steps"></i> Operaciones
         </a>
-
         <div id="menuOperaciones" class="submenu">
-
-        <a href="/contable/modules/proveedores/" class="menu-link"><i class="bi bi-building-gear"></i> Proveedores</a>    
-
-    <?php 
-    $rol_actual = $_SESSION['rol'] ?? '';
-    if (
-        strcasecmp($rol_actual, 'admin') === 0 || 
-        strcasecmp($rol_actual, 'contador') === 0 || 
-        strcasecmp($rol_actual, 'arquitecto') === 0
-    ): ?>
-        <a href="/contable/modules/clientes/" class="menu-link"><i class="bi bi-person-badge"></i> Clientes</a>
-        <a href="/contable/modules/cheques/" class="menu-link"><i class="bi bi-postage-heart"></i> Cheques</a>
-        <?php endif; ?>
+            <a href="/contable/modules/proveedores/" class="menu-link"><i class="bi bi-building-gear"></i> Proveedores</a>    
+            <?php 
+            $rol_actual = $_SESSION['rol'] ?? '';
+            if (
+                strcasecmp($rol_actual, 'admin') === 0 || 
+                strcasecmp($rol_actual, 'contador') === 0 || 
+                strcasecmp($rol_actual, 'arquitecto') === 0
+            ): ?>
+                <a href="/contable/modules/clientes/" class="menu-link"><i class="bi bi-person-badge"></i> Clientes</a>
+                <a href="/contable/modules/cheques/" class="menu-link"><i class="bi bi-postage-heart"></i> Cheques</a>
+            <?php endif; ?>
         </div>
-
     </div>
 
-    <!-- ================= CONFIGURACIONES ================= -->
     <div class="menu-section">
-
         <a href="#" onclick="toggleMenuConfig(event)">
             <i class="bi bi-sliders"></i> Configuraciones
         </a>
-
         <div id="menuConfig" class="submenu">
-
-    <?php $rol_actual = $_SESSION['rol'] ?? '';
-         if (
-        strcasecmp($rol_actual, 'admin') === 0 || 
-        strcasecmp($rol_actual, 'contador') === 0 || 
-        strcasecmp($rol_actual, 'arquitecto') === 0
+            <?php $rol_actual = $_SESSION['rol'] ?? '';
+            if (
+                strcasecmp($rol_actual, 'admin') === 0 || 
+                strcasecmp($rol_actual, 'contador') === 0 || 
+                strcasecmp($rol_actual, 'arquitecto') === 0
             ): ?>
-            <a href="/contable/modules/config/obras/" class="menu-link">Obras</a>
+                <a href="/contable/modules/config/obras/" class="menu-link">Obras</a>
             <?php endif; ?>
             
             <?php if(esAdmin()): ?>
-            <a href="/contable/modules/config/categorias/" class="menu-link">Categorías</a>
-            <a href="/contable/modules/config/subcategorias/" class="menu-link">Subcategorías</a>
-            <a href="/contable/modules/config/centros/" class="menu-link">Centros de costo</a>
-            <a href="/contable/modules/config/medios_pago/" class="menu-link">Medios de Pago</a>
-            <a href="/contable/modules/config/tipos_comprobante/" class="menu-link">Tipos de Comprobante</a>
-            <a href="/contable/modules/config/retenciones/" class="menu-link">Tipos de Retenciones</a>
-            <a href="/contable/modules/config/cajas/" class="menu-link">Cajas</a>
+                <a href="/contable/modules/config/categorias/" class="menu-link">Categorías</a>
+                <a href="/contable/modules/config/subcategorias/" class="menu-link">Subcategorías</a>
+                <a href="/contable/modules/config/centros/" class="menu-link">Centros de costo</a>
+                <a href="/contable/modules/config/medios_pago/" class="menu-link">Medios de Pago</a>
+                <a href="/contable/modules/config/tipos_comprobante/" class="menu-link">Tipos de Comprobante</a>
+                <a href="/contable/modules/config/retenciones/" class="menu-link">Tipos de Retenciones</a>
+                <a href="/contable/modules/config/cajas/" class="menu-link">Cajas</a>
                 <hr>
                 <a href="/contable/modules/usuarios/" class="menu-link"><i class="bi bi-people"></i> Usuarios</a>
                 <a href="/contable/modules/roles/" class="menu-link"><i class="bi bi-shield-lock"></i> Roles</a>
             <?php endif; ?>
-
         </div>
-
     </div>
 
     <hr style="margin-top: auto;">
 
     <a href="#" onclick="toggleDark()"><i class="bi bi-moon-stars"></i> Modo oscuro</a>
-
     <hr>
-
-    <!-- SALIR -->
     <a href="/contable/auth/logout.php" style="color:#bbb;">
         <i class="bi bi-box-arrow-right text-danger"></i> Cerrar sesión
     </a>
@@ -295,10 +285,7 @@ function toggleDark(){
     fetch('/contable/ajax/toggle_dark.php')
     .then(()=>location.reload());
 }
-</script>
 
-<script>
-// ================= OPERACIONES =================
 function toggleMenuOperaciones(e){
     e.preventDefault();
     let menuOperaciones = document.getElementById('menuOperaciones');
@@ -315,7 +302,6 @@ function toggleMenuOperaciones(e){
     }
 }
 
-// ================= CONFIG =================
 function toggleMenuConfig(e){
     e.preventDefault();
     let menuOperaciones = document.getElementById('menuOperaciones');
@@ -332,9 +318,7 @@ function toggleMenuConfig(e){
     }
 }
 
-// ================= INIT =================
 document.addEventListener('DOMContentLoaded', function(){
-    // Interactividad responsiva del menú móvil
     const sidebar = document.getElementById('sidebarMenu');
     const mobileBtn = document.getElementById('mobileSidebarBtn');
     const overlay = document.getElementById('mobileSidebarOverlay');
@@ -349,7 +333,6 @@ document.addEventListener('DOMContentLoaded', function(){
         overlay.addEventListener('click', toggleMobileSidebar);
     }
 
-    // Restaurar estado de submenús
     let menuOperaciones = document.getElementById('menuOperaciones');
     let menuConfig = document.getElementById('menuConfig');
 

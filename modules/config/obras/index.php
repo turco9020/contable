@@ -68,30 +68,6 @@ include '../../../includes/sidebar.php';
                 <div class="modal-body">
                     <input type="hidden" name="id" id="id">
 
-                    <!-- RESUMEN FINANCIERO DE LA OBRA (Se activa al ver/editar) -->
-                    <div id="seccionResumenFinanciero" class="d-none mb-4 p-3 bg-light rounded border">
-                        <div class="row text-center g-2">
-                            <div class="col-md-4">
-                                <div class="p-2 bg-white rounded shadow-sm border-start border-success border-4">
-                                    <small class="text-muted fw-bold text-uppercase d-block">Ingresos (Ventas)</small>
-                                    <span class="fs-5 fw-bold text-success" id="lblTotalVentas">$ 0,00</span>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="p-2 bg-white rounded shadow-sm border-start border-danger border-4">
-                                    <small class="text-muted fw-bold text-uppercase d-block">Egresos (Gastos)</small>
-                                    <span class="fs-5 fw-bold text-danger" id="lblTotalGastos">$ 0,00</span>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="p-2 bg-white rounded shadow-sm border-start border-primary border-4" id="boxMargenNeto">
-                                    <small class="text-muted fw-bold text-uppercase d-block">Balance / Margen</small>
-                                    <span class="fs-5 fw-bold" id="lblMargenNeto">$ 0,00</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     <div class="row">
                         <!-- Fila 1 -->
                         <div class="col-md-6 mb-3">
@@ -178,42 +154,68 @@ include '../../../includes/sidebar.php';
                         <div class="col-12 mt-2" id="seccionListadosObra">
                             <ul class="nav nav-tabs" id="tabModulosObra" role="tablist">
                                 <li class="nav-item">
-                                    <button class="nav-link active fw-bold text-dark" id="tab-repo-btn" data-bs-toggle="tab" data-bs-target="#tab-repo" type="button" role="tab">
+                                    <button class="nav-link active fw-bold text-dark py-1 px-3" id="tab-repo-btn" data-bs-toggle="tab" data-bs-target="#tab-repo" type="button" role="tab">
                                         <i class="bi bi-folder2-open me-1 text-primary"></i> Documentos (<span id="cantDocRepo">0</span>)
                                     </button>
                                 </li>
                                 <li class="nav-item">
-                                    <button class="nav-link fw-bold text-dark" id="tab-ventas-btn" data-bs-toggle="tab" data-bs-target="#tab-ventas" type="button" role="tab">
+                                    <button class="nav-link fw-bold text-dark py-1 px-3" id="tab-ventas-btn" data-bs-toggle="tab" data-bs-target="#tab-ventas" type="button" role="tab">
                                         <i class="bi bi-receipt me-1 text-success"></i> Facturas Venta (<span id="cantFacVentas">0</span>)
                                     </button>
                                 </li>
                                 <li class="nav-item">
-                                    <button class="nav-link fw-bold text-dark" id="tab-gastos-btn" data-bs-toggle="tab" data-bs-target="#tab-gastos" type="button" role="tab">
+                                    <button class="nav-link fw-bold text-dark py-1 px-3" id="tab-gastos-btn" data-bs-toggle="tab" data-bs-target="#tab-gastos" type="button" role="tab">
                                         <i class="bi bi-cart-dash me-1 text-danger"></i> Gastos / Compras (<span id="cantFacGastos">0</span>)
                                     </button>
                                 </li>
                             </ul>
 
-                            <div class="tab-content border border-top-0 p-3 rounded-bottom bg-white" id="tabModulosObraContent">
+                            <div class="tab-content border border-top-0 p-2 rounded-bottom bg-white" id="tabModulosObraContent">
                                 <!-- TAB REPOSITORIO -->
                                 <div class="tab-pane fade show active" id="tab-repo" role="tabpanel">
-                                    <ul class="list-group" id="listaArchivosObra">
+                                    <ul class="list-group list-group-flush" id="listaArchivosObra">
                                         <!-- Dinámico -->
                                     </ul>
                                 </div>
 
                                 <!-- TAB FACTURAS VENTA -->
                                 <div class="tab-pane fade" id="tab-ventas" role="tabpanel">
-                                    <ul class="list-group" id="listaFacturasObra">
+                                    <ul class="list-group list-group-flush" id="listaFacturasObra">
                                         <!-- Dinámico -->
                                     </ul>
                                 </div>
 
                                 <!-- TAB GASTOS / COMPRAS -->
                                 <div class="tab-pane fade" id="tab-gastos" role="tabpanel">
-                                    <ul class="list-group" id="listaGastosObra">
+                                    <ul class="list-group list-group-flush" id="listaGastosObra">
                                         <!-- Dinámico -->
                                     </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- RESUMEN FINANCIERO DISCRETO Y COMPACTO (UBICADO ABAJO) -->
+                        <div id="seccionResumenFinanciero" class="col-12 d-none mt-3">
+                            <div class="p-2 bg-light rounded border shadow-sm">
+                                <div class="row text-center g-2 align-items-center">
+                                    <div class="col-md-4">
+                                        <div class="p-2 bg-white rounded border-start border-success border-3">
+                                            <span class="text-muted fw-semibold text-uppercase d-block" style="font-size: 0.75rem;">Total Ventas</span>
+                                            <span class="fw-bold text-success fs-6" id="lblTotalVentas">$ 0,00</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="p-2 bg-white rounded border-start border-danger border-3">
+                                            <span class="text-muted fw-semibold text-uppercase d-block" style="font-size: 0.75rem;">Total Gastos</span>
+                                            <span class="fw-bold text-danger fs-6" id="lblTotalGastos">$ 0,00</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="p-2 bg-white rounded border-start border-primary border-3" id="boxMargenNeto">
+                                            <span class="text-muted fw-semibold text-uppercase d-block" style="font-size: 0.75rem;">Margen / Balance</span>
+                                            <span class="fw-bold fs-6" id="lblMargenNeto">$ 0,00</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -341,7 +343,7 @@ window.verObra = function(id) {
 
         if(d && d.presupuesto_archivo) {
             $('#listaArchivosObra').prepend(`
-                <li class="list-group-item list-group-item-dark d-flex justify-content-between align-items-center py-2 fw-semibold border-secondary">
+                <li class="list-group-item list-group-item-dark d-flex justify-content-between align-items-center py-1 fw-semibold border-secondary small">
                     <a href="/contable/uploads/obras/${d.presupuesto_archivo}" target="_blank" class="text-decoration-none text-dark">
                         <i class="bi bi-file-earmark-check-fill text-success me-2"></i> 📄 PRESUPUESTO ACEPTADO
                     </a>
@@ -376,7 +378,7 @@ window.cargarRepositorio = function(obraId) {
             $('#cantDocRepo').text(r.archivos.length);
             r.archivos.forEach(arc => {
                 lista.append(`
-                    <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-1 px-2 small">
                         <a href="/contable/uploads/obras/${arc.archivo}" target="_blank" class="text-decoration-none text-dark">
                             <i class="bi bi-file-earmark text-primary me-2"></i> ${arc.nombre_original}
                         </a>
@@ -388,7 +390,7 @@ window.cargarRepositorio = function(obraId) {
             });
         } else {
             $('#cantDocRepo').text('0');
-            lista.append('<li class="list-group-item text-muted text-center py-3">No hay documentos cargados en el repositorio.</li>');
+            lista.append('<li class="list-group-item text-muted text-center py-2 small">No hay documentos cargados en el repositorio.</li>');
         }
     }, 'json');
 }
@@ -413,7 +415,7 @@ window.cargarFacturasAsociadas = function(obraId) {
                     `<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" disabled title="Sin adjunto"><i class="bi bi-eye-slash"></i></button>`;
 
                 lista.append(`
-                    <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-1 px-2 small">
                         <div>
                             <i class="bi bi-file-earmark-text text-success me-2"></i> 
                             <span class="fw-semibold">Factura N° ${fac.nro_factura}</span> 
@@ -428,7 +430,7 @@ window.cargarFacturasAsociadas = function(obraId) {
             });
         } else {
             $('#cantFacVentas').text('0');
-            lista.append('<li class="list-group-item text-muted text-center py-3">No hay facturas de venta vinculadas a esta obra.</li>');
+            lista.append('<li class="list-group-item text-muted text-center py-2 small">No hay facturas de venta vinculadas a esta obra.</li>');
         }
         calcularBalanceGlobal();
     }, 'json');
@@ -456,12 +458,12 @@ window.cargarGastosAsociados = function(obraId) {
                     `<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" disabled title="Sin adjunto"><i class="bi bi-eye-slash"></i></button>`;
 
                 lista.append(`
-                    <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-1 px-2 small">
                         <div>
                             <i class="bi bi-cart-dash text-danger me-2"></i> 
                             <span class="fw-semibold">${prov}</span> 
                             <small class="text-muted ms-2">(${comp} - ${fechaFormateada})</small>
-                            <div class="small text-secondary">${g.detalle || ''}</div>
+                            <span class="text-secondary d-block" style="font-size:0.75rem">${g.detalle || ''}</span>
                         </div>
                         <div class="d-flex align-items-center gap-3">
                             <span class="fw-bold text-danger">${totalFormateado}</span>
@@ -472,7 +474,7 @@ window.cargarGastosAsociados = function(obraId) {
             });
         } else {
             $('#cantFacGastos').text('0');
-            lista.append('<li class="list-group-item text-muted text-center py-3">No hay gastos o egresos registrados para esta obra.</li>');
+            lista.append('<li class="list-group-item text-muted text-center py-2 small">No hay gastos o egresos registrados para esta obra.</li>');
         }
         calcularBalanceGlobal();
     }, 'json');

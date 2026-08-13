@@ -41,6 +41,8 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
                         <th>Nro. Factura</th>
                         <th>Cliente</th>
                         <th>Centro Costo</th>
+                        <th>Neto</th>
+                        <th>IVA</th>
                         <th>Total</th>
                         <th>Vence</th>
                         <th>Estado</th>
@@ -268,7 +270,7 @@ document.addEventListener("DOMContentLoaded", function() {
     modalFactura = new bootstrap.Modal(document.getElementById('modalFactura'));
     
     // ==========================================
-    // INICIALIZACIÓN DEL MODAL DE RETENCIONES (PUNTO C)
+    // INICIALIZACIÓN DEL MODAL DE RETENCIONES
     // ==========================================
     modalRetencionesBS = new bootstrap.Modal(document.getElementById('modalRetenciones'));
     
@@ -308,13 +310,13 @@ document.addEventListener("DOMContentLoaded", function() {
                 extend: 'excelHtml5',
                 text: ' Excel',
                 className: 'btn btn-success btn-sm',
-                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7, 8] }
+                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] }
             },
             {
                 extend: 'print',
                 text: ' Imprimir',
                 className: 'btn btn-secondary btn-sm',
-                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7, 8] }
+                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] }
             },
             { 
                 extend: 'colvis', 
@@ -344,9 +346,24 @@ document.addEventListener("DOMContentLoaded", function() {
                 }
             },
             { data: 'cliente_nombre' },
-            { data: 'centro_costo_nombre' },
+            { data: 'centro_costo_nombre', className: 'none'},
+            { 
+                data: 'neto',
+                className: 'text-end',
+                render: function(d) {
+                    return '$ ' + Number(d || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+                }
+            },
+            { 
+                data: 'iva',
+                className: 'text-end',
+                render: function(d) {
+                    return '$ ' + Number(d || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+                }
+            },
             { 
                 data: 'total',
+                className: 'text-end',
                 render: function(d) {
                     return '$ ' + Number(d || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
                 }
@@ -751,7 +768,7 @@ function actualizarBadgesPestañas(datosFilas) {
 }
 
 // ==========================================
-// FUNCIONES GLOBALES DE RETENCIONES (PUNTO C)
+// FUNCIONES GLOBALES DE RETENCIONES
 // ==========================================
 window.abrirModalRetenciones = function(facturaId, nroFacturaCompleto) {
     $('#formRetencion')[0].reset();

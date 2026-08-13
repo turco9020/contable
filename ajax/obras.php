@@ -24,7 +24,6 @@ function eliminarDirectorioCompleto($dir) {
 
 // ================= LISTAR OBRAS =================
 if($accion == 'listar'){
-    // Se incluye 'o.responsable' y 'o.facturacion' en la consulta
     $sql = "SELECT o.*, c.nombre as cliente, u.usuario as usuario_nombre
             FROM obras o
             LEFT JOIN clientes c ON c.id = o.cliente_id
@@ -38,6 +37,7 @@ if($accion == 'listar'){
     }
 
     echo json_encode(["data"=>$data]);
+    exit;
 }
 
 // ================= GUARDAR / ACTUALIZAR =================
@@ -46,7 +46,7 @@ if($accion == 'guardar'){
 
     $nombre = $conn->real_escape_string($_POST['nombre']);
     $cliente_id = $_POST['cliente_id'] ? intval($_POST['cliente_id']) : 'NULL';
-    $responsable = $conn->real_escape_string($_POST['responsable']); // NUEVO
+    $responsable = $conn->real_escape_string($_POST['responsable']);
     $direccion = $conn->real_escape_string($_POST['direccion']);
     $nro_oc = $conn->real_escape_string($_POST['nro_oc']);
     $fecha_inicio = $conn->real_escape_string($_POST['fecha_inicio']);
@@ -54,9 +54,8 @@ if($accion == 'guardar'){
     $tipo_obra = $conn->real_escape_string($_POST['tipo_obra']);
     $detalle = $conn->real_escape_string($_POST['detalle']);
     $estado = $conn->real_escape_string($_POST['estado']);
-    $facturacion = $conn->real_escape_string($_POST['facturacion']); // NUEVO
+    $facturacion = $conn->real_escape_string($_POST['facturacion']);
 
-    // Validamos y formateamos el ID de usuario usando la variable capturada arriba
     $usuario_id_db = ($usuario_logueado > 0) ? intval($usuario_logueado) : 'NULL';
 
     if($id){
@@ -127,6 +126,7 @@ if($accion == 'guardar'){
     }
 
     echo "OK";
+    exit;
 }
 
 // ================= TRAER ADJUNTOS DEL REPOSITORIO =================
@@ -141,9 +141,10 @@ if($accion == 'listar_archivos') {
         }
     }
     echo json_encode(["success" => true, "archivos" => $archivos]);
+    exit;
 }
 
-// ================= TRAER FACTURAS ASOCIADAS A LA OBRA =================
+// ================= TRAER FACTURAS VENTA ASOCIADAS A LA OBRA =================
 if($accion == 'listar_facturas') {
     $obra_id = intval($_GET['obra_id'] ?? 0);
     $facturas = [];
@@ -155,6 +156,29 @@ if($accion == 'listar_facturas') {
         }
     }
     echo json_encode(["success" => true, "facturas" => $facturas]);
+    exit;
+}
+
+// ================= NUEVO: TRAER GASTOS ASOCIADOS A LA OBRA =================
+if($accion == 'listar_gastos') {
+    $obra_id = intval($_GET['obra_id'] ?? 0);
+    $gastos = [];
+
+    if($obra_id > 0) {
+        $sql = "SELECT g.id, g.fecha, g.numero_comprobante, g.detalle, g.total, g.archivo, 
+                       p.nombre AS proveedor, cat.nombre AS categoria
+                FROM gastos g
+                LEFT JOIN proveedores p ON p.id = g.proveedor_id
+                LEFT JOIN categorias cat ON cat.id = g.categoria_id
+                WHERE g.obra_id = $obra_id
+                ORDER BY g.fecha DESC";
+                
+        $res = $conn->query($sql);
+        while($row = $res->fetch_assoc()) {
+            $gastos[] = $row;
+        }
+    }
+    echo json_encode(["success" => true, "gastos" => $gastos]);
     exit;
 }
 
@@ -171,6 +195,7 @@ if($accion == 'eliminar_archivo') {
         $conn->query("DELETE FROM obra_archivos WHERE id = $id");
     }
     echo json_encode(["success" => true]);
+    exit;
 }
 
 // ================= ELIMINAR OBRA COMPLETA =================
@@ -185,6 +210,6 @@ if($accion == 'eliminar'){
     $conn->query("DELETE FROM obras WHERE id=$id");
 
     echo "OK";
+    exit;
 }
-
 ?>

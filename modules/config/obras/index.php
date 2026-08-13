@@ -15,7 +15,7 @@ include '../../../includes/sidebar.php';
         </button>
     </div>
 
-    <!-- Pestañas de Navegación de Estados de Facturas -->
+    <!-- Pestañas de Navegación de Obras -->
     <ul class="nav nav-tabs mb-3" id="tabFacturas" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active fw-semibold text-dark" id="cobrar-tab" data-bs-toggle="tab" data-bs-target="#cobrar" type="button" role="tab" onclick="filtrarPestaña('POR_COBRAR')">
@@ -56,7 +56,7 @@ include '../../../includes/sidebar.php';
 
 <!-- MODAL UNIFICADO (NUEVO / VER / EDITAR) -->
 <div class="modal fade" id="modalObra" data-bs-backdrop="static">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content">
 
             <div class="modal-header bg-dark text-white">
@@ -67,6 +67,30 @@ include '../../../includes/sidebar.php';
             <form id="formObra" enctype="multipart/form-data">
                 <div class="modal-body">
                     <input type="hidden" name="id" id="id">
+
+                    <!-- RESUMEN FINANCIERO DE LA OBRA (Se activa al ver/editar) -->
+                    <div id="seccionResumenFinanciero" class="d-none mb-4 p-3 bg-light rounded border">
+                        <div class="row text-center g-2">
+                            <div class="col-md-4">
+                                <div class="p-2 bg-white rounded shadow-sm border-start border-success border-4">
+                                    <small class="text-muted fw-bold text-uppercase d-block">Ingresos (Ventas)</small>
+                                    <span class="fs-5 fw-bold text-success" id="lblTotalVentas">$ 0,00</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-2 bg-white rounded shadow-sm border-start border-danger border-4">
+                                    <small class="text-muted fw-bold text-uppercase d-block">Egresos (Gastos)</small>
+                                    <span class="fs-5 fw-bold text-danger" id="lblTotalGastos">$ 0,00</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-2 bg-white rounded shadow-sm border-start border-primary border-4" id="boxMargenNeto">
+                                    <small class="text-muted fw-bold text-uppercase d-block">Balance / Margen</small>
+                                    <span class="fs-5 fw-bold" id="lblMargenNeto">$ 0,00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="row">
                         <!-- Fila 1 -->
@@ -137,7 +161,7 @@ include '../../../includes/sidebar.php';
 
                         <hr class="my-3">
 
-                        <!-- SECCIÓN ARCHIVOS -->
+                        <!-- SECCIÓN ARCHIVOS DE CARGA -->
                         <div class="col-md-6 mb-3" id="wrapperPresupuesto">
                             <label class="form-label fw-semibold">Presupuesto Aceptado (PDF/Doc)</label>
                             <input type="file" name="presupuesto_archivo" id="presupuesto_archivo" class="form-control">
@@ -149,20 +173,49 @@ include '../../../includes/sidebar.php';
                             <input type="file" name="archivos_repositorio[]" id="archivos_repositorio" class="form-control" multiple>
                             <small class="text-muted">Podés seleccionar varios archivos juntos.</small>
                         </div>
-                        
-                        <!-- Contenedor del Listado del Repositorio -->
-                        <div class="col-md-12 d-none" id="contenedorListaArchivos">
-                            <label class="form-label fw-semibold text-secondary"><i class="bi bi-folder2-open me-1"></i> Repositorio de Documentos</label>
-                            <ul class="list-group" id="listaArchivosObra">
-                                <!-- Dinámico -->
+
+                        <!-- PESTAÑAS DE VINCULACIONES Y ARCHIVOS EN LA OBRA -->
+                        <div class="col-12 mt-2" id="seccionListadosObra">
+                            <ul class="nav nav-tabs" id="tabModulosObra" role="tablist">
+                                <li class="nav-item">
+                                    <button class="nav-link active fw-bold text-dark" id="tab-repo-btn" data-bs-toggle="tab" data-bs-target="#tab-repo" type="button" role="tab">
+                                        <i class="bi bi-folder2-open me-1 text-primary"></i> Documentos (<span id="cantDocRepo">0</span>)
+                                    </button>
+                                </li>
+                                <li class="nav-item">
+                                    <button class="nav-link fw-bold text-dark" id="tab-ventas-btn" data-bs-toggle="tab" data-bs-target="#tab-ventas" type="button" role="tab">
+                                        <i class="bi bi-receipt me-1 text-success"></i> Facturas Venta (<span id="cantFacVentas">0</span>)
+                                    </button>
+                                </li>
+                                <li class="nav-item">
+                                    <button class="nav-link fw-bold text-dark" id="tab-gastos-btn" data-bs-toggle="tab" data-bs-target="#tab-gastos" type="button" role="tab">
+                                        <i class="bi bi-cart-dash me-1 text-danger"></i> Gastos / Compras (<span id="cantFacGastos">0</span>)
+                                    </button>
+                                </li>
                             </ul>
-                        </div>
-                        <!-- Contenedor de Facturas de Venta Asignadas -->
-                        <div class="col-md-12 d-none mt-3" id="contenedorListaFacturas">
-                            <label class="form-label fw-semibold text-secondary"><i class="bi bi-receipt me-1"></i> Facturas de Venta Asociadas</label>
-                            <ul class="list-group" id="listaFacturasObra">
-                                <!-- Dinámico -->
-                            </ul>
+
+                            <div class="tab-content border border-top-0 p-3 rounded-bottom bg-white" id="tabModulosObraContent">
+                                <!-- TAB REPOSITORIO -->
+                                <div class="tab-pane fade show active" id="tab-repo" role="tabpanel">
+                                    <ul class="list-group" id="listaArchivosObra">
+                                        <!-- Dinámico -->
+                                    </ul>
+                                </div>
+
+                                <!-- TAB FACTURAS VENTA -->
+                                <div class="tab-pane fade" id="tab-ventas" role="tabpanel">
+                                    <ul class="list-group" id="listaFacturasObra">
+                                        <!-- Dinámico -->
+                                    </ul>
+                                </div>
+
+                                <!-- TAB GASTOS / COMPRAS -->
+                                <div class="tab-pane fade" id="tab-gastos" role="tabpanel">
+                                    <ul class="list-group" id="listaGastosObra">
+                                        <!-- Dinámico -->
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
 
                     </div>
@@ -180,12 +233,14 @@ include '../../../includes/sidebar.php';
 <script>
 let modalObraBS;
 let tabla;
-let estadoFacturacionActual = 'POR_COBRAR'; // Estado inicial por defecto
+let estadoFacturacionActual = 'POR_COBRAR';
 
-// Función global para filtrar desde las pestañas
+let globalTotalVentas = 0;
+let globalTotalGastos = 0;
+
 window.filtrarPestaña = function(estado) {
     estadoFacturacionActual = estado;
-    tabla.draw(); // Redibuja la tabla aplicando el filtro personalizado
+    tabla.draw();
 }
 
 function cargarClientes(callback = null){
@@ -203,13 +258,17 @@ window.abrirModal = function(modo) {
     $('#formObra')[0].reset();
     $('#id').val('');
     $('#verPresupuestoActual').html('');
-    $('#listaArchivosObra').html('');
-    $('#contenedorListaArchivos').addClass('d-none');
+    $('#listaArchivosObra, #listaFacturasObra, #listaGastosObra').html('');
+    
+    $('#seccionResumenFinanciero').addClass('d-none');
+    $('#cantDocRepo, #cantFacVentas, #cantFacGastos').text('0');
+
     $('#formObra').find('input, select, textarea').prop('disabled', false);
     $('#btnGuardarObra').show();
     $('#wrapperPresupuesto, #wrapperRepositorio').show();
-    $('#listaFacturasObra').html('');
-    $('#contenedorListaFacturas').addClass('d-none');
+    
+    // Reset a primera pestaña
+    $('#tab-repo-btn').tab('show');
     
     if(modo === 'NUEVO') {
         $('#modalObraLabel').html('<i class="bi bi-plus-circle me-2"></i> Registrar Nueva Obra');
@@ -219,21 +278,24 @@ window.abrirModal = function(modo) {
 }
 
 // ==========================================
-// FUNCIONES DE CARGA Y HERRAMIENTAS (SCOPE GLOBAL)
+// FUNCIONES DE CARGA Y HERRAMIENTAS
 // ==========================================
 window.editar = function(id){
     let d = tabla.rows().data().toArray().find(x => x.id == id);
     if(!d) return;
 
-    $('#listaFacturasObra').html('');
-    $('#contenedorListaFacturas').addClass('d-none');    
+    globalTotalVentas = 0;
+    globalTotalGastos = 0;
+
+    $('#listaArchivosObra, #listaFacturasObra, #listaGastosObra').html('');
     $('#formObra')[0].reset();
     $('#verPresupuestoActual').html('');
-    $('#listaArchivosObra').html('');
     $('#formObra').find('input, select, textarea').prop('disabled', false);
     $('#btnGuardarObra').show();
     $('#wrapperPresupuesto, #wrapperRepositorio').show();
     $('#modalObraLabel').html('<i class="bi bi-pencil me-2"></i> Editar Datos de Obra');
+    
+    $('#tab-repo-btn').tab('show');
 
     cargarClientes(function() {
         $('#id').val(d.id);
@@ -256,7 +318,12 @@ window.editar = function(id){
                 </a>
             `);
         }
+        
+        $('#seccionResumenFinanciero').removeClass('d-none');
+        
         window.cargarRepositorio(d.id);
+        window.cargarFacturasAsociadas(d.id);
+        window.cargarGastosAsociados(d.id);
     });
     modalObraBS.show();
 }
@@ -272,12 +339,7 @@ window.verObra = function(id) {
         let d = null;
         tabla.rows().data().each(function(row) { if(row.id == id) d = row; });
 
-        // Limpiamos los contenedores antes de inyectar datos nuevos para evitar duplicación
-        $('#listaArchivosObra').html('');
-        $('#contenedorListaArchivos').addClass('d-none');
-
         if(d && d.presupuesto_archivo) {
-            $('#contenedorListaArchivos').removeClass('d-none');
             $('#listaArchivosObra').prepend(`
                 <li class="list-group-item list-group-item-dark d-flex justify-content-between align-items-center py-2 fw-semibold border-secondary">
                     <a href="/contable/uploads/obras/${d.presupuesto_archivo}" target="_blank" class="text-decoration-none text-dark">
@@ -287,19 +349,31 @@ window.verObra = function(id) {
                 </li>
             `);
         }
-
-        // Cargar los adjuntos dinámicos y las facturas vinculadas de forma asíncrona
-        window.cargarRepositorio(id);
-        window.cargarFacturasAsociadas(id);
-
     }, 250);
+}
+
+function calcularBalanceGlobal() {
+    let fmt = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
+    
+    $('#lblTotalVentas').text(fmt.format(globalTotalVentas));
+    $('#lblTotalGastos').text(fmt.format(globalTotalGastos));
+
+    let margen = globalTotalVentas - globalTotalGastos;
+    let lblMargen = $('#lblMargenNeto');
+    lblMargen.text(fmt.format(margen));
+
+    if(margen >= 0) {
+        lblMargen.removeClass('text-danger').addClass('text-success');
+    } else {
+        lblMargen.removeClass('text-success').addClass('text-danger');
+    }
 }
 
 window.cargarRepositorio = function(obraId) {
     $.get('/contable/ajax/obras.php?accion=listar_archivos', { obra_id: obraId }, function(r) {
+        let lista = $('#listaArchivosObra');
         if(r.success && r.archivos.length > 0) {
-            $('#contenedorListaArchivos').removeClass('d-none'); 
-            let lista = $('#listaArchivosObra');
+            $('#cantDocRepo').text(r.archivos.length);
             r.archivos.forEach(arc => {
                 lista.append(`
                     <li class="list-group-item d-flex justify-content-between align-items-center py-2">
@@ -312,6 +386,9 @@ window.cargarRepositorio = function(obraId) {
                     </li>
                 `);
             });
+        } else {
+            $('#cantDocRepo').text('0');
+            lista.append('<li class="list-group-item text-muted text-center py-3">No hay documentos cargados en el repositorio.</li>');
         }
     }, 'json');
 }
@@ -320,32 +397,26 @@ window.cargarFacturasAsociadas = function(obraId) {
     $.get('/contable/ajax/obras.php?accion=listar_facturas', { obra_id: obraId }, function(r) {
         let lista = $('#listaFacturasObra');
         lista.empty();
+        globalTotalVentas = 0;
         
         if(r.success && r.facturas.length > 0) {
-            $('#contenedorListaFacturas').removeClass('d-none');
+            $('#cantFacVentas').text(r.facturas.length);
             r.facturas.forEach(fac => {
-                let totalFormateado = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(fac.total);
-                let fechaFormateada = fac.fecha.split('-').reverse().join('/');
+                let monto = parseFloat(fac.total) || 0;
+                globalTotalVentas += monto;
 
-                // Validamos si la factura tiene un archivo adjunto asignado
-                let botonAdjunto = '';
-                if (fac.archivo) {
-                    botonAdjunto = `
-                        <a href="/contable/uploads/facturacion/${fac.archivo}" target="_blank" class="btn btn-sm btn-outline-danger py-0 px-2" title="Ver PDF Factura">
-                            <i class="bi bi-file-earmark-pdf"></i>
-                        </a>`;
-                } else {
-                    botonAdjunto = `
-                        <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" disabled title="Sin archivo adjunto">
-                            <i class="bi bi-eye-slash"></i>
-                        </button>`;
-                }
+                let totalFormateado = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(monto);
+                let fechaFormateada = fac.fecha ? fac.fecha.split('-').reverse().join('/') : '-';
+
+                let botonAdjunto = fac.archivo ? 
+                    `<a href="/contable/uploads/facturacion/${fac.archivo}" target="_blank" class="btn btn-sm btn-outline-danger py-0 px-2" title="Ver PDF Factura"><i class="bi bi-file-earmark-pdf"></i></a>` : 
+                    `<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" disabled title="Sin adjunto"><i class="bi bi-eye-slash"></i></button>`;
 
                 lista.append(`
                     <li class="list-group-item d-flex justify-content-between align-items-center py-2">
                         <div>
                             <i class="bi bi-file-earmark-text text-success me-2"></i> 
-                            <span class="fw-semibold">${fac.nro_factura}</span> 
+                            <span class="fw-semibold">Factura N° ${fac.nro_factura}</span> 
                             <small class="text-muted ms-2">(${fechaFormateada})</small>
                         </div>
                         <div class="d-flex align-items-center gap-3">
@@ -356,15 +427,60 @@ window.cargarFacturasAsociadas = function(obraId) {
                 `);
             });
         } else {
-            $('#contenedorListaFacturas').addClass('d-none');
+            $('#cantFacVentas').text('0');
+            lista.append('<li class="list-group-item text-muted text-center py-3">No hay facturas de venta vinculadas a esta obra.</li>');
         }
+        calcularBalanceGlobal();
+    }, 'json');
+}
+
+window.cargarGastosAsociados = function(obraId) {
+    $.get('/contable/ajax/obras.php?accion=listar_gastos', { obra_id: obraId }, function(r) {
+        let lista = $('#listaGastosObra');
+        lista.empty();
+        globalTotalGastos = 0;
+
+        if(r.success && r.gastos.length > 0) {
+            $('#cantFacGastos').text(r.gastos.length);
+            r.gastos.forEach(g => {
+                let monto = parseFloat(g.total) || 0;
+                globalTotalGastos += monto;
+
+                let totalFormateado = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(monto);
+                let fechaFormateada = g.fecha ? g.fecha.split('-').reverse().join('/') : '-';
+                let prov = g.proveedor ? g.proveedor : 'Gasto General';
+                let comp = g.numero_comprobante ? `Comp: ${g.numero_comprobante}` : 'Sin comprobante';
+
+                let botonAdjunto = g.archivo ? 
+                    `<a href="/contable/uploads/gastos/${g.archivo}" target="_blank" class="btn btn-sm btn-outline-danger py-0 px-2" title="Ver Comprobante Gasto"><i class="bi bi-file-earmark-pdf"></i></a>` : 
+                    `<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" disabled title="Sin adjunto"><i class="bi bi-eye-slash"></i></button>`;
+
+                lista.append(`
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                        <div>
+                            <i class="bi bi-cart-dash text-danger me-2"></i> 
+                            <span class="fw-semibold">${prov}</span> 
+                            <small class="text-muted ms-2">(${comp} - ${fechaFormateada})</small>
+                            <div class="small text-secondary">${g.detalle || ''}</div>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <span class="fw-bold text-danger">${totalFormateado}</span>
+                            ${botonAdjunto}
+                        </div>
+                    </li>
+                `);
+            });
+        } else {
+            $('#cantFacGastos').text('0');
+            lista.append('<li class="list-group-item text-muted text-center py-3">No hay gastos o egresos registrados para esta obra.</li>');
+        }
+        calcularBalanceGlobal();
     }, 'json');
 }
 
 window.eliminarArchivoRepo = function(archivoId, obraId) {
     if(confirm('¿Desea remover este archivo del repositorio?')) {
         $.post('/contable/ajax/obras.php?accion=eliminar_archivo', { id: archivoId }, function() {
-            // Limpiamos la lista para recargarla limpia sin duplicados
             $('#listaArchivosObra').html('');
             window.cargarRepositorio(obraId);
         }, 'json');
@@ -397,7 +513,6 @@ window.eliminar = function(id){
 document.addEventListener("DOMContentLoaded", function(){
     modalObraBS = new bootstrap.Modal(document.getElementById('modalObra'));
 
-    // 1. Filtro personalizado de DataTables basado en la pestaña activa
     $.fn.dataTable.ext.search.push(
         function(settings, data, dataIndex, rowData) {
             let factura = rowData.facturacion; 

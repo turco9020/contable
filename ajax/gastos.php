@@ -190,8 +190,9 @@ if($_GET['accion']=='guardar'){
                               WHERE origen='GASTO' AND referencia_id=$id");
             }
         }else{
+            $gasto_id = $conn->insert_id;
+            
             if($caja_id != "NULL"){
-                $gasto_id = $conn->insert_id;
                 $concepto = "GASTO #".$gasto_id;
 
                 $conn->query("INSERT INTO movimientos_caja(
@@ -199,6 +200,18 @@ if($_GET['accion']=='guardar'){
                               ) VALUES(
                                 '$fecha', $caja_id, 'EGRESO', '$concepto', '$numero_comprobante', '$total', 'GASTO', $gasto_id, $usuario
                               )");
+            }
+
+            // --- VÍNCULO AUTOMÁTICO CON VENCIMIENTOS ---
+            if (!empty($_POST['vencimiento_id'])) {
+                $venc_id = (int)$_POST['vencimiento_id'];
+                $fecha_pago = date('Y-m-d H:i:s');
+
+                $conn->query("UPDATE vencimientos 
+                              SET estado = 'PAGADO', 
+                                  fecha_pago = '$fecha_pago', 
+                                  caja_id = $caja_id 
+                              WHERE id = $venc_id");
             }
         }
         echo json_encode(["status" => "OK", "estado_validacion" => $estado_val]);

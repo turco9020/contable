@@ -94,7 +94,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             $total_hijos  = (int)($r['total_hijos'] ?? 0);
 
                             $badge_cuota = ($total_cuotas > 1 || $total_hijos > 0) 
-                                ? "<span class='badge bg-info text-dark'>{$total_cuotas} Cuotas</span>" 
+                                ? "<span class='badge bg-light text-muted border'>{$total_cuotas} Cuotas</span>" 
                                 : "<span class='badge bg-light text-muted border'>Única</span>";
 
                             // 2. Badge de Estado (coincidiendo con tu ENUM: 'PENDIENTE', 'PAGADO', 'ANULADO')
@@ -128,11 +128,11 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                 </td>
 
                                 <!-- Columna 2: ID -->
-                                <td class="fw-bold text-secondary">#<?= $r['id'] ?></td>
+                                <td class="text-secondary">#<?= $r['id'] ?></td>
 
                                 <!-- Columna 3: Título y Descripción -->
                                 <td>
-                                    <span class="fw-bold text-dark d-block"><?= htmlspecialchars($r['titulo']) ?></span>
+                                    <span class="fw-bolder text-dark d-block"><?= htmlspecialchars($r['titulo']) ?></span>
                                     <?php if (!empty($r['descripcion'])): ?>
                                         <small class="text-muted"><?= htmlspecialchars($r['descripcion']) ?></small>
                                     <?php endif; ?>
@@ -172,6 +172,21 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                                                 <i class="bi bi-cash-coin"></i>
                                             </button>
                                         <?php endif; ?>
+
+                                        <button type="button" 
+                                            class="btn btn-sm btn-outline-primary btn-editar-vencimiento" 
+                                            title="Editar Vencimiento"
+                                            data-id="<?= $r['id'] ?>"
+                                            data-titulo="<?= htmlspecialchars($r['titulo']) ?>"
+                                            data-descripcion="<?= htmlspecialchars($r['descripcion'] ?? '') ?>"
+                                            data-monto="<?= $r['monto'] ?>"
+                                            data-fecha="<?= $r['fecha_vencimiento'] ?>"
+                                            data-categoria="<?= $r['categoria_id'] ?? '' ?>"
+                                            data-subcategoria="<?= $r['subcategoria_id'] ?? '' ?>"
+                                            data-proveedor="<?= $r['proveedor_id'] ?? '' ?>"
+                                            data-aviso="<?= $r['dias_aviso'] ?? 7 ?>">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
 
                                         <?php if (!empty($r['archivo'])): ?>
                                             <a href="/contable/uploads/vencimientos/<?= $r['archivo'] ?>" 
@@ -444,6 +459,68 @@ document.addEventListener("DOMContentLoaded", function(){
                 icon.removeClass('bi-arrow-repeat spin').addClass('bi-dash-circle-fill');
             }, 'json');
         }
+    });
+
+        // ACCIÓN: PRESIONAR BOTÓN "EDITAR" (LÁPIZ)
+    $(document).on('click', '.btn-editar-vencimiento', function() {
+        const btn = $(this);
+        
+        // 1. Cambiar título del modal
+        $('#tituloModalVencimiento').html('<i class="bi bi-pencil-square me-2"></i>Editar Vencimiento / Compromiso');
+        
+        // 2. Asignar valores a los campos
+        $('#vencimiento_id').val(btn.data('id'));
+        $('#formVencimiento #titulo').val(btn.data('titulo'));
+        $('#formVencimiento #descripcion').val(btn.data('descripcion'));
+        $('#formVencimiento #monto').val(btn.data('monto'));
+        $('#formVencimiento #fecha_vencimiento').val(btn.data('fecha'));
+        $('#formVencimiento #dias_aviso').val(btn.data('aviso'));
+
+        const catId = btn.data('categoria');
+        const subcatId = btn.data('subcategoria');
+        const provId = btn.data('proveedor');
+
+        $('#formVencimiento #categoria_id').val(catId);
+        $('#formVencimiento #proveedor_id').val(provId);
+
+        // Ocultar bloque de cuotas en modo edición simple
+        $('#es_cuotas').prop('checked', false).trigger('change');
+        $('#es_cuotas').closest('.form-check').hide(); 
+
+        // 3. Cargar subcategorías correspondientes y seleccionar la guardada
+        if (catId) {
+            $.ajax({
+                url: '../../ajax/get_subcategorias.php',
+                type: 'GET',
+                data: { categoria_id: catId },
+                dataType: 'json',
+                success: function(data) {
+                    let $sub = $('#formVencimiento #subcategoria_id');
+                    $sub.empty().append('<option value="">-- Seleccionar Subcategoría --</option>');
+                    if (data && data.length > 0) {
+                        $.each(data, function(i, item) {
+                            $sub.append(`<option value="${item.id}">${item.nombre}</option>`);
+                        });
+                        $sub.prop('disabled', false).val(subcatId);
+                    } else {
+                        $sub.append('<option value="">-- Sin Subcategorías --</option>').prop('disabled', true);
+                    }
+                }
+            });
+        }
+
+        // 4. Mostrar Modal
+        const modalV = new bootstrap.Modal(document.getElementById('modalVencimiento'));
+        modalV.show();
+    });
+
+    // Resetear el modal al abrirlo para "Nuevo Vencimiento"
+    $('[data-bs-target="#modalVencimiento"]').on('click', function() {
+        $('#formVencimiento')[0].reset();
+        $('#vencimiento_id').val('');
+        $('#tituloModalVencimiento').html('<i class="bi bi-calendar-check me-2"></i>Gestión de Vencimiento / Compromiso');
+        $('#es_cuotas').closest('.form-check').show();
+        $('#formVencimiento #subcategoria_id').empty().append('<option value="">-- Elija Categoría --</option>').prop('disabled', true);
     });
 
     // Cambio dinámico de categoría en modal gasto

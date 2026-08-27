@@ -6,8 +6,7 @@
     </head>
 <body>
 
-<div class="topbar d-flex justify-content-between align-items-center footer-lite">
-
+<div class="topbar d-flex justify-content-between align-items-center footer-lite w-100 px-3">
     <div class="text-muted small">
         Sistema Contable © Recursos Globales® <?= date('Y') ?>
     </div>
@@ -16,7 +15,6 @@
         <?= $_SESSION['rol'] ?> · 
         <a href="/contable/auth/logout.php" class="text-decoration-none text-muted">Salir</a>
     </div>
-
 </div>
 
 <style>
@@ -25,12 +23,30 @@
     background: transparent;
     border-top: 1px solid #e5e5e5;
     margin-top: 10px;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
     font-size: 12px;
+    box-sizing: border-box;
 }
 
 /* hover suave */
 .footer-lite a:hover {
     color: #000;
+}
+
+/* Estado normal o pantalla completa */
+.content-wrapper, .footer-lite {
+    margin-left: 0;
+    transition: margin-left 0.3s ease; /* Transición suave al abrir/cerrar */
+}
+
+/* Cuando el sidebar está visible en pantallas grandes */
+@media (min-width: 992px) {
+    body.sidebar-open .footer-lite,
+    body:not(.sidebar-collapsed) .footer-lite {
+        margin-left: 250px !important; /* Ajusta este valor al ancho real de tu sidebar */
+        width: calc(100% - 250px) !important;
+    }
 }
 
 /* DARK MODE */
@@ -54,6 +70,7 @@ input, textarea {
 
 <!-- jQuery -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
 
 <!-- Bootstrap -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -146,4 +163,3 @@ document.addEventListener('DOMContentLoaded', function () {
 
 </body>
 </html>
-```

@@ -68,6 +68,7 @@
                         <div class="col-md-6">
                             <label class="form-label small fw-bold">Factura / Comprobante (Adjunto)</label>
                             <input type="file" name="archivo" id="archivo" class="form-control" accept=".pdf,.png,.jpg,.jpeg">
+                            <small class="text-muted d-block mt-1">Si subes un nuevo archivo, reemplazará al actual.</small>
                         </div>
                     </div>
 

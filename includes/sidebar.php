@@ -195,6 +195,7 @@
     <hr>
 
     <a href="/contable/index.php"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
+    <a href="/contable/modules/tareas/"><i class="bi bi-kanban"></i> Tareas</a>
 
     <?php 
     $rol_actual = $_SESSION['rol'] ?? '';

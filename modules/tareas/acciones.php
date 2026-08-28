@@ -187,5 +187,33 @@ if ($accion === 'eliminar_adjunto' && isset($_GET['id'])) {
     }
 }
 
+// ==========================================
+// 7. OBTENER TAREA VÍA AJAX
+// ==========================================
+if ($accion === 'obtener') {
+    if (ob_get_length()) ob_clean();
+    header('Content-Type: application/json');
+    
+    $tarea_id = intval($_GET['id'] ?? 0);
+    if ($tarea_id > 0) {
+        // Marcamos la fecha/hora en la que el usuario abrió la tarea
+        mysqli_query($conexion, "UPDATE tareas SET ultima_vista_en = NOW() WHERE id = $tarea_id");
+
+        $sql = "SELECT t.*, u.usuario AS asignado_nombre 
+                FROM tareas t 
+                LEFT JOIN usuarios u ON t.asignado_id = u.id 
+                WHERE t.id = $tarea_id";
+        $res = mysqli_query($conexion, $sql);
+        if ($res && $t = mysqli_fetch_assoc($res)) {
+            echo json_encode(['success' => true, 'tarea' => $t]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Tarea no encontrada.']);
+        }
+    } else {
+        echo json_encode(['success' => false, 'message' => 'ID de tarea inválido.']);
+    }
+    exit;
+}
+
 header("Location: index.php");
 exit;

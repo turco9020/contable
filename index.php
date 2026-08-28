@@ -1,11 +1,27 @@
 <?php
 include 'includes/header.php';
 include 'includes/sidebar.php';
+
+// Consulta de Tareas Pendientes (incluye la fecha del último comentario)
+$usuario_id = $_SESSION['usuario_id'] ?? $_SESSION['id'] ?? 0;
+$sql_tareas = "SELECT t.*, 
+                      u_creador.usuario AS creador_nombre,
+                      (SELECT MAX(fecha_creacion) FROM tarea_comentarios WHERE tarea_id = t.id) AS ultimo_comentario_fecha
+               FROM tareas t 
+               LEFT JOIN usuarios u_creador ON t.creador_id = u_creador.id 
+               WHERE (t.asignado_id = $usuario_id OR t.creador_id = $usuario_id) 
+                 AND t.estado != 'COMPLETADO' 
+               ORDER BY t.prioridad DESC, t.fecha_limite ASC 
+               LIMIT 6";
+$res_tareas = mysqli_query($conn, $sql_tareas);
+
+// Determinar etiqueta del perfil para el encabezado superior
+$rol_actual = $_SESSION['rol'] ?? 'Usuario';
 ?>
 
 <div class="content">
 
-    <!-- Mensaje de Alerta General para Accesos Denegados -->
+    <!-- Mensaje de Alerta General -->
     <?php if (isset($_GET['status']) && $_GET['status'] === 'no_autorizado'): ?>
         <div class="alert alert-danger alert-dismissible fade show shadow-sm border-0 mb-4" role="alert">
             <i class="bi bi-exclamation-triangle-fill me-2"></i> 
@@ -14,204 +30,99 @@ include 'includes/sidebar.php';
         </div>
     <?php endif; ?>
 
-    <?php if (tieneRol('admin')): ?>
-        <!-- =======================================================================
-             VISTA GERENCIAL (Estructura lista para expandir en el futuro)
-             ======================================================================= -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h4 class="fw-bold text-dark mb-0">📊 Tablero de Control Gerencial</h4>
-            <span class="badge bg-primary px-3 py-2">Perfil: Admin</span>
-        </div>
+    <!-- SECCIÓN TRANSVERSAL: MIS TAREAS PENDIENTES -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold text-dark mb-0"><i class="bi bi-kanban me-2"></i>Mis Tareas Pendientes</h5>
+    <a href="/contable/modules/tareas/" class="btn btn-outline-dark btn-sm">Ver Tablero Completo</a>
+</div>
 
-        <div class="row g-3">
-            <div class="col-12 col-md-6 col-xl-3">
-                <div class="card shadow-sm border-0 h-100 border-top border-primary border-4">
-                    <div class="card-body d-flex flex-column justify-content-center py-4">
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="bi bi-graph-up-arrow fs-4 text-primary me-2"></i>
-                            <small class="text-muted fw-semibold">RENTABILIDAD NETA</small>
-                        </div>
-                        <h3 class="fw-bold mb-0 text-muted">Próximamente...</h3>
-                    </div>
-                </div>
-            </div>
+<div class="row g-2 mb-4">
+    <?php if ($res_tareas && mysqli_num_rows($res_tareas) > 0): ?>
+        <?php while ($t = mysqli_fetch_assoc($res_tareas)): 
+                $es_nueva = false;
 
-            <div class="col-12 col-md-6 col-xl-3">
-                <div class="card shadow-sm border-0 h-100 border-top border-info border-4">
-                    <div class="card-body d-flex flex-column justify-content-center py-4">
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="bi bi-pie-chart-fill fs-4 text-info me-2"></i>
-                            <small class="text-muted fw-semibold">PUNTOS DE EQUILIBRIO</small>
-                        </div>
-                        <h3 class="fw-bold mb-0 text-muted">Próximamente...</h3>
-                    </div>
-                </div>
-            </div>
-        </div>
+                $ultima_vista = !empty($t['ultima_vista_en']) ? strtotime($t['ultima_vista_en']) : 0;
+                $ultimo_comentario = !empty($t['ultimo_comentario_fecha']) ? strtotime($t['ultimo_comentario_fecha']) : 0;
 
-        <div class="card shadow-sm mt-4 border-0">
-            <div class="card-body text-center py-5">
-                <i class="bi bi-sliders2-vertical fs-1 text-secondary mb-3"></i>
-                <h5 class="fw-bold text-dark">Métricas Estratégicas en Desarrollo</h5>
-                <p class="text-muted max-w-md mx-auto">Este espacio está reservado para los reportes consolidados de auditoría, gráficos anuales y análisis de flujo de caja gerencial.</p>
-            </div>
-        </div>
-
-    <?php elseif (tieneRol('contador')): ?>
-        <!-- =======================================================================
-             VISTA OPERATIVA / CONTADOR (Exclusivo para Admin y Contador)
-             ======================================================================= -->
-        <div class="row g-3">
-            <div class="col-12 col-md-6 col-xl-3">
-                <div class="card shadow-sm border-0 h-100 border-top border-success border-4">
-                    <div class="card-body d-flex flex-column justify-content-center">
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="bi bi-cash-stack fs-4 text-success me-2"></i>
-                            <small class="text-muted fw-semibold">DINERO DISPONIBLE</small>
-                        </div>
-                        <h3 id="saldoDisponible" class="fw-bold mb-0">Cargando...</h3>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-md-6 col-xl-3">
-                <div class="card shadow-sm border-0 h-100 border-top border-danger border-4">
-                    <div class="card-body d-flex flex-column justify-content-center">
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="bi bi-calendar-day fs-4 text-danger me-2"></i>
-                            <small class="text-muted fw-semibold">GASTOS HOY</small>
-                        </div>
-                        <h3 id="gastosHoy" class="fw-bold mb-0">Cargando...</h3>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-md-6 col-xl-3">
-                <div class="card shadow-sm border-0 h-100 border-top border-warning border-4">
-                    <div class="card-body d-flex flex-column justify-content-center">
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="bi bi-calendar-month fs-4 text-warning me-2"></i>
-                            <small class="text-muted fw-semibold">GASTOS DEL MES</small>
-                        </div>
-                        <h3 id="gastosMes" class="fw-bold mb-0">Cargando...</h3>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-md-6 col-xl-3">
-                <div class="card shadow-sm border-0 h-100 border-top border-primary border-4">
-                    <div class="card-body d-flex flex-column justify-content-center">
-                        <div class="d-flex align-items-center mb-2">
-                            <i class="bi bi-tags fs-4 text-primary me-2"></i>
-                            <small class="text-muted fw-semibold">CATEGORÍA PRINCIPAL</small>
-                        </div>
-                        <div id="categoriaTopNombre" class="fw-bold fs-5">Cargando...</div>
-                        <div class="mt-1">
-                            <span id="categoriaTopTotal" class="fw-bold text-danger fs-5">Cargando...</span>
-                            <br>
-                            <small id="categoriaTopPorcentaje" class="text-muted">...</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <hr>
-
-        <h5 class="mb-3">Estado de las cajas</h5>
-        <div class="row" id="cardsCajas"></div>
-
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card shadow-sm">
-                    <div class="card-header bg-dark text-white">
-                        <strong>💸 Gastos por Centro de Costo (Mes Actual)</strong>
-                    </div>
-                    <div class="card-body">
-                        <div id="centrosCostosDashboard">
-                            <div class="text-center text-muted">Cargando...</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>    
-
-        <hr>
-
-        <div class="row g-3">
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm">
-                    <div class="card-header">Cheques a Vencer</div>
-                    <div class="card-body">
-                        <table class="table table-sm" id="tablaUltimosGastos">
-                            <thead>
-                                <tr>
-                                    <th>Fecha</th>
-                                    <th>Proveedor</th>
-                                    <th>Total</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12 col-md-6">
-                <div class="card shadow-sm">
-                    <div class="card-header">Agenda Vencimientos</div>
-                    <div class="card-body">
-                        <table class="table table-sm" id="tablaUltimosMovimientos">
-                            <thead>
-                                <tr>
-                                    <th>Fecha</th>
-                                    <th>Concepto</th>
-                                    <th>Importe</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    <?php else: ?>
-        <!-- =======================================================================
-             VISTA RESTRINGIDA / BIENVENIDA (Para Operadores u otros roles externos)
-             ======================================================================= -->
-        <div class="row justify-content-center align-items-center" style="min-height: 65vh;">
-            <div class="col-12 col-md-8 col-lg-6 text-center">
-                <!-- Usamos un ícono nativo de Bootstrap de forma estética en vez de una imagen pesada -->
-                <div class="mb-4">
-                    <i class="bi bi-shield-lock text-secondary" style="font-size: 5rem; opacity: 0.4;"></i>
-                </div>
+                // 1. Si nunca la abrió, es NUEVA
+                if (empty($t['ultima_vista_en'])) {
+                    $es_nueva = true;
+                } 
+                // 2. Si hay un comentario posterior a su última lectura, es NUEVO
+                elseif ($ultimo_comentario > $ultima_vista) {
+                    $es_nueva = true;
+                }
                 
-                <h3 class="fw-bold text-dark mb-2">¡Hola, <?= htmlspecialchars($_SESSION['nombre'] ?? 'Usuario') ?>!</h3>
-                <p class="text-muted fs-5 mb-4">
-                    Bienvenido al sistema RG Contable. Tu perfil no requiere acceso al panel de métricas globales.
-                </p>
-                <p class="text-muted small">
-                    Por favor, selecciona un módulo del menú lateral izquierdo para comenzar tus tareas.
-                </p>
+                $clase_borde = $es_nueva ? 'border-start border-4 border-info shadow' : 'border-0 shadow-sm';
+            ?>
+            <div class="col-12 col-md-4 col-xl-2" id="tarea-card-<?= $t['id'] ?>">
+                <div class="card h-100 <?= $clase_borde ?> p-2 cursor-pointer" 
+                     onclick="verTareaDashboard(<?= $t['id'] ?>)"
+                     style="background-color: #ffffff; cursor: pointer; transition: transform 0.15s;"
+                     onmouseover="this.style.transform='scale(1.02)'" 
+                     onmouseout="this.style.transform='scale(1)'">
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <?php if ($es_nueva): ?>
+                            <span class="badge bg-info text-black badge-nueva" style="font-size: 8px;">
+                                <i class="bi bi-bell-fill me-1"></i>NUEVA
+                            </span>
+                        <?php else: ?>
+                            <span class="badge bg-light text-dark border" style="font-size: 9px;"><?= htmlspecialchars($t['estado']) ?></span>
+                        <?php endif; ?>
+                        
+                        <span class="badge rounded-pill bg-<?= $t['prioridad'] === 'ALTA' ? 'danger' : ($t['prioridad'] === 'MEDIA' ? 'warning' : 'success') ?> ms-auto" style="font-size: 8px;">
+                            <?= htmlspecialchars($t['prioridad']) ?>
+                        </span>
+                    </div>
 
-                <!-- Si es operador, le ponemos un botón de acceso directo al módulo que acabamos de habilitar -->
-                <?php if (tieneRol('operador')): ?>
-                    <a href="/contable/modules/gastos/" class="btn btn-secondary shadow-sm px-4 py-2 mt-2">
-                        <i class="bi bi-receipt me-2"></i> Cargar Gasto
-                    </a>
-                <?php endif; ?>
+                    <div class="fw-bold text-dark text-truncate small mb-1" title="<?= htmlspecialchars($t['titulo']) ?>">
+                        <?= htmlspecialchars($t['titulo']) ?>
+                    </div>
+
+                    <div class="d-flex justify-content-between text-muted" style="font-size: 9.5px;">
+                        <span><i class="bi bi-clock me-1"></i><?= (!empty($t['creado_en']) && $t['creado_en'] !== '0000-00-00 00:00:00') ? date('d/m/y', strtotime($t['creado_en'])) : '-' ?></span>
+                        <?php if (!empty($t['fecha_limite'])): ?>
+                            <span class="<?= (strtotime($t['fecha_limite']) < strtotime('today')) ? 'text-danger fw-bold' : '' ?>">
+                                <i class="bi bi-flag-fill me-1"></i><?= date('d/m/y', strtotime($t['fecha_limite'])) ?>
+                            </span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        <?php endwhile; ?>
+    <?php else: ?>
+        <div class="col-12">
+            <div class="alert alert-light text-muted border text-center mb-0 py-2 small">
+                <i class="bi bi-check2-circle me-1"></i> No tienes tareas pendientes asignadas.
             </div>
         </div>
     <?php endif; ?>
+</div>
+
+    <!-- CARGA DINÁMICA DE DASHBOARD SEGÚN ROL -->
+    <?php
+    if (tieneRol('admin')) {
+        include 'dashboards/dashboard_admin.php';
+    } elseif (tieneRol('contador')) {
+        include 'dashboards/dashboard_contador.php';
+    } elseif (tieneRol('arquitecto')) {
+        include 'dashboards/dashboard_arquitecto.php';
+    } elseif (tieneRol('auditor')) {
+        include 'dashboards/dashboard_auditor.php';
+    } else {
+        // Por defecto: Operador u otros roles
+        include 'dashboards/dashboard_operador.php';
+    }
+    ?>
 
 </div>
 
 <?php include 'includes/footer.php'; ?>
 
-<!-- Carga condicional del script JS para no romper llamadas Ajax innecesarias -->
-<?php if (tieneRol('gerente')): ?>
-    <script src="/contable/assets/js/dashboard_gerente.js"></script>
-<?php elseif (tieneRol('admin') || tieneRol('contador')): ?>
-    <script src="/contable/assets/js/dashboard.js"></script>
+
+
+<!-- Carga de JS condicional del Dashboard (SOLO AQUÍ) -->
+<?php if (tieneRol('admin') || tieneRol('contador') || tieneRol('arquitecto') || tieneRol('auditor')): ?>
+    <script src="/contable/assets/js/dashboard.js?v=<?= time() ?>"></script>
 <?php endif; ?>

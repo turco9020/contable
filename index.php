@@ -53,7 +53,7 @@ $rol_actual = $_SESSION['rol'] ?? 'Usuario';
                     $es_nueva = true;
                 }
                 
-                $clase_borde = $es_nueva ? 'border-start border-4 border-info shadow' : 'border-0 shadow-sm';
+                $clase_borde = $es_nueva ? 'border-start border-4 border-primary shadow' : 'border-0 shadow-sm';
             ?>
             <div class="col-12 col-md-4 col-xl-2" id="tarea-card-<?= $t['id'] ?>">
                 <div class="card h-100 <?= $clase_borde ?> p-2 cursor-pointer" 
@@ -64,7 +64,7 @@ $rol_actual = $_SESSION['rol'] ?? 'Usuario';
                     
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <?php if ($es_nueva): ?>
-                            <span class="badge bg-info text-black badge-nueva" style="font-size: 8px;">
+                            <span class="badge bg-primary text-white badge-nueva" style="font-size: 8px;">
                                 <i class="bi bi-bell-fill me-1"></i>NUEVA
                             </span>
                         <?php else: ?>

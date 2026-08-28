@@ -112,7 +112,7 @@ if (typeof window.dashboardInicializado !== 'undefined') {
             
             let esNueva = horasDiferencia <= 48;
             let borderClase = esNueva ? 'border-start border-4 border-info shadow' : 'border-0 shadow-sm';
-            let badgeNueva = esNueva ? '<span class="badge bg-info text-white badge-nueva mb-1"><i class="bi bi-bell-fill me-1"></i>NUEVA</span>' : '';
+            let badgeNueva = esNueva ? '<span class="badge bg-primary text-white badge-nueva mb-1"><i class="bi bi-bell-fill me-1"></i>NUEVA</span>' : '';
 
             html += `
                 <div class="col-12 col-md-6 col-xl-4 mb-2" id="tarea-card-${t.id}">

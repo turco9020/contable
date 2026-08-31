@@ -111,14 +111,14 @@ if ($accion === 'guardar' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $fecha_limite_sql = $fecha_limite ? "'" . mysqli_real_escape_string($conexion, $fecha_limite) . "'" : "NULL";
 
     if ($tarea_id > 0) {
+        // Se permite modificar asignado_id a todos los usuarios
         $sql = "UPDATE tareas SET 
                     titulo = '$titulo_esc', 
                     descripcion = '$descripcion_esc', 
                     prioridad = '$prioridad_esc', 
-                    fecha_limite = $fecha_limite_sql";
-        if ($es_admin) {
-            $sql .= ", asignado_id = $asignado_id";
-        }
+                    fecha_limite = $fecha_limite_sql,
+                    asignado_id = $asignado_id";
+        
         $sql .= " WHERE id = $tarea_id";
         if (!$es_admin) {
             $sql .= " AND (creador_id = $usuario_id OR asignado_id = $usuario_id)";

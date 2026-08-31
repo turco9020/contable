@@ -19,12 +19,13 @@ while ($u = mysqli_fetch_assoc($res_users)) {
     $usuarios_lista[] = $u;
 }
 
-// CONSULTA CORREGIDA CON CREADO_EN
+// CONSULTA CON FECHA DE ÚLTIMO COMENTARIO PARA DETECTAR Novedades / Tareas Nuevas
 $sql = "SELECT t.*, 
                u_creador.usuario AS creador_nombre, 
                u_asig.usuario AS asignado_nombre,
                (SELECT COUNT(*) FROM tarea_comentarios WHERE tarea_id = t.id) AS total_comentarios,
-               (SELECT COUNT(*) FROM tarea_adjuntos WHERE tarea_id = t.id) AS total_adjuntos
+               (SELECT COUNT(*) FROM tarea_adjuntos WHERE tarea_id = t.id) AS total_adjuntos,
+               (SELECT MAX(fecha_creacion) FROM tarea_comentarios WHERE tarea_id = t.id) AS ultimo_comentario_fecha
         FROM tareas t
         LEFT JOIN usuarios u_creador ON t.creador_id = u_creador.id
         LEFT JOIN usuarios u_asig ON t.asignado_id = u_asig.id";
@@ -80,8 +81,14 @@ if ($res) {
 .badge-prio-BAJA { background-color: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
 
 .task-date-info {
-    font-size: 11px; /* Reducido para ahorrar espacio vertical */
+    font-size: 11px;
     color: #6c757d;
+}
+
+/* Estilo para tarjetas con novedades/nuevas */
+.task-card-nueva {
+    background-color: #f0f7ff !important; /* Azul clarito pastel */
+    border-left: 4px solid #0d6efd !important; /* Borde izquierdo azul destacado */
 }
 
 /* Custom Nav Tabs Minimal */
@@ -162,18 +169,40 @@ if ($res) {
                         <span class="badge bg-white text-dark border rounded-circle shadow-sm" id="count-<?= $estado ?>"><?= count($tareas[$estado]) ?></span>
                     </div>
                     <div class="card-body kanban-col" id="<?= $estado ?>">
-                        <?php foreach ($tareas[$estado] as $t): ?>
-                            <div class="card mb-2 task-card shadow-sm cursor-pointer" 
-                                 id="tarea-<?= $t['id'] ?>" 
-                                 data-id="<?= $t['id'] ?>"
-                                 data-titulo="<?= strtolower(htmlspecialchars($t['titulo'])) ?>"
-                                 data-descripcion="<?= strtolower(htmlspecialchars($t['descripcion'])) ?>"
-                                 data-prioridad="<?= $t['prioridad'] ?>"
-                                 data-asignado="<?= htmlspecialchars($t['asignado_nombre'] ?? '') ?>"
-                                 onclick="abrirModalDetalles(<?= $t['id'] ?>)">
+                        <?php foreach ($tareas[$estado] as $t): 
+                            // Lógica de Tarea Nueva / Comentarios sin leer
+                            $es_nueva = false;
+                            $ultima_vista = !empty($t['ultima_vista_en']) ? strtotime($t['ultima_vista_en']) : 0;
+                            $ultimo_comentario = !empty($t['ultimo_comentario_fecha']) ? strtotime($t['ultimo_comentario_fecha']) : 0;
+
+                            if (empty($t['ultima_vista_en'])) {
+                                $es_nueva = true;
+                            } elseif ($ultimo_comentario > $ultima_vista) {
+                                $es_nueva = true;
+                            }
+
+                            // Si es nueva le ponemos la clase del azul clarito, de lo contrario el estilo normal
+                            $clase_tarjeta = $es_nueva ? 'task-card-nueva shadow-sm' : 'border-0 shadow-sm';
+                        ?>
+                            <div class="card mb-2 task-card <?= $clase_tarjeta ?> cursor-pointer" 
+                                id="tarea-<?= $t['id'] ?>" 
+                                data-id="<?= $t['id'] ?>"
+                                data-titulo="<?= strtolower(htmlspecialchars($t['titulo'])) ?>"
+                                data-descripcion="<?= strtolower(htmlspecialchars($t['descripcion'])) ?>"
+                                data-prioridad="<?= $t['prioridad'] ?>"
+                                data-asignado="<?= htmlspecialchars($t['asignado_nombre'] ?? '') ?>"
+                                onclick="abrirModalDetalles(<?= $t['id'] ?>)">
                                 
                                     <div class="card-body p-2 px-2.5">
-                                        <!-- TÍTULO Y BADGE (Márgenes ajustados) -->
+                                        <!-- BADGE NUEVA + TÍTULO Y BADGE PRIO -->
+                                        <?php if ($es_nueva): ?>
+                                            <div class="mb-1">
+                                                <span class="badge bg-primary text-white badge-nueva" style="font-size: 8px; padding: 2px 5px;">
+                                                    <i class="bi bi-bell-fill me-1"></i>NUEVA
+                                                </span>
+                                            </div>
+                                        <?php endif; ?>
+
                                         <div class="d-flex justify-content-between align-items-center mb-1">
                                             <span class="fw-bold text-dark small text-truncate me-1" style="max-width: 160px; font-size: 12px;" title="<?= htmlspecialchars($t['titulo']) ?>">
                                                 <?= htmlspecialchars($t['titulo']) ?>
@@ -183,7 +212,7 @@ if ($res) {
                                             </span>
                                         </div>
 
-                                        <!-- FECHAS (IZQ: CREADO_EN | DER: BANDERÍN LÍMITE) -->
+                                        <!-- FECHAS -->
                                         <div class="d-flex justify-content-between align-items-center task-date-info mb-1 pb-1 border-bottom border-light">
                                             <span title="Fecha de creación">
                                                 <i class="bi bi-clock me-1 text-muted"></i><?= (!empty($t['creado_en']) && $t['creado_en'] !== '0000-00-00 00:00:00') ? date('d/m/y', strtotime($t['creado_en'])) : '-' ?>
@@ -219,7 +248,7 @@ if ($res) {
     </div>
 </div>
 
-<!-- MODAL UNIFICADO (ESTÉTICA MODAL GASTOS) -->
+<!-- MODAL UNIFICADO -->
 <div class="modal fade" id="modalTarea" data-bs-backdrop="static" tabindex="-1">
     <div class="modal-dialog modal-xl">
         <div class="modal-content border-0 shadow-lg">
@@ -272,7 +301,8 @@ if ($res) {
                                     <label class="form-label small fw-bold">Fecha Límite</label>
                                     <input type="date" name="fecha_limite" id="modal_fecha_limite" class="form-control">
                                 </div>
-                                <?php if ($es_admin): ?>
+                                
+                                <!-- TODOS LOS USUARIOS PUEDEN ASIGNAR TAREAS ENTRE SÍ -->
                                 <div class="col-md-6">
                                     <label class="form-label small fw-bold">Asignar a</label>
                                     <select name="asignado_id" id="modal_asignado_id" class="form-select">
@@ -281,7 +311,7 @@ if ($res) {
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
-                                <?php endif; ?>
+
                                 <div class="col-12">
                                     <label class="form-label small fw-bold">Descripción / Detalle</label>
                                     <textarea name="descripcion" id="modal_descripcion" class="form-control" rows="4" placeholder="Detalles de la tarea..."></textarea>
@@ -314,11 +344,10 @@ if ($res) {
                         <div id="listaAdjuntos" class="list-group list-group-flush"></div>
                     </div>
 
-                    <!-- SECCIÓN HISTORIAL Y COMENTARIOS EN EL MODAL -->
+                    <!-- HISTORIAL Y COMENTARIOS -->
                     <div class="tab-pane fade" id="tab-comentarios">
                         <div id="listaComentarios" class="mb-4 p-2 bg-light rounded-3 border" style="max-height: 280px; overflow-y: auto;"></div>
                         
-                        <!-- FORMULARIO AJAX DE COMENTARIOS -->
                         <form id="formComentarioAjax">
                             <label class="form-label small fw-bold">Agregar Comentario</label>
                             <div class="input-group">
@@ -343,7 +372,7 @@ let isDragging = false;
 
 $(document).ready(function() {
     
-    // 1. INICIALIZACIÓN DRAG AND DROP (SORTABLE)
+    // 1. SORTABLE DRAG AND DROP
     if ($.fn && $.fn.sortable) {
         $(".kanban-col").sortable({
             connectWith: ".kanban-col",
@@ -432,9 +461,13 @@ function actualizarContadoresColumnas() {
 function abrirModalDetalles(id) {
     if (isDragging) return;
 
-    $.getJSON('ajax_obtener_tarea.php?id=' + id, function(data) {
+    let $card = $(`#tarea-${id}`);
+    $card.find('.badge-nueva').remove();
+    $card.removeClass('task-card-nueva border-start border-4 border-info').addClass('border-0 shadow-sm');
+
+    $.getJSON('acciones.php?accion=obtener&id=' + id, function(data) {
         if (!data.success) {
-            alert(data.msg || 'Error al obtener la tarea.');
+            alert(data.msg || data.message || 'Error al obtener la tarea.');
             return;
         }
         let t = data.tarea;
@@ -470,6 +503,9 @@ function abrirModalCrear() {
     $('#modal_descripcion').val('');
     $('#modal_prioridad').val('MEDIA');
     $('#modal_fecha_limite').val('');
+    if ($('#modal_asignado_id').length) {
+        $('#modal_asignado_id').val(currentUserId);
+    }
     $('#btnEliminarTarea').hide();
     
     $('#tab-adjuntos-tab, #tab-comentarios-tab').addClass('disabled');

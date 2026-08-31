@@ -12,7 +12,7 @@ $sql_tareas = "SELECT t.*,
                WHERE (t.asignado_id = $usuario_id OR t.creador_id = $usuario_id) 
                  AND t.estado != 'COMPLETADO' 
                ORDER BY t.prioridad DESC, t.fecha_limite ASC 
-               LIMIT 6";
+               LIMIT 12"; // Limitar a 12 tareas para el dashboard
 $res_tareas = mysqli_query($conn, $sql_tareas);
 
 // Determinar etiqueta del perfil para el encabezado superior

@@ -1,10 +1,7 @@
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="fw-bold text-dark mb-0">💼 Panel Contable & Financiero</h4>
-    <span class="badge bg-success px-3 py-2">Perfil: Contador</span>
-</div>
 
 <!-- Indicadores de Caja y Gastos -->
-<div class="row g-3 mb-4">
+<div class="row g-2 mb-3">
+    <h6 class="fw-bold mb-0">Detalle de Gastos</h6>
     <div class="col-12 col-md-6 col-xl-3">
         <div class="card shadow-sm border-0 border-top border-success border-4 h-100">
             <div class="card-body">
@@ -46,28 +43,65 @@
     <div class="row g-2" id="cardsCajas"></div>
 </div>
 
-<!-- Agenda y Cheques -->
+<!-- Centros de Costo -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body p-3">
+        <h6 class="fw-bold text-dark mb-3"><i class="bi bi-diagram-3 me-2"></i>Gastos por Centro de Costo (Mes Actual)</h6>
+        <div id="centrosCostosDashboard">
+            <div class="text-muted small">Cargando centros de costo...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Tablas de Gestión Contador -->
 <div class="row g-3 mb-4">
-    <div class="col-12 col-md-6">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-dark text-white">Cheques a Vencer</div>
+    <!-- Cheques a Vencer -->
+    <div class="col-12 col-md-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2">
+                <span class="small fw-bold"><i class="bi bi-card-heading me-1"></i>Cheques a Vencer</span>
+                <a href="/contable/modules/cheques/" class="btn btn-outline-light btn-xs py-0 px-1" style="font-size: 10px;">Ver todos</a>
+            </div>
             <div class="card-body p-0">
-                <table class="table table-sm table-hover mb-0" id="tablaUltimosGastos">
+                <table class="table table-sm table-hover mb-0" id="tablaCheques" style="font-size: 12px;">
                     <thead class="table-light">
-                        <tr><th>Fecha</th><th>Proveedor</th><th>Total</th></tr>
+                        <tr><th>Venc.</th><th>Banco/N°</th><th class="text-end">Importe</th></tr>
                     </thead>
                     <tbody></tbody>
                 </table>
             </div>
         </div>
     </div>
-    <div class="col-12 col-md-6">
-        <div class="card shadow-sm border-0">
-            <div class="card-header bg-dark text-white">Agenda de Vencimientos</div>
+
+    <!-- Agenda de Vencimientos -->
+    <div class="col-12 col-md-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2">
+                <span class="small fw-bold"><i class="bi bi-calendar-check me-1"></i>Agenda Vencimientos</span>
+                <a href="/contable/modules/vencimientos/" class="btn btn-outline-light btn-xs py-0 px-1" style="font-size: 10px;">Ver todos</a>
+            </div>
             <div class="card-body p-0">
-                <table class="table table-sm table-hover mb-0" id="tablaUltimosMovimientos">
+                <table class="table table-sm table-hover mb-0" id="tablaVencimientos" style="font-size: 12px;">
                     <thead class="table-light">
-                        <tr><th>Fecha</th><th>Concepto</th><th>Importe</th></tr>
+                        <tr><th>Venc.</th><th>Concepto</th><th class="text-end">Importe</th></tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Facturas Pendientes de Cobro -->
+    <div class="col-12 col-md-4">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2">
+                <span class="small fw-bold"><i class="bi bi-receipt-cutoff me-1"></i>Facturas x Cobrar</span>
+                <a href="/contable/modules/ventas/" class="btn btn-outline-light btn-xs py-0 px-1" style="font-size: 10px;">Ver todas</a>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-sm table-hover mb-0" id="tablaFacturasCobrar" style="font-size: 12px;">
+                    <thead class="table-light">
+                        <tr><th>Venc.</th><th>N° Fact.</th><th>Cliente</th><th class="text-end">Total</th></tr>
                     </thead>
                     <tbody></tbody>
                 </table>

@@ -1,7 +1,3 @@
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="fw-bold text-dark mb-0">👋 Bienvenid@, <?= htmlspecialchars($_SESSION['nombre'] ?? 'Usuario') ?></h4>
-    <span class="badge bg-secondary px-3 py-2">Perfil: Operador</span>
-</div>
 
 <!-- Accesos Directos a Módulos Clave -->
 <div class="row g-3 mb-4">

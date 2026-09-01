@@ -1,15 +1,17 @@
 // ======================================================
-// DASHBOARD
+// DASHBOARD - PERFIL CONTADOR Y ADMIN
 // ======================================================
 
-// Evita la doble ejecución si el script se incluye más de una vez en el DOM
 if (typeof window.dashboardInicializado !== 'undefined') {
-    // Ya fue cargado previamente, no vuelve a declarar variables
+    // Ya fue cargado previamente
 } else {
     window.dashboardInicializado = true;
 
-    var saldosOcultos = true; // Estado global para ocultar/mostrar saldos
+    // Variables globales de estado
+    var periodoCentrosActual = 'actual';
+    var cajasOcultas = new Set(); // IDs de cajas ocultas
     var datosCajasGlobal = [];
+    var datosRubrosGlobal = { mes: [], mes_anterior: [], anual: [] }; // Almacenamiento de rubros (3 estados)
 
     $(document).ready(function () {
         cargarDashboard();
@@ -27,8 +29,6 @@ if (typeof window.dashboardInicializado !== 'undefined') {
             }
 
             let t = res.tarea;
-            
-            // Remueve la marca de NUEVA cuando la abre
             $(`#tarea-card-${t.id}`).find('.badge-nueva').remove();
 
             Swal.fire({
@@ -59,39 +59,171 @@ if (typeof window.dashboardInicializado !== 'undefined') {
     }
 
     // ======================================================
-    // CARGAR DASHBOARD (INCLUYE RENDER DE TAREAS)
+    // CARGAR DASHBOARD (INDICADORES, CENTROS Y TABLAS)
     // ======================================================
 
     function cargarDashboard() {
         $.ajax({
             url: '/contable/ajax/dashboard.php',
             type: 'GET',
+            data: { periodo_centros: periodoCentrosActual },
             dataType: 'json',
             success: function (data) {
-                // Cards superiores
+                // Métricas principales
                 $('#saldoDisponible').html(formatoMoneda(data.saldo));
-                $('#gastosHoy').html(formatoMoneda(data.gastos_hoy));
+                $('#gastosHoy').html(formatoMoneda(data.gastos_hoy || 0));
                 $('#gastosMes').html(formatoMoneda(data.gastos_mes));
-                $('#categoriaTopNombre').html(data.categoria_top);
-                $('#categoriaTopTotal').html(formatoMoneda(data.categoria_total));
-                $('#categoriaTopPorcentaje').html(data.categoria_porcentaje + '% del gasto mensual');
+                
+                // Nuevas métricas agregadas
+                if ($('#gastosMesAnterior').length) $('#gastosMesAnterior').html(formatoMoneda(data.gastos_mes_anterior));
+                if ($('#ventasMes').length) $('#ventasMes').html(formatoMoneda(data.ventas_mes));
+                if ($('#ventasMesAnterior').length) $('#ventasMesAnterior').html(formatoMoneda(data.ventas_mes_anterior));
+                if ($('#rentabilidadMes').length) $('#rentabilidadMes').html(formatoMoneda(data.rentabilidad_mes));
+                if ($('#rentabilidadMesAnterior').length) $('#rentabilidadMesAnterior').html(formatoMoneda(data.rentabilidad_mes_anterior));
+                if ($('#diferenciaIva').length) $('#diferenciaIva').html(formatoMoneda(data.diferencia_iva));
+                if ($('#retencionesMes').length) $('#retencionesMes').html(formatoMoneda(data.retenciones_mes));
+                if ($('#chequesEmitidosMes').length) $('#chequesEmitidosMes').html(formatoMoneda(data.cheques_emitidos_mes));
+                if ($('#chequesEmitidosTotal').length) $('#chequesEmitidosTotal').html(formatoMoneda(data.cheques_emitidos_total));
 
-                // Centros de costo
-                renderCentros(data.centros);
+                // Rubros (Mes Actual / Mes Pasado / Anual)
+                if (data.rubros_mes) {
+                    datosRubrosGlobal.mes = data.rubros_mes || [];
+                    datosRubrosGlobal.mes_anterior = data.rubros_mes_anterior || [];
+                    datosRubrosGlobal.anual = data.rubros_anual || [];
+                    renderRubros('mes');
 
-                // Renderizar tareas pendientes si vienen en el payload AJAX
+                    // Sincronizar Mayor Categoría del Mes para Vista Contador
+                    if (datosRubrosGlobal.mes.length > 0) {
+                        let top = datosRubrosGlobal.mes[0];
+                        $('#categoriaTopNombre').html(top.nombre);
+                        $('#categoriaTopTotal').html(formatoMoneda(top.monto) + ' (' + top.porcentaje + '%)');
+                    } else {
+                        $('#categoriaTopNombre').html('Sin datos');
+                        $('#categoriaTopTotal').html('$ 0,00');
+                    }
+                }
+
+                renderCentros(data.centros, data.ventas_centros);
+                
                 if (data.tareas) {
                     renderTareasDashboard(data.tareas);
                 }
+
+                renderCheques(data.cheques);
+                renderVencimientos(data.vencimientos);
+                renderFacturasCobrar(data.facturas_cobrar);
             },
             error: function (xhr) {
-                console.error(xhr.responseText);
+                console.error("Error al cargar dashboard:", xhr.responseText);
             }
         });
     }
 
     // ======================================================
-    // RENDERIZAR TAREAS (CON RESALTE Y MODAL)
+    // CAMBIAR PERÍODO EN CENTROS DE COSTO
+    // ======================================================
+
+    window.cambiarPeriodoCentros = function(periodo) {
+        periodoCentrosActual = periodo;
+
+        // Actualizar estado activo de los botones
+        $('#btnGroupPeriodoCentros button').removeClass('active');
+        if (periodo === 'actual') {
+            $('#btnGroupPeriodoCentros button:nth-child(1)').addClass('active');
+        } else if (periodo === 'pasado') {
+            $('#btnGroupPeriodoCentros button:nth-child(2)').addClass('active');
+        } else if (periodo === 'anual') {
+            $('#btnGroupPeriodoCentros button:nth-child(3)').addClass('active');
+        }
+
+        // Recargar únicamente el bloque de centros de costo
+        $.ajax({
+            url: '/contable/ajax/dashboard.php',
+            type: 'GET',
+            data: { periodo_centros: periodoCentrosActual },
+            dataType: 'json',
+            success: function(data) {
+                renderCentros(data.centros, data.ventas_centros);
+            },
+            error: function(xhr) {
+                console.error("Error al recalcular centros:", xhr.responseText);
+            }
+        });
+    };
+
+    // ======================================================
+    // RENDERIZAR RUBROS EN DOS COLUMNAS
+    // ======================================================
+
+    function renderRubros(tipo) {
+        let listado = [];
+        if (tipo === 'anual') {
+            listado = datosRubrosGlobal.anual;
+        } else if (tipo === 'mes_anterior') {
+            listado = datosRubrosGlobal.mes_anterior;
+        } else {
+            listado = datosRubrosGlobal.mes;
+        }
+
+        let $contenedor = $('#contenedorBarrasRubros');
+        if ($contenedor.length === 0) return;
+
+        if (!listado || listado.length === 0) {
+            $contenedor.html('<div class="col-12 text-muted small py-2 ms-2">No se registraron gastos en este período.</div>');
+            return;
+        }
+
+        let col1 = listado.slice(0, 4);
+        let col2 = listado.slice(4, 8);
+        let colores = ['bg-danger', 'bg-warning', 'bg-info', 'bg-secondary', 'bg-dark', 'bg-primary', 'bg-success'];
+
+        function generarColumna(items, offsetIndex) {
+            let html = '';
+            items.forEach((item, index) => {
+                let colorClase = colores[(index + offsetIndex) % colores.length];
+                html += `
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-1" style="font-size: 11px;">
+                            <span class="fw-bold text-dark text-truncate" style="max-width: 200px;" title="${item.nombre}">${item.nombre}</span>
+                            <span class="fw-bold text-dark">${formatoMoneda(item.monto)} <small class="text-muted fw-normal">(${item.porcentaje}%)</small></span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar ${colorClase}" role="progressbar" style="width: ${item.porcentaje}%"></div>
+                        </div>
+                    </div>
+                `;
+            });
+            return html;
+        }
+
+        let htmlFinal = `
+            <div class="col-12 col-md-6 border-end pe-md-3">
+                ${generarColumna(col1, 0)}
+            </div>
+            <div class="col-12 col-md-6 ps-md-3">
+                ${col2.length > 0 ? generarColumna(col2, 4) : '<div class="text-muted small py-1">No hay más rubros en este rango.</div>'}
+            </div>
+        `;
+
+        $contenedor.html(htmlFinal);
+    }
+
+    window.cambiarVistaRubros = function(tipo) {
+        $('#btnGroupRubros button').removeClass('active');
+        
+        if (tipo === 'mes') {
+            $('#btnGroupRubros button:nth-child(1)').addClass('active');
+        } else if (tipo === 'mes_anterior') {
+            $('#btnGroupRubros button:nth-child(2)').addClass('active');
+        } else if (tipo === 'anual') {
+            $('#btnGroupRubros button:nth-child(3)').addClass('active');
+        }
+        
+        renderRubros(tipo);
+    };
+
+    // ======================================================
+    // RENDERIZAR TAREAS
     // ======================================================
 
     function renderTareasDashboard(tareas) {
@@ -105,7 +237,6 @@ if (typeof window.dashboardInicializado !== 'undefined') {
 
         let html = '';
         tareas.forEach(t => {
-            // Detección de tareas creadas en las últimas 48 horas
             let fechaCreacion = t.created_at ? new Date(t.created_at) : new Date();
             let ahora = new Date();
             let horasDiferencia = (ahora - fechaCreacion) / (1000 * 60 * 60);
@@ -148,70 +279,314 @@ if (typeof window.dashboardInicializado !== 'undefined') {
 
     function cargarSaldosDashboard() {
         $.get('/contable/ajax/movimientos_caja.php?accion=saldos', function (data) {
-            console.log("Datos recibidos de cajas:", data);
-
             if (!data || !Array.isArray(data) || data.length === 0) {
-                $('#cardsCajas').html('<div class="col-12 text-muted small py-2">No hay cajas activas disponibles.</div>');
+                if ($('#tablaCajasAdmin tbody').length) {
+                    $('#tablaCajasAdmin tbody').html('<tr><td colspan="3" class="text-center text-muted small py-2">No hay cajas activas.</td></tr>');
+                }
+                if ($('#cardsCajas').length) {
+                    $('#cardsCajas').html('<div class="col-12 text-muted small py-2">No hay cajas activas disponibles.</div>');
+                }
                 return;
             }
 
             datosCajasGlobal = data;
+
+            if (typeof window.cajasInicializadas === 'undefined') {
+                datosCajasGlobal.forEach(c => cajasOcultas.add(Number(c.id)));
+                window.cajasInicializadas = true;
+            }
+
             renderTarjetasCajas();
 
-        }, 'json').fail(function (xhr, status, error) {
-            console.error("Error en AJAX:", xhr.responseText);
-            $('#cardsCajas').html('<div class="col-12 text-danger small py-2"><i class="bi bi-exclamation-triangle me-1"></i>Error al obtener los saldos.</div>');
+        }, 'json').fail(function (xhr) {
+            console.error("Error AJAX Cajas:", xhr.responseText);
+            if ($('#tablaCajasAdmin tbody').length) {
+                $('#tablaCajasAdmin tbody').html('<tr><td colspan="3" class="text-center text-danger small py-2">Error al obtener saldos.</td></tr>');
+            }
         });
     }
 
     // ======================================================
-    // RENDERIZAR TARJETAS DE CAJA (CON OJITO OCULTAR/MOSTRAR)
+    // RENDERIZAR TABLA Y TARJETAS DE CAJA (SOPORTE DUAL)
     // ======================================================
 
     function renderTarjetasCajas() {
-        let html = '';
-        let iconoOjo = saldosOcultos ? 'bi-eye-slash-fill' : 'bi-eye-fill';
-        let tituloOjo = saldosOcultos ? 'Mostrar saldos' : 'Ocultar saldos';
+        if (!datosCajasGlobal || datosCajasGlobal.length === 0) return;
 
-        datosCajasGlobal.forEach(caja => {
-            let valorSaldo = Number(caja.saldo);
-            
-            let saldoTexto = saldosOcultos 
-                ? '$ ••••••••' 
-                : formatoMoneda(valorSaldo);
+        // 1. RENDER PARA TABLA DE CAJAS (#tablaCajasAdmin)
+        let tbody = $('#tablaCajasAdmin tbody');
+        if (tbody.length > 0) {
+            let htmlTabla = '';
+            datosCajasGlobal.forEach(caja => {
+                let idNum = Number(caja.id);
+                let valorSaldo = Number(caja.saldo);
+                let estaOculta = cajasOcultas.has(idNum);
 
-            let colorClase = (!saldosOcultos && valorSaldo < 0) ? 'text-danger' : 'text-dark';
+                let iconoOjo = estaOculta ? 'bi-eye-slash-fill text-muted' : 'bi-eye-fill text-primary';
+                let saldoTexto = estaOculta ? '$ ••••••••' : formatoMoneda(valorSaldo);
+                let colorClase = (!estaOculta && valorSaldo < 0) ? 'text-danger' : 'text-dark';
 
-            html += `
-                <div class="col-12 col-md-4 col-xl-3">
-                    <div class="card h-100 shadow-sm border-0 p-3" style="background-color: #ffffff; border-radius: 8px;">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="text-uppercase fw-semibold text-muted small text-truncate" title="${caja.nombre}">
-                                ${caja.nombre}
-                            </span>
-                            <div class="p-1 rounded bg-light text-secondary d-flex align-items-center justify-content-center">
-                                <i class="bi bi-wallet2" style="font-size: 14px;"></i>
+                htmlTabla += `
+                    <tr>
+                        <td class="ps-3 fw-bold text-dark align-middle">${caja.nombre}</td>
+                        <td class="text-end fw-bold ${colorClase} align-middle">${saldoTexto}</td>
+                        <td class="text-center align-middle">
+                            <button type="button" class="btn btn-link p-0 text-decoration-none" onclick="toggleOcultarCaja(event, ${idNum})" title="Ocultar/Mostrar saldo">
+                                <i class="bi ${iconoOjo}" style="font-size: 15px;"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.html(htmlTabla);
+        }
+
+        // 2. RENDER PARA TARJETAS CARDS (#cardsCajas)
+        let divCards = $('#cardsCajas');
+        if (divCards.length > 0) {
+            let htmlCards = '';
+            datosCajasGlobal.forEach(caja => {
+                let idNum = Number(caja.id);
+                let valorSaldo = Number(caja.saldo);
+                let estaOculta = cajasOcultas.has(idNum);
+
+                let iconoOjo = estaOculta ? 'bi-eye-slash-fill text-muted' : 'bi-eye-fill text-primary';
+                let tituloOjo = estaOculta ? 'Mostrar saldo de esta caja' : 'Ocultar saldo de esta caja';
+                
+                let saldoTexto = estaOculta ? '$ ••••••••' : formatoMoneda(valorSaldo);
+                let colorClase = (!estaOculta && valorSaldo < 0) ? 'text-danger' : 'text-dark';
+
+                htmlCards += `
+                    <div class="col-12 col-md-4 col-xl-3">
+                        <div class="card h-100 shadow-sm border-0 p-3" style="background-color: #ffffff; border-radius: 8px;">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="text-uppercase fw-semibold text-muted small text-truncate" title="${caja.nombre}">
+                                    ${caja.nombre}
+                                </span>
+                                <div class="p-1 rounded bg-light text-secondary d-flex align-items-center justify-content-center">
+                                    <i class="bi bi-wallet2" style="font-size: 14px;"></i>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <h5 class="fw-bold mb-0 ${colorClase}">
+                                    ${saldoTexto}
+                                </h5>
+                                <button type="button" class="btn btn-link p-0 ms-2 text-decoration-none" onclick="toggleOcultarCaja(event, ${idNum})" title="${tituloOjo}">
+                                    <i class="bi ${iconoOjo}" style="font-size: 16px;"></i>
+                                </button>
                             </div>
                         </div>
-                        <div class="d-flex justify-content-between align-items-center mt-2">
-                            <h5 class="fw-bold mb-0 ${colorClase}">
-                                ${saldoTexto}
-                            </h5>
-                            <button type="button" class="btn btn-link text-secondary p-0 ms-2 text-decoration-none" onclick="toggleOcultarSaldos()" title="${tituloOjo}">
-                                <i class="bi ${iconoOjo}" style="font-size: 16px;"></i>
-                            </button>
-                        </div>
                     </div>
-                </div>
-            `;
-        });
-
-        $('#cardsCajas').html(html);
+                `;
+            });
+            divCards.html(htmlCards);
+        }
     }
 
-    function toggleOcultarSaldos() {
-        saldosOcultos = !saldosOcultos;
+    // ======================================================
+    // TOGGLE OCULTAR / MOSTRAR CAJA
+    // ======================================================
+
+    window.toggleOcultarCaja = function(event, idCaja) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
+        let id = Number(idCaja);
+        
+        if (cajasOcultas.has(id)) {
+            cajasOcultas.delete(id);
+        } else {
+            cajasOcultas.add(id);
+        }
+        
         renderTarjetasCajas();
+    };
+
+    // ======================================================
+    // CENTROS DE COSTO (COMPATIBLE CONTADOR Y ADMIN)
+    // ======================================================
+
+    let chartGastosInstance = null;
+    let chartVentasInstance = null;
+
+    function renderCentros(centrosGastos, centrosVentas) {
+        centrosGastos = Array.isArray(centrosGastos) ? centrosGastos : [];
+        centrosVentas = Array.isArray(centrosVentas) ? centrosVentas : [];
+
+        // 1. SI EXISTE CONTENEDOR CONTADOR (#centrosCostosDashboard)
+        let $contenedorSimple = $('#centrosCostosDashboard');
+        if ($contenedorSimple.length > 0) {
+            if (centrosGastos.length === 0) {
+                $contenedorSimple.html('<div class="text-muted small">Sin datos de gastos por centro este mes.</div>');
+            } else {
+                let html = '<div class="row g-2">';
+                centrosGastos.forEach(c => {
+                    html += `
+                        <div class="col-12 col-md-4 col-xl-3">
+                            <div class="p-2 border rounded bg-light">
+                                <div class="small text-muted text-truncate" title="${c.nombre}">${c.nombre}</div>
+                                <div class="fw-bold text-dark">${formatoMoneda(c.total)}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                $contenedorSimple.html(html);
+            }
+        }
+
+        // 2. SI EXISTEN ELEMENTOS DE ADMIN (Gráficos y Tabla de Rentabilidad)
+        if (typeof Chart !== 'undefined') {
+            let $tbody = $('#tablaRentabilidadCentro tbody');
+            if ($tbody.length > 0) {
+                $tbody.empty();
+                if (centrosGastos.length === 0 && centrosVentas.length === 0) {
+                    $tbody.append('<tr><td colspan="2" class="text-center text-muted py-2">Sin datos disponibles</td></tr>');
+                } else {
+                    let mapaRentabilidad = {};
+                    centrosVentas.forEach(v => { mapaRentabilidad[v.nombre] = (mapaRentabilidad[v.nombre] || 0) + Number(v.total); });
+                    centrosGastos.forEach(g => { mapaRentabilidad[g.nombre] = (mapaRentabilidad[g.nombre] || 0) - Number(g.total); });
+
+                    Object.keys(mapaRentabilidad).forEach(nombre => {
+                        let totalRentab = mapaRentabilidad[nombre];
+                        let colorTexto = totalRentab >= 0 ? 'text-success' : 'text-danger';
+                        $tbody.append(`
+                            <tr>
+                                <td class="text-truncate" style="max-width: 100px;" title="${nombre}">${nombre}</td>
+                                <td class="text-end fw-bold ${colorTexto}">${formatoMoneda(totalRentab)}</td>
+                            </tr>
+                        `);
+                    });
+                }
+            }
+
+            const paletaGastos = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#858796', '#5a5c69', '#f8f9fc'];
+            const paletaVentas = ['#2e59d9', '#17a673', '#2c9faf', '#dda20a', '#be2617', '#60616f', '#4e73df', '#eaecf4'];
+
+            const opcionesBase = {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '40%',
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: { usePointStyle: true, pointStyle: 'circle', padding: 12, font: { size: 11 }, color: '#495057' }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return ` ${context.label || ''}: ${formatoMoneda(context.raw || 0)}`;
+                            }
+                        }
+                    }
+                }
+            };
+
+            let ctxGastos = document.getElementById('chartGastosCentro');
+            if (ctxGastos) {
+                if (chartGastosInstance) chartGastosInstance.destroy();
+                chartGastosInstance = new Chart(ctxGastos, {
+                    type: 'doughnut',
+                    data: {
+                        labels: centrosGastos.map(c => c.nombre),
+                        datasets: [{ data: centrosGastos.map(c => c.total), backgroundColor: paletaGastos.slice(0, centrosGastos.length), borderWidth: 1, borderColor: '#ffffff' }]
+                    },
+                    options: opcionesBase
+                });
+            }
+
+            let ctxVentas = document.getElementById('chartVentasCentro');
+            if (ctxVentas) {
+                if (chartVentasInstance) chartVentasInstance.destroy();
+                chartVentasInstance = new Chart(ctxVentas, {
+                    type: 'doughnut',
+                    data: {
+                        labels: centrosVentas.map(c => c.nombre),
+                        datasets: [{ data: centrosVentas.map(c => c.total), backgroundColor: paletaVentas.slice(0, centrosVentas.length), borderWidth: 1, borderColor: '#ffffff' }]
+                    },
+                    options: opcionesBase
+                });
+            }
+        }
+    }
+
+    // ======================================================
+    // TABLAS DE GESTIÓN CONTADOR Y ADMIN
+    // ======================================================
+
+    function renderCheques(cheques) {
+        let tbody = $('#tablaCheques tbody');
+        if (tbody.length === 0) return;
+
+        if (!cheques || cheques.length === 0) {
+            tbody.html('<tr><td colspan="3" class="text-center text-muted small py-2">Sin cheques próximos a vencer.</td></tr>');
+            return;
+        }
+        let html = '';
+        cheques.forEach(c => {
+            html += `
+                <tr>
+                    <td>${c.fecha_vencimiento}</td>
+                    <td class="text-truncate" style="max-width: 120px;" title="${c.banco} #${c.numero}">${c.banco} (#${c.numero})</td>
+                    <td class="fw-bold text-end">${formatoMoneda(c.importe)}</td>
+                </tr>
+            `;
+        });
+        tbody.html(html);
+    }
+
+    function renderVencimientos(vencimientos) {
+        let tbody = $('#tablaVencimientos tbody');
+        if (tbody.length === 0) return;
+
+        if (!vencimientos || vencimientos.length === 0) {
+            tbody.html('<tr><td colspan="3" class="text-center text-muted small py-2">Sin vencimientos pendientes o vencidos este mes.</td></tr>');
+            return;
+        }
+        let html = '';
+        vencimientos.forEach(v => {
+            let esVencido = (v.estado === 'VENCIDO');
+            let badgeEstado = esVencido 
+                ? '<span class="badge bg-danger ms-1" style="font-size: 9px;">VENCIDO</span>' 
+                : '';
+
+            html += `
+                <tr>
+                    <td>${v.fecha_vencimiento}</td>
+                    <td class="text-truncate" style="max-width: 130px;" title="${v.servicio}">
+                        ${v.servicio} ${badgeEstado}
+                    </td>
+                    <td class="fw-bold text-end text-danger">${formatoMoneda(v.importe)}</td>
+                </tr>
+            `;
+        });
+        tbody.html(html);
+    }
+
+    function renderFacturasCobrar(facturas) {
+        let tbody = $('#tablaFacturasCobrar tbody');
+        if (tbody.length === 0) return;
+
+        if (!facturas || facturas.length === 0) {
+            tbody.html('<tr><td colspan="4" class="text-center text-muted small py-2">No hay facturas pendientes de cobro.</td></tr>');
+            return;
+        }
+        let html = '';
+        facturas.forEach(f => {
+            let nroComprobante = f.numero ? `#${f.numero}` : 'S/N';
+            html += `
+                <tr>
+                    <td>${f.fecha_vencimiento}</td>
+                    <td><span class="badge bg-light text-dark border fw-normal">${nroComprobante}</span></td>
+                    <td class="text-truncate" style="max-width: 130px;" title="${f.cliente}">${f.cliente}</td>
+                    <td class="fw-bold text-end text-success">${formatoMoneda(f.total)}</td>
+                </tr>
+            `;
+        });
+        tbody.html(html);
     }
 
     // ======================================================
@@ -226,50 +601,5 @@ if (typeof window.dashboardInicializado !== 'undefined') {
                 maximumFractionDigits: 2
             }
         );
-    }
-
-    // ======================================================
-    // CENTROS DE COSTO
-    // ======================================================
-
-    function renderCentros(centros) {
-        let html = '';
-
-        if (!centros || centros.length === 0) {
-            html = `
-                <div class="alert alert-light mb-0">
-                    No existen gastos este mes.
-                </div>
-            `;
-            $('#centrosCostosDashboard').html(html);
-            return;
-        }
-
-        let mayor = 0;
-        centros.forEach(c => {
-            if (Number(c.total) > mayor) {
-                mayor = Number(c.total);
-            }
-        });
-
-        centros.forEach(c => {
-            let porcentaje = mayor > 0
-                ? Math.round((Number(c.total) / mayor) * 100)
-                : 0;
-
-            html += `
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between">
-                        <strong>${c.nombre}</strong>
-                        <strong>${formatoMoneda(c.total)}</strong>
-                    </div>
-                    <div class="progress mt-1" style="height:12px;">
-                        <div class="progress-bar bg-success" style="width:${porcentaje}%"></div>
-                    </div>
-                </div>
-            `;
-        });
-
-        $('#centrosCostosDashboard').html(html);
     }
 }

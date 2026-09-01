@@ -2,17 +2,19 @@
 include 'includes/header.php';
 include 'includes/sidebar.php';
 
-// Consulta de Tareas Pendientes (incluye la fecha del último comentario)
+// Consulta de Tareas Pendientes (incluye creador, asignado y la fecha del último comentario)
 $usuario_id = $_SESSION['usuario_id'] ?? $_SESSION['id'] ?? 0;
 $sql_tareas = "SELECT t.*, 
                       u_creador.usuario AS creador_nombre,
+                      u_asignado.usuario AS asignado_nombre,
                       (SELECT MAX(fecha_creacion) FROM tarea_comentarios WHERE tarea_id = t.id) AS ultimo_comentario_fecha
                FROM tareas t 
                LEFT JOIN usuarios u_creador ON t.creador_id = u_creador.id 
+               LEFT JOIN usuarios u_asignado ON t.asignado_id = u_asignado.id 
                WHERE (t.asignado_id = $usuario_id OR t.creador_id = $usuario_id) 
                  AND t.estado != 'COMPLETADO' 
                ORDER BY t.prioridad DESC, t.fecha_limite ASC 
-               LIMIT 12"; // Limitar a 12 tareas para el dashboard
+               LIMIT 12"; 
 $res_tareas = mysqli_query($conn, $sql_tareas);
 
 // Determinar etiqueta del perfil para el encabezado superior
@@ -30,7 +32,7 @@ $rol_actual = $_SESSION['rol'] ?? 'Usuario';
         </div>
     <?php endif; ?>
 
-    <!-- SECCIÓN TRANSVERSAL: MIS TAREAS PENDIENTES -->
+<!-- SECCIÓN TRANSVERSAL: MIS TAREAS PENDIENTES -->
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="fw-bold text-dark mb-0"><i class="bi bi-kanban me-2"></i>Mis Tareas Pendientes</h5>
     <a href="/contable/modules/tareas/" class="btn btn-outline-dark btn-sm">Ver Tablero Completo</a>
@@ -80,7 +82,8 @@ $rol_actual = $_SESSION['rol'] ?? 'Usuario';
                         <?= htmlspecialchars($t['titulo']) ?>
                     </div>
 
-                    <div class="d-flex justify-content-between text-muted" style="font-size: 9.5px;">
+                    <!-- FECHA DE CREACIÓN Y LÍMITE -->
+                    <div class="d-flex justify-content-between text-muted mb-1" style="font-size: 9.5px;">
                         <span><i class="bi bi-clock me-1"></i><?= (!empty($t['creado_en']) && $t['creado_en'] !== '0000-00-00 00:00:00') ? date('d/m/y', strtotime($t['creado_en'])) : '-' ?></span>
                         <?php if (!empty($t['fecha_limite'])): ?>
                             <span class="<?= (strtotime($t['fecha_limite']) < strtotime('today')) ? 'text-danger fw-bold' : '' ?>">
@@ -88,6 +91,28 @@ $rol_actual = $_SESSION['rol'] ?? 'Usuario';
                             </span>
                         <?php endif; ?>
                     </div>
+
+                    <!-- CREADOR Y ASIGNADO -->
+                    <div class="text-truncate text-muted border-top pt-1" style="font-size: 9.5px;">
+                        <?php 
+                        $creador = htmlspecialchars($t['creador_nombre'] ?? 'Sistema');
+                        $asignado = htmlspecialchars($t['asignado_nombre'] ?? 'Sin asignar');
+                        
+                        // Si el creador y el asignado son la misma persona
+                        if (!empty($t['creador_id']) && $t['creador_id'] == $t['asignado_id']): 
+                        ?>
+                            <span class="fw-semibold text-secondary" title="Asignada a sí mismo (<?= $creador ?>)">
+                                <i class="bi bi-person-fill me-1"></i><?= $creador ?>
+                            </span>
+                        <?php else: ?>
+                            <span title="De <?= $creador ?> para <?= $asignado ?>">
+                                <span class="fw-semibold text-secondary"><?= $creador ?></span>
+                                <i class="bi bi-arrow-right mx-1 text-muted"></i>
+                                <span class="fw-semibold text-secondary"><?= $asignado ?></span>
+                            </span>
+                        <?php endif; ?>
+                    </div>
+
                 </div>
             </div>
         <?php endwhile; ?>

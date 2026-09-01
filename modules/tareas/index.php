@@ -148,104 +148,121 @@ if ($res) {
         </div>
     </div>
 
-    <!-- TABLERO -->
-    <div class="row g-3">
-        <?php 
-        $columnas = [
-            'PENDIENTE'  => ['titulo' => 'Pendiente', 'dot' => 'text-secondary'],
-            'EN_PROCESO' => ['titulo' => 'En Proceso', 'dot' => 'text-primary'],
-            'REVISION'   => ['titulo' => 'En Revisión', 'dot' => 'text-warning'],
-            'COMPLETADO' => ['titulo' => 'Completado', 'dot' => 'text-success']
-        ];
-        foreach ($columnas as $estado => $col): 
-        ?>
-            <div class="col-md-3">
-                <div class="card kanban-column-card">
-                    <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center pt-3 px-3 pb-0">
-                        <span class="fw-bold small text-uppercase text-secondary">
-                            <i class="bi bi-circle-fill me-1 <?= $col['dot'] ?>" style="font-size: 8px;"></i>
-                            <?= $col['titulo'] ?>
-                        </span>
-                        <span class="badge bg-white text-dark border rounded-circle shadow-sm" id="count-<?= $estado ?>"><?= count($tareas[$estado]) ?></span>
-                    </div>
-                    <div class="card-body kanban-col" id="<?= $estado ?>">
-                        <?php foreach ($tareas[$estado] as $t): 
-                            // Lógica de Tarea Nueva / Comentarios sin leer
-                            $es_nueva = false;
-                            $ultima_vista = !empty($t['ultima_vista_en']) ? strtotime($t['ultima_vista_en']) : 0;
-                            $ultimo_comentario = !empty($t['ultimo_comentario_fecha']) ? strtotime($t['ultimo_comentario_fecha']) : 0;
+<!-- TABLERO -->
+<div class="row g-3">
+    <?php 
+    $columnas = [
+        'PENDIENTE'  => ['titulo' => 'Pendiente', 'dot' => 'text-secondary'],
+        'EN_PROCESO' => ['titulo' => 'En Proceso', 'dot' => 'text-primary'],
+        'REVISION'   => ['titulo' => 'En Revisión', 'dot' => 'text-warning'],
+        'COMPLETADO' => ['titulo' => 'Completado', 'dot' => 'text-success']
+    ];
+    foreach ($columnas as $estado => $col): 
+    ?>
+        <div class="col-md-3">
+            <div class="card kanban-column-card">
+                <div class="card-header bg-transparent border-0 d-flex justify-content-between align-items-center pt-3 px-3 pb-0">
+                    <span class="fw-bold small text-uppercase text-secondary">
+                        <i class="bi bi-circle-fill me-1 <?= $col['dot'] ?>" style="font-size: 8px;"></i>
+                        <?= $col['titulo'] ?>
+                    </span>
+                    <span class="badge bg-white text-dark border rounded-circle shadow-sm" id="count-<?= $estado ?>"><?= count($tareas[$estado]) ?></span>
+                </div>
+                <div class="card-body kanban-col" id="<?= $estado ?>">
+                    <?php foreach ($tareas[$estado] as $t): 
+                        // Lógica de Tarea Nueva / Comentarios sin leer
+                        $es_nueva = false;
+                        $ultima_vista = !empty($t['ultima_vista_en']) ? strtotime($t['ultima_vista_en']) : 0;
+                        $ultimo_comentario = !empty($t['ultimo_comentario_fecha']) ? strtotime($t['ultimo_comentario_fecha']) : 0;
 
-                            if (empty($t['ultima_vista_en'])) {
-                                $es_nueva = true;
-                            } elseif ($ultimo_comentario > $ultima_vista) {
-                                $es_nueva = true;
-                            }
+                        if (empty($t['ultima_vista_en'])) {
+                            $es_nueva = true;
+                        } elseif ($ultimo_comentario > $ultima_vista) {
+                            $es_nueva = true;
+                        }
 
-                            // Si es nueva le ponemos la clase del azul clarito, de lo contrario el estilo normal
-                            $clase_tarjeta = $es_nueva ? 'task-card-nueva shadow-sm' : 'border-0 shadow-sm';
-                        ?>
-                            <div class="card mb-2 task-card <?= $clase_tarjeta ?> cursor-pointer" 
-                                id="tarea-<?= $t['id'] ?>" 
-                                data-id="<?= $t['id'] ?>"
-                                data-titulo="<?= strtolower(htmlspecialchars($t['titulo'])) ?>"
-                                data-descripcion="<?= strtolower(htmlspecialchars($t['descripcion'])) ?>"
-                                data-prioridad="<?= $t['prioridad'] ?>"
-                                data-asignado="<?= htmlspecialchars($t['asignado_nombre'] ?? '') ?>"
-                                onclick="abrirModalDetalles(<?= $t['id'] ?>)">
-                                
-                                    <div class="card-body p-2 px-2.5">
-                                        <!-- BADGE NUEVA + TÍTULO Y BADGE PRIO -->
-                                        <?php if ($es_nueva): ?>
-                                            <div class="mb-1">
-                                                <span class="badge bg-primary text-white badge-nueva" style="font-size: 8px; padding: 2px 5px;">
-                                                    <i class="bi bi-bell-fill me-1"></i>NUEVA
-                                                </span>
-                                            </div>
-                                        <?php endif; ?>
-
-                                        <div class="d-flex justify-content-between align-items-center mb-1">
-                                            <span class="fw-bold text-dark small text-truncate me-1" style="max-width: 160px; font-size: 12px;" title="<?= htmlspecialchars($t['titulo']) ?>">
-                                                <?= htmlspecialchars($t['titulo']) ?>
-                                            </span>
-                                            <span class="badge rounded-pill badge-prio-<?= $t['prioridad'] ?>" style="font-size: 8.5px; padding: 2px 5px;">
-                                                <?= $t['prioridad'] ?>
-                                            </span>
-                                        </div>
-
-                                        <!-- FECHAS -->
-                                        <div class="d-flex justify-content-between align-items-center task-date-info mb-1 pb-1 border-bottom border-light">
-                                            <span title="Fecha de creación">
-                                                <i class="bi bi-clock me-1 text-muted"></i><?= (!empty($t['creado_en']) && $t['creado_en'] !== '0000-00-00 00:00:00') ? date('d/m/y', strtotime($t['creado_en'])) : '-' ?>
-                                            </span>
-                                            <?php if (!empty($t['fecha_limite'])): ?>
-                                                <span title="Fecha límite" class="fw-semibold <?= (strtotime($t['fecha_limite']) < strtotime('today')) ? 'text-danger' : 'text-dark' ?>">
-                                                    <i class="bi bi-flag-fill me-1 <?= (strtotime($t['fecha_limite']) < strtotime('today')) ? 'text-danger' : 'text-primary' ?>"></i><?= date('d/m/y', strtotime($t['fecha_limite'])) ?>
-                                                </span>
-                                            <?php endif; ?>
-                                        </div>
-
-                                        <!-- ASIGNADO Y CONTEXTO -->
-                                        <div class="d-flex justify-content-between align-items-center text-muted" style="font-size: 9.5px; line-height: 1;">
-                                            <span class="text-truncate" style="max-width: 120px;">
-                                                <i class="bi bi-person me-1"></i><?= htmlspecialchars($t['asignado_nombre'] ?? 'Sin asignar') ?>
-                                            </span>
-                                            <div class="d-flex gap-2">
-                                                <?php if ($t['total_adjuntos'] > 0): ?>
-                                                    <span><i class="bi bi-paperclip me-1"></i><?= $t['total_adjuntos'] ?></span>
-                                                <?php endif; ?>
-                                                <?php if ($t['total_comentarios'] > 0): ?>
-                                                    <span><i class="bi bi-chat-left me-1"></i><?= $t['total_comentarios'] ?></span>
-                                                <?php endif; ?>
-                                            </div>
-                                        </div>
+                        $clase_tarjeta = $es_nueva ? 'task-card-nueva shadow-sm' : 'border-0 shadow-sm';
+                    ?>
+                        <div class="card mb-2 task-card <?= $clase_tarjeta ?> cursor-pointer" 
+                            id="tarea-<?= $t['id'] ?>" 
+                            data-id="<?= $t['id'] ?>"
+                            data-titulo="<?= strtolower(htmlspecialchars($t['titulo'])) ?>"
+                            data-descripcion="<?= strtolower(htmlspecialchars($t['descripcion'])) ?>"
+                            data-prioridad="<?= $t['prioridad'] ?>"
+                            data-asignado="<?= htmlspecialchars($t['asignado_nombre'] ?? '') ?>"
+                            onclick="abrirModalDetalles(<?= $t['id'] ?>)">
+                            
+                            <div class="card-body p-2 px-2.5">
+                                <!-- BADGE NUEVA -->
+                                <?php if ($es_nueva): ?>
+                                    <div class="mb-1">
+                                        <span class="badge bg-primary text-white badge-nueva" style="font-size: 8px; padding: 2px 5px;">
+                                            <i class="bi bi-bell-fill me-1"></i>NUEVA
+                                        </span>
                                     </div>
+                                <?php endif; ?>
+
+                                <!-- TÍTULO Y PRIORIDAD -->
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="fw-bold text-dark small text-truncate me-1" style="max-width: 160px; font-size: 12px;" title="<?= htmlspecialchars($t['titulo']) ?>">
+                                        <?= htmlspecialchars($t['titulo']) ?>
+                                    </span>
+                                    <span class="badge rounded-pill badge-prio-<?= $t['prioridad'] ?>" style="font-size: 8.5px; padding: 2px 5px;">
+                                        <?= $t['prioridad'] ?>
+                                    </span>
+                                </div>
+
+                                <!-- FECHAS -->
+                                <div class="d-flex justify-content-between align-items-center task-date-info mb-1 pb-1 border-bottom border-light">
+                                    <span title="Fecha de creación">
+                                        <i class="bi bi-clock me-1 text-muted"></i><?= (!empty($t['creado_en']) && $t['creado_en'] !== '0000-00-00 00:00:00') ? date('d/m/y', strtotime($t['creado_en'])) : '-' ?>
+                                    </span>
+                                    <?php if (!empty($t['fecha_limite'])): ?>
+                                        <span title="Fecha límite" class="fw-semibold <?= (strtotime($t['fecha_limite']) < strtotime('today')) ? 'text-danger' : 'text-dark' ?>">
+                                            <i class="bi bi-flag-fill me-1 <?= (strtotime($t['fecha_limite']) < strtotime('today')) ? 'text-danger' : 'text-primary' ?>"></i><?= date('d/m/y', strtotime($t['fecha_limite'])) ?>
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+
+                                <!-- CREADOR Y ASIGNADO + ADJUNTOS Y COMENTARIOS -->
+                                <div class="d-flex justify-content-between align-items-center text-muted mt-1 pt-1" style="font-size: 9.5px; line-height: 1;">
+                                    <div class="text-truncate me-1" style="max-width: 140px;">
+                                        <?php 
+                                        $creador = htmlspecialchars($t['creador_nombre'] ?? 'Sistema');
+                                        $asignado = htmlspecialchars($t['asignado_nombre'] ?? 'Sin asignar');
+                                        
+                                        if (!empty($t['creador_id']) && $t['creador_id'] == $t['asignado_id']): 
+                                        ?>
+                                            <span class="fw-semibold text-secondary" title="Asignada a sí mismo (<?= $creador ?>)">
+                                                <i class="bi bi-person-fill me-1"></i><?= $creador ?>
+                                            </span>
+                                        <?php else: ?>
+                                            <span title="De <?= $creador ?> para <?= $asignado ?>">
+                                                <span class="fw-semibold text-secondary"><?= $creador ?></span>
+                                                <i class="bi bi-arrow-right mx-1 text-muted"></i>
+                                                <span class="fw-semibold text-secondary"><?= $asignado ?></span>
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
+
+                                    <!-- Iconos de Adjuntos y Comentarios -->
+                                    <div class="d-flex gap-2 align-items-center ms-auto">
+                                        <?php if (!empty($t['total_adjuntos']) && $t['total_adjuntos'] > 0): ?>
+                                            <span title="<?= $t['total_adjuntos'] ?> adjuntos"><i class="bi bi-paperclip me-1"></i><?= $t['total_adjuntos'] ?></span>
+                                        <?php endif; ?>
+                                        <?php if (!empty($t['total_comentarios']) && $t['total_comentarios'] > 0): ?>
+                                            <span title="<?= $t['total_comentarios'] ?> comentarios"><i class="bi bi-chat-left me-1"></i><?= $t['total_comentarios'] ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+
                             </div>
-                        <?php endforeach; ?>
-                    </div>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
             </div>
-        <?php endforeach; ?>
-    </div>
+        </div>
+    <?php endforeach; ?>
 </div>
 
 <!-- MODAL UNIFICADO -->
@@ -361,6 +378,7 @@ if ($res) {
             </div>
         </div>
     </div>
+</div>
 </div>
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>

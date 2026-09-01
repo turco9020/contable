@@ -127,6 +127,12 @@ Las nuevas funcionalidades se incorporan progresivamente y se validan antes de i
 
 ---
 
+# TAREAS
+
+La cantidad de tareas en el Dash se limitan en el index.php de la Raiz. Modificando ahi se modifica todo, quizas se podria hacer eso que sea una configuración en el backend. Que sea configurable. Para futuro.
+
+---
+
 # Logica de Usuarios y Roles
 
 Con la lógica que implementamos en los cuatro archivos (movimientos_caja, gastos, facturacion y cheques), la información queda visible estrictamente por usuario individual, no por grupo de rol.

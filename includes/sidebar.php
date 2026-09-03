@@ -205,6 +205,7 @@
         strcasecmp($rol_actual, 'arquitecto') === 0
     ): ?>
         <a href="/contable/modules/facturacion/"><i class="bi bi-receipt"></i> Facturación</a>
+        <a href="/contable/modules/presupuestos/" class="menu-link"><i class="bi bi-file-earmark-spreadsheet"></i> Presupuestos</a>
     <?php endif; ?>
 
     <a href="/contable/modules/gastos/"><i class="bi bi-cart3"></i> Gastos</a>
@@ -272,7 +273,7 @@
     </div>
 
     <hr style="margin-top: auto;">
-
+    <a href="/contable/modules/novedades/"><i class="bi bi-journal-arrow-up text-info"></i> Novedades</a>            
     <a href="#" onclick="toggleDark()"><i class="bi bi-moon-stars"></i> Modo oscuro</a>
     <hr>
     <a href="/contable/auth/logout.php" style="color:#bbb;">

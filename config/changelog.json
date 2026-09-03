@@ -1,0 +1,16 @@
+[
+  {
+    "_instrucciones": "INSTRUCCIONES DE USO: Para agregar una nueva actualización, duplicá un bloque entre llaves {} debajo de este. Agregalo SIEMPRE arriba de todo para que aparezca primero en el sistema. Los campos 'version', 'fecha', 'titulo' y el array 'cambios' son obligatorios."
+  },
+  {
+    "version": "v1.2.0",
+    "fecha": "03/09/2026",
+    "titulo": "Lanzamiento y Mejoras del Dashboard",
+    "cambios": [
+      "Sincronización completa de vencimientos del mes corriente en el Dashboard.",
+      "Inclusión automática de cuotas pendientes.",
+      "Alertas para vencimientos atrasados de meses anteriores.",
+      "Control de seguridad centralizado para acceso directo a módulos."
+    ]
+  }
+]

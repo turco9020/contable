@@ -504,12 +504,12 @@ function abrirModalDetalles(id) {
 
         $('#tab-adjuntos-tab, #tab-comentarios-tab').removeClass('disabled');
 
-        renderAdjuntos(data.adjuntos || []);
-        renderComentarios(data.comentarios || []);
+        recargarComentariosYAdjuntos(id);
 
         let modalEl = document.getElementById('modalTarea');
         let modalInstance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
         modalInstance.show();
+
     });
 }
 
@@ -592,49 +592,122 @@ function renderComentarios(comentarios) {
 }
 
 function editarComentario(comentarioId, textoActual) {
-    let nuevoTexto = prompt("Editar comentario:", textoActual);
-    if (nuevoTexto !== null && nuevoTexto.trim() !== "") {
-        let tareaId = $('#modal_tarea_id').val() || $('.modal_tarea_id_hidden').val();
-        $.ajax({
-            url: 'acciones.php?accion=editar_comentario_ajax',
-            type: 'POST',
-            data: { comentario_id: comentarioId, comentario: nuevoTexto.trim() },
-            dataType: 'json',
-            success: function(res) {
-                if (res.success) {
-                    recargarComentariosYAdjuntos(tareaId);
-                } else {
-                    alert(res.msg || 'No se pudo editar.');
-                }
+    Swal.fire({
+        target: '#modalTarea',
+        title: 'Editar comentario',
+        input: 'textarea',
+        inputValue: textoActual,
+        inputPlaceholder: 'Escribí el comentario...',
+        showCancelButton: true,
+        confirmButtonText: 'Guardar',
+        cancelButtonText: 'Cancelar',
+        inputValidator: (value) => {
+            if (!value || value.trim() === '') {
+                return 'El comentario no puede estar vacío.';
             }
-        });
-    }
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            let nuevoTexto = result.value.trim();
+            let tareaId = $('#modal_tarea_id').val() || $('.modal_tarea_id_hidden').val();
+
+            $.ajax({
+                url: 'acciones.php?accion=editar_comentario_ajax',
+                type: 'POST',
+                data: {
+                    comentario_id: comentarioId,
+                    comentario: nuevoTexto
+                },
+                dataType: 'json',
+                success: function(res) {
+                    if (res.success) {
+                        recargarComentariosYAdjuntos(tareaId);
+                    } else {
+                        Swal.fire({
+                            target: '#modalTarea',
+                            title: 'Error',
+                            text: res.msg || 'No se pudo editar.',
+                            icon: 'error',
+                            confirmButtonText: 'Aceptar'
+                        });
+                    }
+                },
+                error: function() {
+                    Swal.fire({
+                        target: '#modalTarea',
+                        title: 'Error',
+                        text: 'Ocurrió un error al intentar editar el comentario.',
+                        icon: 'error',
+                        confirmButtonText: 'Aceptar'
+                    });
+                }
+            });
+        }
+    });
 }
 
+
+
 function eliminarComentario(comentarioId, tareaId) {
-    if (confirm("¿Estás seguro de borrar este comentario?")) {
-        $.ajax({
-            url: 'acciones.php?accion=eliminar_comentario_ajax',
-            type: 'POST',
-            data: { comentario_id: comentarioId },
-            dataType: 'json',
-            success: function(res) {
-                if (res.success) {
-                    recargarComentariosYAdjuntos(tareaId);
-                } else {
-                    alert(res.msg || 'No se pudo eliminar.');
+    Swal.fire({
+        title: '¿Borrar comentario?',
+        text: '¿Estás seguro de borrar este comentario?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: 'acciones.php?accion=eliminar_comentario_ajax',
+                type: 'POST',
+                data: { comentario_id: comentarioId },
+                dataType: 'json',
+                success: function(res) {
+                    if (res.success) {
+                        recargarComentariosYAdjuntos(tareaId);
+                    } else {
+                        Swal.fire({
+                            title: 'Error',
+                            text: res.msg || 'No se pudo eliminar.',
+                            icon: 'error',
+                            confirmButtonText: 'Aceptar'
+                        });
+                    }
+                },
+                error: function() {
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Ocurrió un error al intentar eliminar el comentario.',
+                        icon: 'error',
+                        confirmButtonText: 'Aceptar'
+                    });
                 }
-            }
-        });
-    }
+            });
+        }
+    });
 }
+
 
 function eliminarTareaActual() {
     let id = $('#modal_tarea_id').val();
-    if (id > 0 && confirm('¿Estás seguro de que deseas borrar esta tarea?')) {
-        window.location.href = 'acciones.php?accion=eliminar&id=' + id;
+
+    if (id > 0) {
+        Swal.fire({
+            title: '¿Eliminar tarea?',
+            text: '¿Estás seguro de que deseas borrar esta tarea?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = 'acciones.php?accion=eliminar&id=' + id;
+            }
+        });
     }
 }
+
 
 function escapeHtml(text) {
     if (!text) return '';

@@ -288,32 +288,47 @@ function consultarReporte() {
 
             // 5. Construir el <tfoot>
             let tfootHtml = '';
+            let tipoReporte = $('#tipo_reporte').val();
+
             if (res.total !== undefined && res.total !== null) {
 
-                // Si el reporte trae totales desglosados (como Neto e IVA)
+                // CASO A: Reportes detallados con Neto e IVA
                 if (res.total_neto !== undefined && res.total_iva !== undefined) {
-                    tfootHtml = `
-                        <tfoot class="table-secondary fw-bold">
-                            <tr>
-                                <td colspan="3" class="text-end">TOTALES ACUMULADOS:</td>
-                                <td class="text-end fw-bold text-nowrap">${res.total_neto}</td>
-                                <td class="text-end fw-bold text-nowrap">${res.total_iva}</td>
-                                <td class="text-end fw-bold text-nowrap">${res.total}</td>
-                            </tr>
-                        </tfoot>`;
+                    
+                    if (tipoReporte === 'ventas_generales') {
+                        // Ventas Generales (9 columnas): las primeras 5 se agrupan con colspan="5"
+                        // El Neto cae exactamente en la col 6 (Neto), IVA en la col 7, Total en la col 8 y vacia la col 9 (Estado)
+                        tfootHtml = `
+                            <tfoot class="table-secondary fw-bold">
+                                <tr>
+                                    <td colspan="5" class="text-end">TOTALES ACUMULADOS:</td>
+                                    <td class="text-end fw-bold text-nowrap">${res.total_neto}</td>
+                                    <td class="text-end fw-bold text-nowrap">${res.total_iva}</td>
+                                    <td class="text-end fw-bold text-nowrap">${res.total}</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>`;
+                    } else {
+                        // Gastos Generales (6 columnas): las primeras 3 se agrupan con colspan="3"
+                        tfootHtml = `
+                            <tfoot class="table-secondary fw-bold">
+                                <tr>
+                                    <td colspan="3" class="text-end">TOTALES ACUMULADOS:</td>
+                                    <td class="text-end fw-bold text-nowrap">${res.total_neto}</td>
+                                    <td class="text-end fw-bold text-nowrap">${res.total_iva}</td>
+                                    <td class="text-end fw-bold text-nowrap">${res.total}</td>
+                                </tr>
+                            </tfoot>`;
+                    }
+
                 } else {
-                    // Fallback genérico para reportes que solo traen un total final
+                    // CASO B: Reportes con 1 solo total al final
                     let colCount = res.columns.length;
                     let colspanLeft = colCount > 1 ? colCount - 1 : 1;
 
-                    // Limpiamos el valor por si viene formateado desde PHP
-                    let rawTotal = typeof res.total === 'string' 
-                        ? parseFloat(res.total.replace(/[^0-9.-]+/g, "")) 
-                        : res.total;
-
-                    let totalFormateado = isNaN(rawTotal) 
-                        ? res.total 
-                        : '$ ' + rawTotal.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    // Inyectamos directamente la cadena formateada desde PHP (ej. $ 254.100,00)
+                    // sin pasar por parseFloat para evitar que rompa el separador de miles.
+                    let totalFormateado = res.total;
 
                     tfootHtml = `<tfoot class="table-secondary fw-bold"><tr>`;
                     if (colCount > 1) {

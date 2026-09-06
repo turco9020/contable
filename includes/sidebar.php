@@ -257,6 +257,7 @@
                 strcasecmp($rol_actual, 'arquitecto') === 0
             ): ?>
                 <a href="/contable/modules/config/obras/" class="menu-link"><i class="bi bi-building me-2"></i>Obras</a>
+                <a href="/contable/modules/config/personal/" class="menu-link"><i class="bi bi-people me-2"></i> Personal / RRHH</a>
             <?php endif; ?>
             
             <?php if(esAdmin()): ?>

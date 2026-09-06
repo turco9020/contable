@@ -52,7 +52,9 @@
     <div class="col-12 col-md-4 col-xl-2.4" style="width: 20%;">
         <div class="card shadow-sm border-0 border-start border-dark border-3 p-2 bg-white h-100">
             <span class="text-muted fw-semibold text-uppercase" style="font-size: 9.5px;"><i class="bi bi-card-checklist me-1"></i>Cheques Emitidos a Cubrir</span>
-            <div id="chequesEmitidosMes" class="fw-bold text-dark fs-6 mt-1">$ 0,00 <small class="text-muted fw-normal" style="font-size: 9px;">(Este mes)</small></div>
+            <div id="chequesEmitidosMes" class="fw-bold text-dark fs-6 mt-1"><span id="chequesEmitidosMesValor">$ 0,00</span> <small class="text-muted fw-normal" style="font-size: 9px;">(Este mes)</small>
+            </div>
+
             <div class="text-muted border-top pt-1 mt-1 d-flex justify-content-between align-items-center" style="font-size: 10px;">
                 <span>Total Absoluto:</span>
                 <span id="chequesEmitidosTotal" class="fw-bold text-danger">$ 0,00</span>

@@ -12,7 +12,7 @@
                 <form id="formGasto" enctype="multipart/form-data">
                     <input type="hidden" name="id" id="id">
 
-                    <!-- SECCIÓN 1: CLASIFICACIÓN Y TIEMPO -->
+                    <!-- En SECCIÓN 1: CLASIFICACIÓN -->
                     <div class="row g-3 mb-4">
                         <div class="col-12">
                             <h6 class="text-uppercase text-secondary fw-bold small border-bottom pb-1 mb-2">1. Clasificación del Gasto</h6>
@@ -21,19 +21,24 @@
                             <label class="form-label small fw-bold">Fecha</label>
                             <input type="date" name="fecha" id="fecha" class="form-control" required>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label small fw-bold">Centro de Costo</label>
                             <select name="centro_costo_id" id="centro_costo_id" class="form-select" required></select>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label small fw-bold">Obra</label>
-                            <select name="obra_id" id="obra_id" class="form-select" required></select>
+                            <select name="obra_id" id="obra_id" class="form-select"></select>
+                        </div>
+                        <!-- CAMPO VEHÍCULO -->
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold">Vehículo / Máquina</label>
+                            <select name="vehiculo_id" id="vehiculo_id" class="form-select"></select>
                         </div>
                         <div class="col-md-2">
                             <label class="form-label small fw-bold">Categoría</label>
                             <select name="categoria_id" id="categoria_id" class="form-select" required></select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label small fw-bold">Subcategoría</label>
                             <select name="subcategoria_id" id="subcategoria_id" class="form-select" required></select>
                         </div>

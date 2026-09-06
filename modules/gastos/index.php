@@ -8,19 +8,19 @@ $esAdmin = isset($_SESSION['rol']) && strcasecmp($_SESSION['rol'], 'admin') === 
 <div class="content">
 
     <!-- CABECERA DEL MÓDULO -->
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="fw-bold text-dark mb-0">
-        <i class="bi bi-calculator text-secondary me-2"></i> Gestión de Gastos
-    </h4>
-    <div class="d-flex gap-2">
-        <button class="btn btn-outline-success d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#modalImportarAFIP">
-            <i class="bi bi-file-earmark-spreadsheet me-2"></i> Importar AFIP
-        </button>
-        <button class="btn btn-dark d-flex align-items-center" onclick="abrirModal()">
-            <i class="bi bi-plus-circle me-2"></i> Nuevo Gasto
-        </button>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold text-dark mb-0">
+            <i class="bi bi-calculator text-secondary me-2"></i> Gestión de Gastos
+        </h4>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-success d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#modalImportarAFIP">
+                <i class="bi bi-file-earmark-spreadsheet me-2"></i> Importar AFIP
+            </button>
+            <button class="btn btn-dark d-flex align-items-center" onclick="abrirModal()">
+                <i class="bi bi-plus-circle me-2"></i> Nuevo Gasto
+            </button>
+        </div>
     </div>
-</div>
 
     <!-- SECCIÓN DE FILTROS -->
     <div class="card p-3 shadow-sm mb-3 border-0">
@@ -45,9 +45,13 @@ $esAdmin = isset($_SESSION['rol']) && strcasecmp($_SESSION['rol'], 'admin') === 
                 <label class="small fw-bold text-muted">Obra</label>
                 <select id="f_obra" class="form-select form-select-sm"></select>
             </div>
-            <div class="col-md-2 d-flex align-items-end">
-                <button class="btn btn-sm btn-dark w-100" onclick="aplicarFiltros()">Filtrar</button>
-                <button class="btn btn-sm btn-outline-secondary ms-1" onclick="limpiarFiltros()" title="Limpiar Filtros">X</button>
+            <div class="col-md-2">
+                <label class="small fw-bold text-muted">Vehículo / Máquina</label>
+                <select id="f_vehiculo" class="form-select form-select-sm"></select>
+            </div>
+            <div class="col-md-12 d-flex justify-content-end align-items-center mt-2">
+                <button class="btn btn-sm btn-dark me-2 px-3" onclick="aplicarFiltros()">Filtrar</button>
+                <button class="btn btn-sm btn-outline-secondary px-3" onclick="limpiarFiltros()" title="Limpiar Filtros">Limpiar</button>
             </div>
         </div>
     </div>
@@ -72,6 +76,7 @@ $esAdmin = isset($_SESSION['rol']) && strcasecmp($_SESSION['rol'], 'admin') === 
                         <th>Total</th>
                         <th>Centro</th>
                         <th>Obra</th>
+                        <th>Vehículo / Máquina</th>
                         <th>Categoria</th>
                         <th>Subcategoria</th>
                         <th>Usuario</th>
@@ -101,7 +106,7 @@ window.aplicarFiltros = function() {
 
 window.limpiarFiltros = function() {
     $('#f_desde, #f_hasta').val('');
-    $('#f_centro, #f_categoria, #f_obra').val('');
+    $('#f_centro, #f_categoria, #f_obra, #f_vehiculo').val('');
     tabla.ajax.reload();
 }
 
@@ -148,6 +153,16 @@ function cargarObras(){
         r.data.forEach(x=>{ s.append(`<option value="${x.id}">${x.nombre}</option>`); });
     },'json');
 } 
+
+function cargarVehiculos(){
+    return $.get('/contable/ajax/vehiculos.php?accion=select_opt', r=>{
+        let s = $('#vehiculo_id, #f_vehiculo');
+        s.empty().append('<option value="">-- Seleccionar --</option>');
+        if (r.data) {
+            r.data.forEach(x=>{ s.append(`<option value="${x.id}">${x.nombre}</option>`); });
+        }
+    },'json');
+}
 
 function cargarCategorias(){
     return $.get('/contable/ajax/categorias.php?accion=listar', r=>{
@@ -196,7 +211,7 @@ function cargarCajas(selector = '#caja_id'){
 }
 
 function aplicarBuscadores() {
-    const IDs = ['#proveedor_id', '#centro_costo_id', '#obra_id', '#categoria_id', '#subcategoria_id'];
+    const IDs = ['#proveedor_id', '#centro_costo_id', '#obra_id', '#vehiculo_id', '#categoria_id', '#subcategoria_id'];
     
     IDs.forEach(id => {
         let el = document.querySelector(id);
@@ -215,21 +230,69 @@ function aplicarBuscadores() {
     });
 }
 
+// FORMATO DE MILES CON PUNTOS Y COMAS DECIMALES EN TIEMPO REAL
+function aplicarMascaraMoneda(input) {
+    let val = input.value ? input.value.toString().trim() : '';
+    if (!val) return;
+
+    // Si viene de la BD en formato numérico puro (ej: "10000.00")
+    if (val.includes('.') && !val.includes(',')) {
+        let num = parseFloat(val);
+        if (!isNaN(num)) {
+            val = num.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+    } else {
+        // Formateo dinámico mientras el usuario escribe
+        val = val.replace(/[^\d,]/g, ''); 
+        let partes = val.split(',');
+        partes[0] = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        if (partes[1] !== undefined) {
+            partes[1] = partes[1].substring(0, 2);
+        }
+        val = partes.join(',');
+    }
+
+    input.value = val;
+}
+
+function calcularTotalGasto() {
+    const parseMonto = (val) => {
+        if (!val) return 0;
+        let limpio = val.toString().replace(/\./g, '').replace(',', '.');
+        return parseFloat(limpio) || 0;
+    };
+
+    let neto  = parseMonto($('#neto').val());
+    let iva   = parseMonto($('#iva').val());
+    let iibb  = parseMonto($('#ret_iibb').val());
+    let otros = parseMonto($('#otros_tributos').val());
+
+    let total = neto + iva + iibb + otros;
+
+    $('#total').val(total.toLocaleString('es-AR', { 
+        minimumFractionDigits: 2, 
+        maximumFractionDigits: 2 
+    }));
+}
+
 window.abrirModal = function(){
     $('#formGasto')[0].reset();
     $('#id').val('');
     $('#archivo_actual').html('');
     $('#btnEliminarArchivo').hide();
-    $('#formGasto input, select').prop('disabled', false);
+    $('#formGasto input, select, textarea').prop('disabled', false);
     $('#formGasto button[type="submit"], #formGasto .btn-dark').show();
     
-    $.when(cargarCentros(), cargarCajas(), cargarTipos(), cargarMedios(), cargarObras(), cargarCategorias(), cargarProveedores())
-     .done(() => { 
-         cargarSubcategorias('').done(() => {
-             modalGasto.show();
-             setTimeout(aplicarBuscadores, 150); 
-         });
-     });
+    $.when(
+        cargarCentros(), cargarCajas(), cargarTipos(), 
+        cargarMedios(), cargarObras(), cargarVehiculos(), 
+        cargarCategorias(), cargarProveedores()
+    ).done(() => { 
+        cargarSubcategorias('').done(() => {
+            modalGasto.show();
+            setTimeout(aplicarBuscadores, 150); 
+        });
+    });
 }
 
 document.addEventListener("DOMContentLoaded", function() {
@@ -247,14 +310,14 @@ document.addEventListener("DOMContentLoaded", function() {
                 text: 'Excel', 
                 className: 'btn btn-sm btn-success',
                 exportOptions: {
-                    columns: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17]
+                    columns: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]
                 }
             },
             {   extend: 'print', 
                 text: 'Imprimir', 
                 className: 'btn btn-sm btn-secondary',
                 exportOptions: {
-                    columns: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17]
+                    columns: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]
                 }
             },
             { 
@@ -271,6 +334,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 d.f_centro = $('#f_centro').val();
                 d.f_categoria = $('#f_categoria').val();
                 d.f_obra = $('#f_obra').val();
+                d.f_vehiculo = $('#f_vehiculo').val();
             }
         },
         columns: [
@@ -291,6 +355,7 @@ document.addEventListener("DOMContentLoaded", function() {
             { data: 'total', className: 'text-end fw-bold', render: d => renderMoneda(d) },
             { data: 'centro' },
             { data: 'obra' },
+            { data: 'vehiculo', className: 'none', defaultContent: '-' },
             { data: 'categoria' },
             { data: 'subcategoria' },
             {
@@ -364,30 +429,10 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     });
 
+    // LISTENERS PARA ENMASCARAR Y RECALCULAR TOTAL EN TIEMPO REAL
     $('#neto, #iva, #ret_iibb, #otros_tributos').on('input', function() {
-        const limpiarNum = (val) => {
-            if (!val) return 0;
-            let s = val.toString().replace(/[^\d,.-]/g, '');
-            if (s.includes(',') && s.includes('.')) {
-                s = s.replace(/\./g, '');
-            } else if ((s.match(/\./g) || []).length > 1) {
-                s = s.replace(/\./g, '');
-            }
-            s = s.replace(',', '.');
-            return parseFloat(s) || 0;
-        };
-
-        let neto  = limpiarNum($('#neto').val());
-        let iva   = limpiarNum($('#iva').val());
-        let iibb  = limpiarNum($('#ret_iibb').val());
-        let otros = limpiarNum($('#otros_tributos').val());
-
-        let sumaTotal = neto + iva + iibb + otros;
-
-        $('#total').val(sumaTotal.toLocaleString('es-AR', { 
-            minimumFractionDigits: 2, 
-            maximumFractionDigits: 2 
-        }));
+        aplicarMascaraMoneda(this);
+        calcularTotalGasto();
     });
 
     $('#formGasto').submit(function(e) {
@@ -456,7 +501,7 @@ document.addEventListener("DOMContentLoaded", function() {
     window.ver = function(data) {
         window.editar(data);
         setTimeout(() => {
-            $('#formGasto input, select').prop('disabled', true);
+            $('#formGasto input, select, textarea').prop('disabled', true);
             Object.keys(buscadoresTom).forEach(key => {
                 if(buscadoresTom[key]) buscadoresTom[key].disable();
             });
@@ -466,19 +511,26 @@ document.addEventListener("DOMContentLoaded", function() {
 
     window.editar = function(data) {
         $('#formGasto')[0].reset();
-        $('#formGasto input, select').prop('disabled', false); 
+        $('#formGasto input, select, textarea').prop('disabled', false); 
         $('#formGasto button').show();
 
         $.when(
             cargarCentros(), cargarCajas(), cargarCategorias(), cargarProveedores(), 
-            cargarTipos(), cargarMedios(), cargarObras()
+            cargarTipos(), cargarMedios(), cargarObras(), cargarVehiculos()
         ).done(function() {
             for (let k in data) {
                 let el = document.getElementById(k);
                 if (el && k !== 'archivo') { el.value = data[k]; }
             }
 
-            $('#neto').trigger('input'); 
+            // Aplicar máscaras de formato en inputs recuperados de la BD
+            ['#neto', '#iva', '#ret_iibb', '#otros_tributos'].forEach(selector => {
+                let input = document.querySelector(selector);
+                if (input && input.value !== "") {
+                    aplicarMascaraMoneda(input);
+                }
+            });
+            calcularTotalGasto();
 
             let promesaSubcat = data.categoria_id ? cargarSubcategorias(data.categoria_id) : cargarSubcategorias('');
 
@@ -489,6 +541,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 if (buscadoresTom['#proveedor_id']) buscadoresTom['#proveedor_id'].setValue(data.proveedor_id, true);
                 if (buscadoresTom['#centro_costo_id']) buscadoresTom['#centro_costo_id'].setValue(data.centro_costo_id, true);
                 if (buscadoresTom['#obra_id']) buscadoresTom['#obra_id'].setValue(data.obra_id, true);
+                if (buscadoresTom['#vehiculo_id']) buscadoresTom['#vehiculo_id'].setValue(data.vehiculo_id, true);
                 if (buscadoresTom['#categoria_id']) buscadoresTom['#categoria_id'].setValue(data.categoria_id, true);
                 
                 if (buscadoresTom['#subcategoria_id'] && data.subcategoria_id) {
@@ -552,6 +605,7 @@ document.addEventListener("DOMContentLoaded", function() {
         cargarCentros();
         cargarCajas();
         cargarObras();
+        cargarVehiculos();
         cargarCategorias();
     });
 });

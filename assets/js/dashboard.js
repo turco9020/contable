@@ -82,7 +82,7 @@ if (typeof window.dashboardInicializado !== 'undefined') {
                 if ($('#rentabilidadMesAnterior').length) $('#rentabilidadMesAnterior').html(formatoMoneda(data.rentabilidad_mes_anterior));
                 if ($('#diferenciaIva').length) $('#diferenciaIva').html(formatoMoneda(data.diferencia_iva));
                 if ($('#retencionesMes').length) $('#retencionesMes').html(formatoMoneda(data.retenciones_mes));
-                if ($('#chequesEmitidosMes').length) $('#chequesEmitidosMes').html(formatoMoneda(data.cheques_emitidos_mes));
+                if ($('#chequesEmitidosMesValor').length) {$('#chequesEmitidosMesValor').html(formatoMoneda(data.cheques_emitidos_mes));}
                 if ($('#chequesEmitidosTotal').length) $('#chequesEmitidosTotal').html(formatoMoneda(data.cheques_emitidos_total));
 
                 // Rubros (Mes Actual / Mes Pasado / Anual)

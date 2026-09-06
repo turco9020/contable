@@ -33,20 +33,23 @@ if($_GET['accion']=='listar'){
     if (!empty($_GET['f_centro']))    $where .= " AND g.centro_costo_id = '".$_GET['f_centro']."'";
     if (!empty($_GET['f_categoria'])) $where .= " AND g.categoria_id = '".$_GET['f_categoria']."'";
     if (!empty($_GET['f_obra']))      $where .= " AND g.obra_id = '".$_GET['f_obra']."'";
+    if (!empty($_GET['f_vehiculo']))  $where .= " AND g.vehiculo_id = '".$_GET['f_vehiculo']."'";
 
     $sql = "SELECT g.*, t.nombre AS tipo_comprobante, m.nombre AS medio_pago, o.nombre AS obra, 
-            c.nombre AS centro, cat.nombre AS categoria, sub.nombre AS subcategoria, p.nombre AS proveedor,
-            IFNULL(u.usuario, 'Sistema') AS usuario_nombre
-            FROM gastos g
-            LEFT JOIN tipos_comprobante t ON t.id = g.tipo_comprobante_id
-            LEFT JOIN medios_pago m ON m.id = g.medio_pago_id
-            LEFT JOIN obras o ON o.id = g.obra_id
-            LEFT JOIN centros_costos c ON c.id = g.centro_costo_id
-            LEFT JOIN categorias cat ON cat.id = g.categoria_id
-            LEFT JOIN subcategorias sub ON sub.id = g.subcategoria_id
-            LEFT JOIN proveedores p ON p.id = g.proveedor_id
-            LEFT JOIN usuarios u ON u.id = g.usuario_id
-            $where ORDER BY g.id DESC";
+        c.nombre AS centro, cat.nombre AS categoria, sub.nombre AS subcategoria, p.nombre AS proveedor,
+        IFNULL(u.usuario, 'Sistema') AS usuario_nombre,
+        CONCAT(v.marca, ' ', v.modelo, ' (', v.dominio_patente, ')') AS vehiculo
+        FROM gastos g
+        LEFT JOIN tipos_comprobante t ON t.id = g.tipo_comprobante_id
+        LEFT JOIN medios_pago m ON m.id = g.medio_pago_id
+        LEFT JOIN obras o ON o.id = g.obra_id
+        LEFT JOIN centros_costos c ON c.id = g.centro_costo_id
+        LEFT JOIN categorias cat ON cat.id = g.categoria_id
+        LEFT JOIN subcategorias sub ON sub.id = g.subcategoria_id
+        LEFT JOIN proveedores p ON p.id = g.proveedor_id
+        LEFT JOIN usuarios u ON u.id = g.usuario_id
+        LEFT JOIN vehiculos v ON v.id = g.vehiculo_id
+        $where ORDER BY g.id DESC";
 
     $r = $conn->query($sql);
     $data=[];
@@ -66,6 +69,7 @@ if($_GET['accion']=='obtener'){
     $sql = "SELECT g.*, mc.caja_id, t.nombre AS tipo_comprobante, m.nombre AS medio_pago,
                    o.nombre AS obra, c.nombre AS centro, cat.nombre AS categoria, 
                    sub.nombre AS subcategoria, p.nombre AS proveedor,
+                   CONCAT(v.marca, ' ', v.modelo, ' (', v.dominio_patente, ')') AS vehiculo,
                    IFNULL(u.usuario, 'Sistema') AS usuario_nombre
             FROM gastos g
             LEFT JOIN movimientos_caja mc ON mc.origen='GASTO' AND mc.referencia_id=g.id
@@ -77,6 +81,7 @@ if($_GET['accion']=='obtener'){
             LEFT JOIN subcategorias sub ON sub.id = g.subcategoria_id
             LEFT JOIN proveedores p ON p.id = g.proveedor_id
             LEFT JOIN usuarios u ON u.id = g.usuario_id
+            LEFT JOIN vehiculos v ON v.id = g.vehiculo_id
             WHERE g.id = $id";
 
     if (strcasecmp($rol, 'admin') !== 0 && strcasecmp($rol, 'contador') !== 0) {
@@ -110,6 +115,7 @@ if($_GET['accion']=='guardar'){
     $medio_pago_id       = !empty($_POST['medio_pago_id']) ? $_POST['medio_pago_id'] : "NULL";
     $caja_id             = !empty($_POST['caja_id']) ? $_POST['caja_id'] : "NULL";
     $obra_id             = !empty($_POST['obra_id']) ? $_POST['obra_id'] : "NULL";
+    $vehiculo_id         = (!empty($_POST['vehiculo_id']) && $_POST['vehiculo_id'] != '0') ? $_POST['vehiculo_id'] : "NULL";
     $centro_costo_id     = !empty($_POST['centro_costo_id']) ? $_POST['centro_costo_id'] : "NULL";
     $categoria_id        = !empty($_POST['categoria_id']) ? $_POST['categoria_id'] : "NULL";
     $subcategoria_id     = !empty($_POST['subcategoria_id']) ? $_POST['subcategoria_id'] : "NULL";
@@ -157,7 +163,7 @@ if($_GET['accion']=='guardar'){
                 neto='$neto', iva='$iva', ret_iibb='$ret_iibb', otros_tributos='$otros_tributos',
                 caja_id=$caja_id, centro_costo_id=$centro_costo_id, categoria_id=$categoria_id, 
                 subcategoria_id=$subcategoria_id, proveedor_id=$proveedor_id,
-                medio_pago_id=$medio_pago_id, obra_id=$obra_id";
+                medio_pago_id=$medio_pago_id, obra_id=$obra_id, vehiculo_id=$vehiculo_id";
         
         if (strcasecmp($rol, 'admin') !== 0 && $total >= 800000) {
             $sql .= ", estado_validacion='PENDIENTE'";
@@ -168,10 +174,10 @@ if($_GET['accion']=='guardar'){
         // INSERT
         $sql = "INSERT INTO gastos (fecha, detalle, total, tipo_comprobante_id, numero_comprobante, 
                 neto, iva, ret_iibb, otros_tributos, caja_id, centro_costo_id, categoria_id, subcategoria_id, 
-                proveedor_id, medio_pago_id, obra_id, archivo, usuario_id, estado_validacion) 
+                proveedor_id, medio_pago_id, obra_id, vehiculo_id, archivo, usuario_id, estado_validacion) 
                 VALUES ('$fecha', '$detalle', '$total', $tipo_comprobante_id, '$numero_comprobante', 
                 '$neto', '$iva', '$ret_iibb', '$otros_tributos', $caja_id, $centro_costo_id, $categoria_id, 
-                $subcategoria_id, $proveedor_id, $medio_pago_id, $obra_id, 
+                $subcategoria_id, $proveedor_id, $medio_pago_id, $obra_id, $vehiculo_id, 
                 ".($archivo_nombre ? "'$archivo_nombre'" : "NULL").", $usuario, '$estado_val')";
     }
 

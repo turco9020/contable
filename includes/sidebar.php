@@ -248,13 +248,15 @@
             <i class="bi bi-sliders"></i> Configuraciones
         </a>
         <div id="menuConfig" class="submenu">
+            <a href="/contable/modules/config/vehiculos/index.php" class="nav-link text-white ps-4"><i class="bi bi-truck me-2"></i> Flota / Vehículos</a>
+
             <?php $rol_actual = $_SESSION['rol'] ?? '';
             if (
                 strcasecmp($rol_actual, 'admin') === 0 || 
                 strcasecmp($rol_actual, 'contador') === 0 || 
                 strcasecmp($rol_actual, 'arquitecto') === 0
             ): ?>
-                <a href="/contable/modules/config/obras/" class="menu-link">Obras</a>
+                <a href="/contable/modules/config/obras/" class="menu-link"><i class="bi bi-building me-2"></i>Obras</a>
             <?php endif; ?>
             
             <?php if(esAdmin()): ?>

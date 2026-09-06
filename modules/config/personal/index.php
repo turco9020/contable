@@ -4,6 +4,11 @@ include '../../../includes/sidebar.php';
 ?>
 
 <style>
+/* Poner en negrita las etiquetas/títulos de todos los campos del modal */
+#modalPersonal .modal-body label {
+    font-weight: 600 !important;
+    color: #212529;
+}    
 #modalPersonal .modal-body .tab-content {
     min-height: 480px;
     max-height: 70vh;

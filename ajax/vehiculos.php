@@ -11,11 +11,21 @@ $usuario_logueado = $_SESSION['id'] ?? 0;
 // LISTAR UNIDADES
 if($accion == 'listar'){
     $clasificacion = $_GET['clasificacion'] ?? 'VEHICULO';
-    $sql = "SELECT v.*, u.usuario as usuario_creador
-            FROM vehiculos v
-            LEFT JOIN usuarios u ON u.id = v.usuario_id
-            WHERE v.clasificacion = '$clasificacion'
-            ORDER BY v.id DESC";
+    
+    // Si la clasificación es BAJA, filtramos por estado = 'BAJA'
+    if($clasificacion === 'BAJA') {
+        $sql = "SELECT v.*, u.usuario as usuario_creador
+                FROM vehiculos v
+                LEFT JOIN usuarios u ON u.id = v.usuario_id
+                WHERE v.estado = 'BAJA'
+                ORDER BY v.id DESC";
+    } else {
+        $sql = "SELECT v.*, u.usuario as usuario_creador
+                FROM vehiculos v
+                LEFT JOIN usuarios u ON u.id = v.usuario_id
+                WHERE v.clasificacion = '$clasificacion' AND v.estado != 'BAJA'
+                ORDER BY v.id DESC";
+    }
 
     $res = $conn->query($sql);
     $data = [];
@@ -40,11 +50,12 @@ if($accion == 'guardar'){
     $km_horas_inicial = floatval($_POST['km_horas_inicial'] ?? 0);
     $fecha_adquisicion = $_POST['fecha_adquisicion'] ? "'".$conn->real_escape_string($_POST['fecha_adquisicion'])."'" : 'NULL';
     $km_horas_actual = floatval($_POST['km_horas_actual'] ?? 0);
+    $proximo_service = floatval($_POST['proximo_service'] ?? 0);
     $unidad_medida = $conn->real_escape_string($_POST['unidad_medida']);
     $estado = $conn->real_escape_string($_POST['estado']);
     $descripcion = $conn->real_escape_string($_POST['descripcion']);
     
-    // Ficha Técnica con Cantidades
+    // Ficha Técnica
     $aceite_motor = $conn->real_escape_string($_POST['aceite_motor']);
     $cant_aceite_motor = $conn->real_escape_string($_POST['cant_aceite_motor']);
     $aceite_caja = $conn->real_escape_string($_POST['aceite_caja']);
@@ -65,7 +76,7 @@ if($accion == 'guardar'){
         $sql = "UPDATE vehiculos SET 
             clasificacion='$clasificacion', dominio_patente='$dominio_patente', marca='$marca', modelo='$modelo',
             tipo='$tipo', anio=$anio, titular='$titular', km_horas_inicial=$km_horas_inicial,
-            fecha_adquisicion=$fecha_adquisicion, km_horas_actual=$km_horas_actual, unidad_medida='$unidad_medida',
+            fecha_adquisicion=$fecha_adquisicion, km_horas_actual=$km_horas_actual, proximo_service=$proximo_service, unidad_medida='$unidad_medida',
             estado='$estado', descripcion='$descripcion', aceite_motor='$aceite_motor', cant_aceite_motor='$cant_aceite_motor',
             aceite_caja='$aceite_caja', cant_aceite_caja='$cant_aceite_caja', aceite_diferencial='$aceite_diferencial', cant_aceite_diferencial='$cant_aceite_diferencial',
             aceite_hidraulico='$aceite_hidraulico', cant_aceite_hidraulico='$cant_aceite_hidraulico', filtros_codigos='$filtros_codigos',
@@ -74,8 +85,8 @@ if($accion == 'guardar'){
         $conn->query($sql);
         $vehiculo_id = $id;
     } else {
-        $sql = "INSERT INTO vehiculos (clasificacion, dominio_patente, marca, modelo, tipo, anio, titular, km_horas_inicial, fecha_adquisicion, km_horas_actual, unidad_medida, estado, descripcion, aceite_motor, cant_aceite_motor, aceite_caja, cant_aceite_caja, aceite_diferencial, cant_aceite_diferencial, aceite_hidraulico, cant_aceite_hidraulico, filtros_codigos, vencimiento_vtv, vencimiento_seguro, compañia_seguro, nro_poliza, usuario_id)
-        VALUES ('$clasificacion', '$dominio_patente', '$marca', '$modelo', '$tipo', $anio, '$titular', $km_horas_inicial, $fecha_adquisicion, $km_horas_actual, '$unidad_medida', '$estado', '$descripcion', '$aceite_motor', '$cant_aceite_motor', '$aceite_caja', '$cant_aceite_caja', '$aceite_diferencial', '$cant_aceite_diferencial', '$aceite_hidraulico', '$cant_aceite_hidraulico', '$filtros_codigos', $vencimiento_vtv, $vencimiento_seguro, '$compañia_seguro', '$nro_poliza', $usuario_id_db)";
+        $sql = "INSERT INTO vehiculos (clasificacion, dominio_patente, marca, modelo, tipo, anio, titular, km_horas_inicial, fecha_adquisicion, km_horas_actual, proximo_service, unidad_medida, estado, descripcion, aceite_motor, cant_aceite_motor, aceite_caja, cant_aceite_caja, aceite_diferencial, cant_aceite_diferencial, aceite_hidraulico, cant_aceite_hidraulico, filtros_codigos, vencimiento_vtv, vencimiento_seguro, compañia_seguro, nro_poliza, usuario_id)
+        VALUES ('$clasificacion', '$dominio_patente', '$marca', '$modelo', '$tipo', $anio, '$titular', $km_horas_inicial, $fecha_adquisicion, $km_horas_actual, $proximo_service, '$unidad_medida', '$estado', '$descripcion', '$aceite_motor', '$cant_aceite_motor', '$aceite_caja', '$cant_aceite_caja', '$aceite_diferencial', '$cant_aceite_diferencial', '$aceite_hidraulico', '$cant_aceite_hidraulico', '$filtros_codigos', $vencimiento_vtv, $vencimiento_seguro, '$compañia_seguro', '$nro_poliza', $usuario_id_db)";
         $conn->query($sql);
         $vehiculo_id = $conn->insert_id;
     }
@@ -83,6 +94,7 @@ if($accion == 'guardar'){
     echo json_encode(["status" => "OK", "id" => $vehiculo_id]);
     exit;
 }
+
 
 // SUBIR ARCHIVOS ADJUNTOS POR CATEGORÍA
 if($accion == 'subir_adjunto'){

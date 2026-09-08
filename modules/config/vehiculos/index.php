@@ -4,14 +4,11 @@ include '../../../includes/sidebar.php';
 ?>
 
 <style>
-
-/* Altura fija con scroll para evitar saltos al cambiar de pestaña */
 #modalFlota .modal-body .tab-content {
     min-height: 480px;
     max-height: 65vh;
     overflow-y: auto;
 }    
-/* Pestañas internas del Modal discretas */
 .modal-tabs-discreet .nav-link {
     color: #495057;
     background-color: #f8f9fa;
@@ -25,8 +22,6 @@ include '../../../includes/sidebar.php';
     border-color: #ced4da;
     font-weight: 600;
 }
-
-/* Sub-pestañas de adjuntos */
 .subtabs-adjuntos .nav-link {
     font-size: 0.85rem;
     padding: 5px 12px;
@@ -51,7 +46,7 @@ include '../../../includes/sidebar.php';
         </button>
     </div>
 
-    <!-- Pestañas de Navegación de Flota (Estilo similar a Obras) -->
+    <!-- Pestañas de Navegación de Flota -->
     <ul class="nav nav-tabs mb-3" id="tabFlota" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active fw-semibold text-dark" id="vehiculos-tab" data-bs-toggle="tab" data-bs-target="#flota-content" type="button" role="tab" onclick="filtrarClasificacion('VEHICULO', this)">
@@ -71,6 +66,12 @@ include '../../../includes/sidebar.php';
                 <span class="badge bg-secondary ms-1" id="cant-herramientas">0</span>
             </button>
         </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-semibold text-secondary" id="baja-tab" data-bs-toggle="tab" data-bs-target="#flota-content" type="button" role="tab" onclick="filtrarClasificacion('BAJA', this)">
+                <i class="bi bi-x-circle me-1 text-muted"></i> BAJA / VENDIDO 
+                <span class="badge bg-light text-muted border ms-1" id="cant-baja">0</span>
+            </button>
+        </li>
     </ul>
 
     <!-- Tabla de Unidades -->
@@ -85,6 +86,7 @@ include '../../../includes/sidebar.php';
                         <th>Tipo</th>
                         <th>Año</th>
                         <th>Uso (Km / Hs)</th>
+                        <th>Próximo Service</th>
                         <th>Cargado Por</th>
                         <th>Estado</th>
                         <th class="text-center" style="width: 110px;">Acciones</th>
@@ -110,7 +112,6 @@ include '../../../includes/sidebar.php';
                 <div class="modal-body p-4">
                     <input type="hidden" name="id" id="id">
 
-                    <!-- PESTAÑAS DISCRETAS DENTRO DEL MODAL -->
                     <ul class="nav nav-tabs modal-tabs-discreet mb-3" id="modalTabs" role="tablist">
                         <li class="nav-item">
                             <button class="nav-link active" id="tab-basica-btn" data-bs-toggle="tab" data-bs-target="#tab-basica" type="button">
@@ -168,15 +169,20 @@ include '../../../includes/sidebar.php';
                                         <option value="PICKUP / CAMIONETA">PICKUP / CAMIONETA</option>
                                         <option value="CAMIÓN CHASIS">CAMIÓN CHASIS</option>
                                         <option value="CAMIÓN TRACTOR">CAMIÓN TRACTOR</option>
-                                        <option value="ACOPLADO / SEMIRREMOLQUE">ACOPLADO / SEMIRREMOLQUE</option>
+                                        <option value="CAMIÓN VOLCADOR">CAMIÓN VOLCADOR</option>
+                                        <option value="CARRETON /ACOPLADO / SEMIRREMOLQUE">CARRETON/ ACOPLADO / SEMIRREMOLQUE</option>
                                         <option value="RETROPALA">RETROPALA</option>
                                         <option value="MINICARGADORA">MINICARGADORA</option>
                                         <option value="EXCAVADORA">EXCAVADORA</option>
                                         <option value="PALA CARGADORA">PALA CARGADORA</option>
                                         <option value="GENERADOR ELÉCTRICO">GENERADOR ELÉCTRICO</option>
                                         <option value="COMPRESOR">COMPRESOR</option>
+                                        <option value="MOTOBOMBA">MOTOBOMBA</option>
+                                        <option value="BOMBA ELECTRICA">BOMBA ELECTRICA</option>
                                         <option value="PLACA VIBRATORIA / PISÓN">PLACA VIBRATORIA / PISÓN</option>
                                         <option value="MOTOSIERRA / DESMALEZADORA">MOTOSIERRA / DESMALEZADORA</option>
+                                        <option value="IMPLEMENTO MARTILLO">IMPLEMENTO MARTILLO</option>
+                                        <option value="IMPLEMENTO MAQUINA">IMPLEMENTO MAQUINA</option>
                                         <option value="OTRO">OTRO</option>
                                     </select>
                                 </div>
@@ -196,15 +202,19 @@ include '../../../includes/sidebar.php';
                                     <input type="number" step="0.01" name="km_horas_inicial" id="km_horas_inicial" class="form-control" value="0">
                                 </div>
 
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <label class="form-label fw-semibold">Km / Hs Actuales</label>
                                     <input type="number" step="0.01" name="km_horas_actual" id="km_horas_actual" class="form-control" value="0">
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
+                                    <label class="form-label fw-semibold">Próximo Service (Km / Hs)</label>
+                                    <input type="number" step="0.01" name="proximo_service" id="proximo_service" class="form-control" value="0">
+                                </div>
+                                <div class="col-md-3">
                                     <label class="form-label fw-semibold">Titular del Dominio</label>
                                     <input name="titular" id="titular" class="form-control" placeholder="Razón social / Nombre">
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <label class="form-label fw-semibold">Fecha de Adquisición</label>
                                     <input type="date" name="fecha_adquisicion" id="fecha_adquisicion" class="form-control">
                                 </div>
@@ -246,7 +256,6 @@ include '../../../includes/sidebar.php';
                                     </ul>
 
                                     <div class="tab-content p-2 bg-light rounded border">
-                                        <!-- DOCUMENTACIÓN -->
                                         <div class="tab-pane fade show active" id="adj-documentacion">
                                             <div class="d-flex mb-2 gap-2">
                                                 <input type="file" id="file_doc" class="form-control form-control-sm">
@@ -254,7 +263,6 @@ include '../../../includes/sidebar.php';
                                             </div>
                                             <div id="lista_doc" class="list-group list-group-flush small"></div>
                                         </div>
-                                        <!-- FOTOS -->
                                         <div class="tab-pane fade" id="adj-fotos">
                                             <div class="d-flex mb-2 gap-2">
                                                 <input type="file" id="file_foto" class="form-control form-control-sm" accept="image/*">
@@ -262,7 +270,6 @@ include '../../../includes/sidebar.php';
                                             </div>
                                             <div id="lista_foto" class="row g-2"></div>
                                         </div>
-                                        <!-- VARIOS -->
                                         <div class="tab-pane fade" id="adj-varios">
                                             <div class="d-flex mb-2 gap-2">
                                                 <input type="file" id="file_varios" class="form-control form-control-sm">
@@ -299,7 +306,7 @@ include '../../../includes/sidebar.php';
 
                                 <div class="col-md-3">
                                     <label class="form-label small fw-semibold">Aceite Diferencial (Tipo)</label>
-                                    <input name="aceite_diferencial" id="aceite_diferencial" class="form-control">
+                                    <input name="aceite_diferencial" id="aceite_diferencial" class="form-control" placeholder="Ej: 80W90">
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label small fw-semibold">Cantidad Diferencial</label>
@@ -308,7 +315,7 @@ include '../../../includes/sidebar.php';
 
                                 <div class="col-md-3">
                                     <label class="form-label small fw-semibold">Aceite Hidráulico (Tipo)</label>
-                                    <input name="aceite_hidraulico" id="aceite_hidraulico" class="form-control" placeholder="Ej: ISO 68">
+                                    <input name="aceite_hidraulico" id="aceite_hidraulico" class="form-control" placeholder="Ej: ISO 68 / 15W40 / ATF">
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label small fw-semibold">Cantidad Hidráulico</label>
@@ -386,7 +393,11 @@ include '../../../includes/sidebar.php';
 
                         <!-- PESTAÑA 4: GASTOS VINCULADOS -->
                         <div class="tab-pane fade" id="tab-gastos">
-                            <ul class="list-group list-group-flush" id="listaGastosVehiculo"></ul>
+                            <ul class="list-group list-group-flush mb-3" id="listaGastosVehiculo"></ul>
+                            <div class="d-flex justify-content-between align-items-center bg-light p-3 rounded border">
+                                <span class="fw-bold text-dark fs-6">TOTAL GASTOS ACUMULADOS:</span>
+                                <span class="fw-bold text-danger fs-5" id="totalGastosAcumulados">$ 0,00</span>
+                            </div>
                         </div>
 
                     </div>
@@ -406,6 +417,12 @@ let modalBS;
 let tabla;
 let clasificacionActual = 'VEHICULO';
 
+// Función para formatear con punto como separador de miles sin decimales
+function formatearEntero(val) {
+    let num = Math.round(parseFloat(val) || 0);
+    return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(num);
+}
+
 function filtrarClasificacion(tipo, btn) {
     clasificacionActual = tipo;
     tabla.ajax.url('/contable/ajax/vehiculos.php?accion=listar&clasificacion=' + clasificacionActual).load();
@@ -415,12 +432,13 @@ window.abrirModal = function(modo) {
     $('#formFlota')[0].reset();
     $('#id').val('');
     $('#tbServices, #listaGastosVehiculo, #lista_doc, #lista_foto, #lista_varios').html('');
+    $('#totalGastosAcumulados').text('$ 0,00');
     $('#btnGuardar, #boxNuevoService, input, select, textarea').prop('disabled', false);
     $('#tab-basica-btn').tab('show');
 
     if(modo === 'NUEVO') {
         $('#modalFlotaLabel').html('<i class="bi bi-plus-circle me-2"></i> Registrar Unidad');
-        $('#clasificacion').val(clasificacionActual);
+        $('#clasificacion').val(clasificacionActual === 'BAJA' ? 'VEHICULO' : clasificacionActual);
     }
     modalBS.show();
 }
@@ -440,6 +458,7 @@ window.editar = function(id, soloVer = false) {
     $('#unidad_medida').val(d.unidad_medida);
     $('#km_horas_inicial').val(d.km_horas_inicial);
     $('#km_horas_actual').val(d.km_horas_actual);
+    $('#proximo_service').val(d.proximo_service);
     $('#titular').val(d.titular);
     $('#fecha_adquisicion').val(d.fecha_adquisicion);
     $('#estado').val(d.estado);
@@ -554,7 +573,7 @@ function cargarServices(vId) {
                 let fmt = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(s.costo);
                 tb.append(`<tr>
                     <td>${s.fecha}</td>
-                    <td>${s.lectura_km_horas}</td>
+                    <td>${formatearEntero(s.lectura_km_horas)}</td>
                     <td>${s.realizado_por || '-'}</td>
                     <td>${s.trabajo_realizado}</td>
                     <td><span class="badge bg-light text-dark border fw-normal"><i class="bi bi-person me-1"></i> ${s.usuario_nombre || 'Sistema'}</span></td>
@@ -590,10 +609,13 @@ function guardarService() {
 function cargarGastos(vId) {
     $.get('/contable/ajax/vehiculos.php?accion=listar_gastos', { vehiculo_id: vId }, function(r) {
         let lista = $('#listaGastosVehiculo').empty();
+        let totalSuma = 0;
 
         if (r.gastos && r.gastos.length > 0) {
             r.gastos.forEach(g => {
                 let monto = parseFloat(g.total) || 0;
+                totalSuma += monto;
+
                 let totalFormateado = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(monto);
                 let fechaFormateada = g.fecha ? g.fecha.split('-').reverse().join('/') : '-';
                 let prov = g.proveedor ? g.proveedor : 'Gasto General';
@@ -621,6 +643,9 @@ function cargarGastos(vId) {
         } else {
             lista.append('<li class="list-group-item text-muted text-center py-2 small">No hay gastos asociados a este vehículo.</li>');
         }
+
+        let totalGeneralFormateado = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(totalSuma);
+        $('#totalGastosAcumulados').text(totalGeneralFormateado);
     }, 'json');
 }
 
@@ -639,10 +664,10 @@ document.addEventListener("DOMContentLoaded", function() {
         ajax: {
             url: '/contable/ajax/vehiculos.php?accion=listar&clasificacion=VEHICULO',
             dataSrc: function(json) {
-                // Actualizar contador del badge activo
                 if(clasificacionActual === 'VEHICULO') $('#cant-vehiculos').text(json.data.length);
                 else if(clasificacionActual === 'MAQUINARIA') $('#cant-maquinarias').text(json.data.length);
                 else if(clasificacionActual === 'HERRAMIENTA') $('#cant-herramientas').text(json.data.length);
+                else if(clasificacionActual === 'BAJA') $('#cant-baja').text(json.data.length);
                 return json.data;
             }
         },
@@ -652,13 +677,13 @@ document.addEventListener("DOMContentLoaded", function() {
                 extend: 'excelHtml5',
                 text: '<i class="bi bi-file-earmark-excel me-1"></i> Excel',
                 className: 'btn btn-success btn-sm',
-                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7] }
+                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7, 8] }
             },
             {
                 extend: 'print',
                 text: '<i class="bi bi-printer me-1"></i> Imprimir',
                 className: 'btn btn-secondary btn-sm',
-                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7] }
+                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7, 8] }
             },
             { 
                 extend: 'colvis', 
@@ -672,9 +697,14 @@ document.addEventListener("DOMContentLoaded", function() {
             { data: null, render: d => `${d.marca} ${d.modelo}` },
             { data: 'tipo' },
             { data: 'anio', render: d => d ? d : '-' },
-            { data: null, render: d => `${d.km_horas_actual} ${d.unidad_medida}` },
+            { data: null, render: d => `${formatearEntero(d.km_horas_actual)} ${d.unidad_medida}` },
+            { data: null, render: d => `${formatearEntero(d.proximo_service)} ${d.unidad_medida}` },
             { data: 'usuario_creador', render: d => d ? `<span class="badge bg-light text-dark border fw-normal"><i class="bi bi-person me-1"></i> ${d}</span>` : `<span class="badge bg-light text-dark border fw-normal"><i class="bi bi-person me-1"></i> Sistema</span>` },
-            { data: 'estado', render: d => `<span class="badge ${d === 'ACTIVO' ? 'bg-success' : 'bg-secondary'}">${d}</span>` },
+            { data: 'estado', render: d => {
+                if(d === 'ACTIVO') return '<span class="badge bg-success">ACTIVO</span>';
+                if(d === 'BAJA') return '<span class="badge bg-danger">BAJA / VENDIDO</span>';
+                return '<span class="badge bg-secondary">DESACTIVO</span>';
+            }},
             {
                 data: null,
                 className: 'text-center',

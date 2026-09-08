@@ -10,17 +10,19 @@ header('Content-Type: application/json');
 $tipo = $_GET['tipo_reporte'] ?? 'gastos_generales';
 
 // Recoger filtros
-$f_desde    = $_GET['fecha_desde'] ?? '';
-$f_hasta    = $_GET['fecha_hasta'] ?? '';
-$obra_id    = $_GET['obra_id'] ?? '';
-$centro_id  = $_GET['centro_costo_id'] ?? '';
-$cat_id     = $_GET['categoria_id'] ?? '';
-$subcat_id  = $_GET['subcategoria_id'] ?? '';
-$cliente_id = $_GET['cliente_id'] ?? '';
-$prov_id    = $_GET['proveedor_id'] ?? '';
-$caja_id    = $_GET['caja_id'] ?? '';
-$usuario_id = $_GET['usuario_id'] ?? '';
-$tipo_mov   = $_GET['tipo_movimiento'] ?? '';
+$f_desde               = $_GET['fecha_desde'] ?? '';
+$f_hasta               = $_GET['fecha_hasta'] ?? '';
+$obra_id               = $_GET['obra_id'] ?? '';
+$centro_id             = $_GET['centro_costo_id'] ?? '';
+$cat_id                = $_GET['categoria_id'] ?? '';
+$subcat_id             = $_GET['subcategoria_id'] ?? '';
+$cliente_id            = $_GET['cliente_id'] ?? '';
+$prov_id               = $_GET['proveedor_id'] ?? '';
+$caja_id               = $_GET['caja_id'] ?? '';
+$usuario_id            = $_GET['usuario_id'] ?? '';
+$tipo_mov              = $_GET['tipo_movimiento'] ?? '';
+$vehiculo_id           = $_GET['vehiculo_id'] ?? '';
+$clasificacion_vehiculo = $_GET['clasificacion_vehiculo'] ?? '';
 
 $response = [
     'status' => true,
@@ -137,38 +139,61 @@ switch ($tipo) {
         if (!empty($prov_id))    $w[] = "g.proveedor_id = " . intval($prov_id);
         if (!empty($caja_id))    $w[] = "g.caja_id = " . intval($caja_id);
         if (!empty($usuario_id)) $w[] = "g.usuario_id = " . intval($usuario_id);
+
+        // Filtros de Vehículos / Máquinas
+        if (!empty($vehiculo_id)) {
+            $w[] = "g.vehiculo_id = " . intval($vehiculo_id);
+        }
+        if (!empty($clasificacion_vehiculo)) {
+            $w[] = "v.clasificacion = '" . $conn->real_escape_string($clasificacion_vehiculo) . "'";
+        }
+
         $whereSql = implode(" AND ", $w);
+
+        // JOIN a vehículos para filtrar por clasificación si corresponde
+        $joinVehiculo = !empty($clasificacion_vehiculo) ? " LEFT JOIN vehiculos v ON g.vehiculo_id = v.id " : "";
 
         if ($tipo === 'compras_proveedor') {
             $q = "SELECT IFNULL(pr.nombre, 'Sin Proveedor') AS Proveedor, COUNT(g.id) AS Cant_Gastos, SUM(g.total) AS Total
                   FROM gastos g
                   LEFT JOIN proveedores pr ON g.proveedor_id = pr.id
+                  $joinVehiculo
                   WHERE $whereSql GROUP BY g.proveedor_id ORDER BY Total DESC";
             $response['columns'] = ['Proveedor', 'Cant. Compras', 'Total Comprado ($)'];
         } elseif ($tipo === 'compras_obra') {
             $q = "SELECT IFNULL(o.nombre, 'Sin Obra') AS Obra, COUNT(g.id) AS Cant_Gastos, SUM(g.total) AS Total
                   FROM gastos g
                   LEFT JOIN obras o ON g.obra_id = o.id
+                  $joinVehiculo
                   WHERE $whereSql GROUP BY g.obra_id ORDER BY Total DESC";
             $response['columns'] = ['Obra / Proyecto', 'Cant. Compras', 'Total Gastado ($)'];
         } elseif ($tipo === 'compras_centro') {
             $q = "SELECT IFNULL(cc.nombre, 'Sin Centro') AS Centro_Costo, COUNT(g.id) AS Cant_Gastos, SUM(g.total) AS Total
                   FROM gastos g
                   LEFT JOIN centros_costos cc ON g.centro_costo_id = cc.id
+                  $joinVehiculo
                   WHERE $whereSql GROUP BY g.centro_costo_id ORDER BY Total DESC";
             $response['columns'] = ['Centro de Costo', 'Cant. Compras', 'Total Gastado ($)'];
         } else {
+            // DETALLE GENERAL DE GASTOS CON CATEGORÍA, SUBCATEGORÍA Y PROVEEDOR
             $q = "SELECT DATE_FORMAT(g.fecha, '%d/%m/%Y') AS fecha, 
                          IFNULL(cc.nombre, 'Sin Centro') AS centro_costo,
+                         IFNULL(c.nombre, '-') AS categoria,
+                         IFNULL(sc.nombre, '-') AS subcategoria,
+                         IFNULL(pr.nombre, '-') AS proveedor,
                          IFNULL(g.detalle, '-') AS detalle, 
                          IFNULL(g.neto, 0) AS neto, 
                          IFNULL(g.iva, 0) AS iva,
                          IFNULL(g.total, 0) AS total
                   FROM gastos g
                   LEFT JOIN centros_costos cc ON g.centro_costo_id = cc.id
+                  LEFT JOIN categorias c ON g.categoria_id = c.id
+                  LEFT JOIN subcategorias sc ON g.subcategoria_id = sc.id
+                  LEFT JOIN proveedores pr ON g.proveedor_id = pr.id
+                  $joinVehiculo
                   WHERE $whereSql 
                   ORDER BY g.fecha DESC";
-            $response['columns'] = ['Fecha', 'Centro de Costo', 'Detalle', 'Neto ($)', 'IVA ($)', 'Total ($)'];
+            $response['columns'] = ['Fecha', 'Centro de Costo', 'Categoría', 'Subcategoría', 'Proveedor', 'Detalle', 'Neto ($)', 'IVA ($)', 'Total ($)'];
         }
 
         $res = $conn->query($q);
@@ -225,15 +250,19 @@ switch ($tipo) {
         $whereVentas = implode(" AND ", $wVentas);
 
         $wCompras = ["1=1"];
-        if (!empty($f_desde))   $wCompras[] = "fecha >= '" . $conn->real_escape_string($f_desde) . "'";
-        if (!empty($f_hasta))   $wCompras[] = "fecha <= '" . $conn->real_escape_string($f_hasta) . "'";
-        if (!empty($obra_id))   $wCompras[] = "obra_id = " . intval($obra_id);
-        if (!empty($centro_id)) $wCompras[] = "centro_costo_id = " . intval($centro_id);
-        if (!empty($prov_id))   $wCompras[] = "proveedor_id = " . intval($prov_id);
+        if (!empty($f_desde))   $wCompras[] = "g.fecha >= '" . $conn->real_escape_string($f_desde) . "'";
+        if (!empty($f_hasta))   $wCompras[] = "g.fecha <= '" . $conn->real_escape_string($f_hasta) . "'";
+        if (!empty($obra_id))   $wCompras[] = "g.obra_id = " . intval($obra_id);
+        if (!empty($centro_id)) $wCompras[] = "g.centro_costo_id = " . intval($centro_id);
+        if (!empty($prov_id))   $wCompras[] = "g.proveedor_id = " . intval($prov_id);
+        if (!empty($vehiculo_id)) $wCompras[] = "g.vehiculo_id = " . intval($vehiculo_id);
+        if (!empty($clasificacion_vehiculo)) $wCompras[] = "v.clasificacion = '" . $conn->real_escape_string($clasificacion_vehiculo) . "'";
+
         $whereCompras = implode(" AND ", $wCompras);
+        $joinVehiculo = !empty($clasificacion_vehiculo) ? " LEFT JOIN vehiculos v ON g.vehiculo_id = v.id " : "";
 
         $rV = $conn->query("SELECT IFNULL(SUM(neto),0) AS neto, IFNULL(SUM(iva),0) AS iva, IFNULL(SUM(total),0) AS total FROM facturas_venta WHERE $whereVentas")->fetch_assoc();
-        $rC = $conn->query("SELECT IFNULL(SUM(neto),0) AS neto, IFNULL(SUM(iva),0) AS iva, IFNULL(SUM(total),0) AS total FROM gastos WHERE $whereCompras")->fetch_assoc();
+        $rC = $conn->query("SELECT IFNULL(SUM(g.neto),0) AS neto, IFNULL(SUM(g.iva),0) AS iva, IFNULL(SUM(g.total),0) AS total FROM gastos g $joinVehiculo WHERE $whereCompras")->fetch_assoc();
 
         $totalVentas = (float)$rV['total'];
         $totalGastos = (float)$rC['total'];
@@ -280,11 +309,15 @@ switch ($tipo) {
         if (!empty($obra_id))   $w[] = "g.obra_id = " . intval($obra_id);
         if (!empty($centro_id)) $w[] = "g.centro_costo_id = " . intval($centro_id);
         if (!empty($cat_id))    $w[] = "g.categoria_id = " . intval($cat_id);
-        if (!empty($subcat_id)) $w[] = "g.subcategoria_id = " . intval($subcat_id); // <-- HABILITADO FILTRO SUBCATEGORÍA
+        if (!empty($subcat_id)) $w[] = "g.subcategoria_id = " . intval($subcat_id);
+        if (!empty($vehiculo_id)) $w[] = "g.vehiculo_id = " . intval($vehiculo_id);
+        if (!empty($clasificacion_vehiculo)) $w[] = "v.clasificacion = '" . $conn->real_escape_string($clasificacion_vehiculo) . "'";
+
         $whereSql = implode(" AND ", $w);
+        $joinVehiculo = !empty($clasificacion_vehiculo) ? " LEFT JOIN vehiculos v ON g.vehiculo_id = v.id " : "";
 
         // Total global para calcular los porcentajes de incidencia
-        $qTotal = "SELECT IFNULL(SUM(total), 1) AS total_global FROM gastos g WHERE $whereSql";
+        $qTotal = "SELECT IFNULL(SUM(g.total), 1) AS total_global FROM gastos g $joinVehiculo WHERE $whereSql";
         $rTotal = $conn->query($qTotal)->fetch_assoc();
         $totalGlobal = (float)$rTotal['total_global'];
         if ($totalGlobal <= 0) $totalGlobal = 1;
@@ -297,6 +330,7 @@ switch ($tipo) {
               FROM gastos g
               LEFT JOIN categorias c ON g.categoria_id = c.id
               LEFT JOIN subcategorias sc ON g.subcategoria_id = sc.id
+              $joinVehiculo
               WHERE $whereSql
               GROUP BY g.categoria_id, g.subcategoria_id
               ORDER BY Categoria ASC, Total_Gasto DESC";
@@ -477,15 +511,19 @@ switch ($tipo) {
         $whereVentas = implode(" AND ", $wVentas);
 
         $wCompras = ["1=1"];
-        if (!empty($f_desde))   $wCompras[] = "fecha >= '" . $conn->real_escape_string($f_desde) . "'";
-        if (!empty($f_hasta))   $wCompras[] = "fecha <= '" . $conn->real_escape_string($f_hasta) . "'";
-        if (!empty($obra_id))   $wCompras[] = "obra_id = " . intval($obra_id);
-        if (!empty($centro_id)) $wCompras[] = "centro_costo_id = " . intval($centro_id);
-        if (!empty($prov_id))   $wCompras[] = "proveedor_id = " . intval($prov_id);
+        if (!empty($f_desde))   $wCompras[] = "g.fecha >= '" . $conn->real_escape_string($f_desde) . "'";
+        if (!empty($f_hasta))   $wCompras[] = "g.fecha <= '" . $conn->real_escape_string($f_hasta) . "'";
+        if (!empty($obra_id))   $wCompras[] = "g.obra_id = " . intval($obra_id);
+        if (!empty($centro_id)) $wCompras[] = "g.centro_costo_id = " . intval($centro_id);
+        if (!empty($prov_id))   $wCompras[] = "g.proveedor_id = " . intval($prov_id);
+        if (!empty($vehiculo_id)) $wCompras[] = "g.vehiculo_id = " . intval($vehiculo_id);
+        if (!empty($clasificacion_vehiculo)) $wCompras[] = "v.clasificacion = '" . $conn->real_escape_string($clasificacion_vehiculo) . "'";
+
         $whereCompras = implode(" AND ", $wCompras);
+        $joinVehiculo = !empty($clasificacion_vehiculo) ? " LEFT JOIN vehiculos v ON g.vehiculo_id = v.id " : "";
 
         $resVentas = $conn->query("SELECT IFNULL(SUM(neto),0) AS neto_ventas, IFNULL(SUM(iva),0) AS iva_ventas, IFNULL(SUM(total),0) AS total_ventas FROM facturas_venta WHERE $whereVentas")->fetch_assoc();
-        $resCompras = $conn->query("SELECT IFNULL(SUM(neto),0) AS neto_compras, IFNULL(SUM(iva),0) AS iva_compras, IFNULL(SUM(total),0) AS total_compras FROM gastos WHERE $whereCompras")->fetch_assoc();
+        $resCompras = $conn->query("SELECT IFNULL(SUM(g.neto),0) AS neto_compras, IFNULL(SUM(g.iva),0) AS iva_compras, IFNULL(SUM(g.total),0) AS total_compras FROM gastos g $joinVehiculo WHERE $whereCompras")->fetch_assoc();
 
         $ivaVentas = (float)$resVentas['iva_ventas'];
         $ivaCompras = (float)$resCompras['iva_compras'];

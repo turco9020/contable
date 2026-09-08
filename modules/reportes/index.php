@@ -16,6 +16,9 @@ $clientes = $conn->query("SELECT id, nombre FROM clientes ORDER BY nombre ASC");
 $proveedores = $conn->query("SELECT id, nombre FROM proveedores ORDER BY nombre ASC");
 $usuarios = $conn->query("SELECT id, usuario FROM usuarios ORDER BY usuario ASC");
 $cajas = $conn->query("SELECT id, nombre FROM cajas ORDER BY nombre ASC");
+
+// Obtener Vehículos / Máquinas
+$vehiculos = $conn->query("SELECT id, CONCAT(marca, ' ', modelo, ' (', IFNULL(dominio_patente, 'S/D'), ')') AS nombre FROM vehiculos WHERE estado != 'BAJA' ORDER BY marca, modelo ASC");
 ?>
 <div class="content">
 
@@ -106,9 +109,9 @@ $cajas = $conn->query("SELECT id, nombre FROM cajas ORDER BY nombre ASC");
                         </select>
                     </div>
 
-                    <!-- Subcategoría (Independiente) -->
+                    <!-- Subcategoría -->
                     <div class="col-md-3">
-                        <label class="form-label small fw-bold">Subcategoría (Independiente)</label>
+                        <label class="form-label small fw-bold">Subcategoría</label>
                         <select name="subcategoria_id" id="subcategoria_id" class="form-select">
                             <option value="">-- Todas las Subcategorías --</option>
                             <?php while ($sub = $subcategorias->fetch_assoc()): ?>
@@ -172,6 +175,28 @@ $cajas = $conn->query("SELECT id, nombre FROM cajas ORDER BY nombre ASC");
                         </select>
                     </div>
 
+                    <!-- Clasificación de Vehículos -->
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Clasificación Vehículos</label>
+                        <select name="clasificacion_vehiculo" id="clasificacion_vehiculo" class="form-select">
+                            <option value="">-- Todas --</option>
+                            <option value="VEHICULO">VEHICULO</option>
+                            <option value="MAQUINARIA">MAQUINARIA</option>
+                            <option value="HERRAMIENTA">HERRAMIENTA</option>
+                        </select>
+                    </div>
+
+                    <!-- Vehículo / Máquina Individual -->
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Vehículo / Máquina</label>
+                        <select name="vehiculo_id" id="vehiculo_id" class="form-select">
+                            <option value="">-- Todos los Vehículos --</option>
+                            <?php while ($v = $vehiculos->fetch_assoc()): ?>
+                                <option value="<?= $v['id'] ?>"><?= htmlspecialchars($v['nombre']) ?></option>
+                            <?php endwhile; ?>
+                        </select>
+                    </div>
+
                 </div>
 
                 <!-- ACCIONES -->
@@ -215,12 +240,10 @@ let dataTableReporte = null;
 function consultarReporte() {
     let formData = $('#formFiltrosReporte').serialize();
 
-    // Obtener valores de fechas ingresadas
     let fDesde = $('#fecha_desde').val();
     let fHasta = $('#fecha_hasta').val();
     let tipoReporteTexto = $('#tipo_reporte option:selected').text();
 
-    // Formatear el texto del período
     let textoPeriodo = '';
     if (fDesde && fHasta) {
         textoPeriodo = `Período consultado: <strong>${fDesde}</strong> al <strong>${fHasta}</strong>`;
@@ -245,7 +268,6 @@ function consultarReporte() {
 
             $('#contenedorResultados').removeClass('d-none');
 
-            // Renderizar la caja informativa en pantalla
             let htmlInfo = `
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
@@ -258,22 +280,18 @@ function consultarReporte() {
                 </div>`;
             $('#infoPeriodoReporte').html(htmlInfo);
 
-            // 1. Destruir DataTable previo si existe
             if ($.fn.DataTable.isDataTable('#tablaReportes')) {
                 $('#tablaReportes').DataTable().clear().destroy();
             }
 
-            // 2. Limpiar la tabla
             $('#tablaReportes').empty();
 
-            // 3. Construir el <thead>
             let theadHtml = '<thead><tr class="table-dark">';
             res.columns.forEach(col => {
                 theadHtml += `<th>${col}</th>`;
             });
             theadHtml += '</tr></thead>';
 
-            // 4. Construir el <tbody>
             let tbodyHtml = '<tbody>';
             if (res.data && res.data.length > 0) {
                 res.data.forEach(row => {
@@ -286,18 +304,15 @@ function consultarReporte() {
             }
             tbodyHtml += '</tbody>';
 
-            // 5. Construir el <tfoot>
             let tfootHtml = '';
             let tipoReporte = $('#tipo_reporte').val();
 
             if (res.total !== undefined && res.total !== null) {
 
-                // CASO A: Reportes detallados con Neto e IVA
                 if (res.total_neto !== undefined && res.total_iva !== undefined) {
                     
                     if (tipoReporte === 'ventas_generales') {
-                        // Ventas Generales (9 columnas): las primeras 5 se agrupan con colspan="5"
-                        // El Neto cae exactamente en la col 6 (Neto), IVA en la col 7, Total en la col 8 y vacia la col 9 (Estado)
+                        // Ventas Generales (9 columnas): agrupa las 5 primeras
                         tfootHtml = `
                             <tfoot class="table-secondary fw-bold">
                                 <tr>
@@ -309,11 +324,11 @@ function consultarReporte() {
                                 </tr>
                             </tfoot>`;
                     } else {
-                        // Gastos Generales (6 columnas): las primeras 3 se agrupan con colspan="3"
+                        // Gastos Generales (9 columnas): agrupa las primeras 6 (Fecha, Centro Costo, Categoría, Subcategoría, Proveedor, Detalle)
                         tfootHtml = `
                             <tfoot class="table-secondary fw-bold">
                                 <tr>
-                                    <td colspan="3" class="text-end">TOTALES ACUMULADOS:</td>
+                                    <td colspan="6" class="text-end">TOTALES ACUMULADOS:</td>
                                     <td class="text-end fw-bold text-nowrap">${res.total_neto}</td>
                                     <td class="text-end fw-bold text-nowrap">${res.total_iva}</td>
                                     <td class="text-end fw-bold text-nowrap">${res.total}</td>
@@ -322,12 +337,9 @@ function consultarReporte() {
                     }
 
                 } else {
-                    // CASO B: Reportes con 1 solo total al final
                     let colCount = res.columns.length;
                     let colspanLeft = colCount > 1 ? colCount - 1 : 1;
 
-                    // Inyectamos directamente la cadena formateada desde PHP (ej. $ 254.100,00)
-                    // sin pasar por parseFloat para evitar que rompa el separador de miles.
                     let totalFormateado = res.total;
 
                     tfootHtml = `<tfoot class="table-secondary fw-bold"><tr>`;
@@ -341,13 +353,10 @@ function consultarReporte() {
                 }
             }
 
-            // 6. Inyectar HTML
             $('#tablaReportes').html(theadHtml + tbodyHtml + tfootHtml);
 
-            // Texto sin HTML para las cabeceras de PDF/Print/Excel
             let tituloExportacion = `${tipoReporteTexto} - (${textoPeriodo.replace(/<\/?[^>]+(>|$)/g, "")})`;
 
-            // 7. Volver a inicializar DataTables configurando botones de exportación con la fecha
             dataTableReporte = $('#tablaReportes').DataTable({
                 responsive: true,
                 destroy: true,
@@ -356,25 +365,10 @@ function consultarReporte() {
                 },
                 dom: 'Bfrtip',
                 buttons: [
-                    {
-                        extend: 'copy',
-                        title: tituloExportacion
-                    },
-                    {
-                        extend: 'excel',
-                        title: tituloExportacion,
-                        messageTop: `Fecha de emisión: ${new Date().toLocaleDateString('es-AR')}`
-                    },
-                    {
-                        extend: 'pdf',
-                        title: tituloExportacion,
-                        messageTop: `Emisión: ${new Date().toLocaleDateString('es-AR')}`
-                    },
-                    {
-                        extend: 'print',
-                        title: `<h3 style="text-align:center;">${tipoReporteTexto}</h3>`,
-                        messageTop: `<p style="text-align:center; font-weight:bold; margin-bottom: 20px;">${textoPeriodo} | Generado: ${new Date().toLocaleDateString('es-AR')}</p>`
-                    }
+                    { extend: 'copy', title: tituloExportacion },
+                    { extend: 'excel', title: tituloExportacion, messageTop: `Fecha de emisión: ${new Date().toLocaleDateString('es-AR')}` },
+                    { extend: 'pdf', title: tituloExportacion, messageTop: `Emisión: ${new Date().toLocaleDateString('es-AR')}` },
+                    { extend: 'print', title: `<h3 style="text-align:center;">${tipoReporteTexto}</h3>`, messageTop: `<p style="text-align:center; font-weight:bold; margin-bottom: 20px;">${textoPeriodo} | Generado: ${new Date().toLocaleDateString('es-AR')}</p>` }
                 ]
             });
         },

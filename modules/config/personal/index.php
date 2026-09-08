@@ -6,12 +6,12 @@ include '../../../includes/sidebar.php';
 <style>
 /* Poner en negrita las etiquetas/títulos de todos los campos del modal */
 #modalPersonal .modal-body label {
-    font-weight: 600 !important;
-    color: #212529;
+    font-weight: 700 !important;
+    color: #1a1a1a;
 }    
+/* Mantenemos una altura fija para evitar saltos o deformaciones al cambiar de pestaña */
 #modalPersonal .modal-body .tab-content {
-    min-height: 480px;
-    max-height: 70vh;
+    height: 520px;
     overflow-y: auto;
 }    
 /* Pestañas superiores del modal discretas */
@@ -97,7 +97,7 @@ include '../../../includes/sidebar.php';
                 <span class="badge bg-secondary ms-1" id="cant-obras">0</span>
             </button>
         </li>
-        <!-- Pestaña Inactivos apagada / discreta -->
+        <!-- Pestaña Inactivos -->
         <li class="nav-item">
             <button class="nav-link nav-link-inactivo" id="inactivos-tab" data-bs-toggle="tab" data-bs-target="#personal-content" type="button" onclick="filtrarClasificacion('INACTIVO', this)">
                 <i class="bi bi-person-x me-1"></i> INACTIVOS / BAJA 
@@ -218,8 +218,17 @@ include '../../../includes/sidebar.php';
                                     <input name="puesto" id="puesto" class="form-control form-control-sm" placeholder="Ej: Oficial Maquinista">
                                 </div>
                                 <div class="col-md-3">
+                                    <label class="form-label small mb-1">Tipo de Licencia</label>
+                                    <input name="tipo_licencia" id="tipo_licencia" class="form-control form-control-sm" placeholder="Ej: B1, C, E1">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small mb-1">Venc. Carnet Conducir</label>
+                                    <input type="date" name="vencimiento_carnet_conducir" id="vencimiento_carnet_conducir" class="form-control form-control-sm">
+                                </div>
+
+                                <div class="col-md-3">
                                     <label class="form-label small mb-1">Procedencia</label>
-                                    <input name="procedencia" id="procedencia" class="form-control form-control-sm" placeholder="Recomendado, Muncipalidad, etc.">
+                                    <input name="procedencia" id="procedencia" class="form-control form-control-sm" placeholder="Recomendado, Municipalidad, etc.">
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label small mb-1">Estado Laboral</label>
@@ -237,6 +246,10 @@ include '../../../includes/sidebar.php';
                                 <div class="col-md-2">
                                     <label class="form-label small mb-1">Fecha de Ingreso</label>
                                     <input type="date" name="fecha_ingreso" id="fecha_ingreso" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small mb-1">Fecha de Baja</label>
+                                    <input type="date" name="fecha_baja" id="fecha_baja" class="form-control form-control-sm">
                                 </div>
                                 <div class="col-md-2">
                                     <label class="form-label small mb-1">Situación Laboral</label>
@@ -307,7 +320,7 @@ include '../../../includes/sidebar.php';
                                 </li>
                             </ul>
 
-                            <div class="tab-content p-2 bg-light rounded border">
+                            <div class="tab-content p-2 bg-light rounded border" style="height: auto; min-height: 120px;">
                                 <div class="tab-pane fade show active" id="adj-documentacion">
                                     <div class="d-flex mb-2 gap-2">
                                         <input type="file" id="file_doc" class="form-control form-control-sm">
@@ -336,23 +349,6 @@ include '../../../includes/sidebar.php';
                         <!-- TAB 2: INDUMENTARIA Y COBERTURAS -->
                         <div class="tab-pane fade" id="tab-vencimientos">
                             
-                            <!-- TALLES -->
-                            <div class="seccion-titulo"><i class="bi bi-shield-check me-1"></i> Talles e Indumentaria</div>
-                            <div class="row g-2 mb-3">
-                                <div class="col-md-4">
-                                    <label class="form-label small mb-1">Talle Calzado</label>
-                                    <input name="calzado_talle" id="calzado_talle" class="form-control form-control-sm" placeholder="Ej: 42">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label small mb-1">Talle Pantalón</label>
-                                    <input name="pantalon_talle" id="pantalon_talle" class="form-control form-control-sm" placeholder="Ej: 44">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label small mb-1">Talle Camisa / Campera</label>
-                                    <input name="camisa_talle" id="camisa_talle" class="form-control form-control-sm" placeholder="Ej: XL">
-                                </div>
-                            </div>
-
                             <!-- COBERTURAS Y SEGUROS -->
                             <div class="seccion-titulo"><i class="bi bi-hospital me-1"></i> Cobertura Médica, ART y Seguros</div>
                             <div class="row g-2 mb-3">
@@ -365,7 +361,6 @@ include '../../../includes/sidebar.php';
                                     <input name="art_compañia" id="art_compañia" class="form-control form-control-sm">
                                 </div>
 
-                                <!-- SEGUROS ACCESORIOS Y PERSONAL -->
                                 <div class="col-md-4">
                                     <label class="form-label small mb-1">Seguro Acc. Personales (Compañía)</label>
                                     <input name="seguro_acc" id="seguro_acc" class="form-control form-control-sm" placeholder="Aseguradora">
@@ -392,10 +387,6 @@ include '../../../includes/sidebar.php';
                                     <label class="form-label small mb-1">Venc. Preocupacional / Periódico</label>
                                     <input type="date" name="vencimiento_preocupacional" id="vencimiento_preocupacional" class="form-control form-control-sm">
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small mb-1">Venc. Carnet de Conducir</label>
-                                    <input type="date" name="vencimiento_carnet_conducir" id="vencimiento_carnet_conducir" class="form-control form-control-sm">
-                                </div>
                             </div>
 
                             <!-- DETALLE PRODUCTORES -->
@@ -403,6 +394,23 @@ include '../../../includes/sidebar.php';
                             <div class="row g-2">
                                 <div class="col-md-12">
                                     <textarea name="productores_seguro" id="productores_seguro" class="form-control form-control-sm" rows="2" placeholder="Nombre del productor, teléfono de contacto, n° de póliza general, etc."></textarea>
+                                </div>
+                            </div>
+
+                            <!-- TALLES -->
+                            <div class="seccion-titulo mt-3"><i class="bi bi-shield-check me-1"></i> Talles e Indumentaria</div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-4">
+                                    <label class="form-label small mb-1">Talle Calzado</label>
+                                    <input name="calzado_talle" id="calzado_talle" class="form-control form-control-sm" placeholder="Ej: 42">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small mb-1">Talle Pantalón</label>
+                                    <input name="pantalon_talle" id="pantalon_talle" class="form-control form-control-sm" placeholder="Ej: 44">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small mb-1">Talle Camisa / Campera</label>
+                                    <input name="camisa_talle" id="camisa_talle" class="form-control form-control-sm" placeholder="Ej: XL">
                                 </div>
                             </div>
 
@@ -475,7 +483,6 @@ let modalBS;
 let tabla;
 let clasificacionActual = 'OPERATIVO';
 
-// Cálculo dinámico de años y meses
 function calcularTiempo(fechaDesde) {
     if (!fechaDesde) return '-';
     let inicio = new Date(fechaDesde);
@@ -501,7 +508,6 @@ function calcularTiempo(fechaDesde) {
     return partes.join(', ');
 }
 
-// Formato explícito en dos líneas limpias para la tabla
 function renderAntiguedad(row) {
     let antIngreso = calcularTiempo(row.fecha_ingreso);
     let antArca = calcularTiempo(row.fecha_alta_arca);
@@ -545,8 +551,10 @@ window.editar = function(id, soloVer = false) {
     $('#apellido').val(d.apellido);
     $('#nombre').val(d.nombre);
     $('#puesto').val(d.puesto);
+    $('#tipo_licencia').val(d.tipo_licencia);
     $('#fecha_nacimiento').val(d.fecha_nacimiento);
     $('#fecha_ingreso').val(d.fecha_ingreso);
+    $('#fecha_baja').val(d.fecha_baja);
     $('#telefono').val(d.telefono);
     $('#email').val(d.email);
     $('#domicilio').val(d.domicilio);

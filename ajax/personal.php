@@ -12,7 +12,6 @@ $usuario_logueado = $_SESSION['id'] ?? 0;
 if($accion == 'listar'){
     $clasificacion = $_GET['clasificacion'] ?? 'OPERATIVO';
     
-    // Si filtran por INACTIVOS, muestra los dados de baja de cualquier clasificación
     if($clasificacion == 'INACTIVO') {
         $where = "p.estado = 'INACTIVO'";
     } else {
@@ -43,8 +42,10 @@ if($accion == 'guardar'){
     $apellido = $conn->real_escape_string($_POST['apellido'] ?? '');
     $nombre = $conn->real_escape_string($_POST['nombre'] ?? '');
     $puesto = $conn->real_escape_string($_POST['puesto'] ?? '');
+    $tipo_licencia = $conn->real_escape_string($_POST['tipo_licencia'] ?? '');
     $fecha_nacimiento = !empty($_POST['fecha_nacimiento']) ? "'".$conn->real_escape_string($_POST['fecha_nacimiento'])."'" : 'NULL';
     $fecha_ingreso = !empty($_POST['fecha_ingreso']) ? "'".$conn->real_escape_string($_POST['fecha_ingreso'])."'" : 'NULL';
+    $fecha_baja = !empty($_POST['fecha_baja']) ? "'".$conn->real_escape_string($_POST['fecha_baja'])."'" : 'NULL';
     $telefono = $conn->real_escape_string($_POST['telefono'] ?? '');
     $email = $conn->real_escape_string($_POST['email'] ?? '');
     $domicilio = $conn->real_escape_string($_POST['domicilio'] ?? '');
@@ -85,32 +86,33 @@ if($accion == 'guardar'){
     if($id){
         $sql = "UPDATE personal SET 
             clasificacion='$clasificacion', cuil='$cuil', apellido='$apellido', nombre='$nombre',
-            puesto='$puesto', fecha_nacimiento=$fecha_nacimiento, fecha_ingreso=$fecha_ingreso,
-            telefono='$telefono', email='$email', domicilio='$domicilio', contacto_emergencia='$contacto_emergencia',
-            estado='$estado', situacion_laboral='$situacion_laboral', procedencia='$procedencia',
-            fecha_alta_ieric=$fecha_alta_ieric, fecha_alta_arca=$fecha_alta_arca, convenio_aplicable='$convenio_aplicable',
-            puesto_arca='$puesto_arca', seguro_acc='$seguro_acc', seguro_acc_desc='$seguro_acc_desc', svo='$svo', 
-            cond_pago='$cond_pago', banco='$banco', cbu='$cbu', cta_cese='$cta_cese',
-            calzado_talle='$calzado_talle', pantalon_talle='$pantalon_talle', camisa_talle='$camisa_talle',
-            vencimiento_preocupacional=$vencimiento_preocupacional, vencimiento_carnet_conducir=$vencimiento_carnet_conducir,
-            vencimiento_art=$vencimiento_art, obra_social='$obra_social', art_compañia='$art_compañia', 
-            productores_seguro='$productores_seguro', observaciones='$observaciones'
+            puesto='$puesto', tipo_licencia='$tipo_licencia', fecha_nacimiento=$fecha_nacimiento, 
+            fecha_ingreso=$fecha_ingreso, fecha_baja=$fecha_baja, telefono='$telefono', email='$email', 
+            domicilio='$domicilio', contacto_emergencia='$contacto_emergencia', estado='$estado', 
+            situacion_laboral='$situacion_laboral', procedencia='$procedencia', fecha_alta_ieric=$fecha_alta_ieric, 
+            fecha_alta_arca=$fecha_alta_arca, convenio_aplicable='$convenio_aplicable', puesto_arca='$puesto_arca', 
+            seguro_acc='$seguro_acc', seguro_acc_desc='$seguro_acc_desc', svo='$svo', cond_pago='$cond_pago', 
+            banco='$banco', cbu='$cbu', cta_cese='$cta_cese', calzado_talle='$calzado_talle', 
+            pantalon_talle='$pantalon_talle', camisa_talle='$camisa_talle', vencimiento_preocupacional=$vencimiento_preocupacional, 
+            vencimiento_carnet_conducir=$vencimiento_carnet_conducir, vencimiento_art=$vencimiento_art, 
+            obra_social='$obra_social', art_compañia='$art_compañia', productores_seguro='$productores_seguro', 
+            observaciones='$observaciones'
             WHERE id=$id";
         $conn->query($sql);
         $personal_id = $id;
     } else {
         $sql = "INSERT INTO personal (
-            clasificacion, cuil, apellido, nombre, puesto, fecha_nacimiento, fecha_ingreso, telefono, email, domicilio,
-            contacto_emergencia, estado, situacion_laboral, procedencia, fecha_alta_ieric, fecha_alta_arca, convenio_aplicable,
-            puesto_arca, seguro_acc, seguro_acc_desc, svo, cond_pago, banco, cbu, cta_cese, calzado_talle, pantalon_talle, camisa_talle,
-            vencimiento_preocupacional, vencimiento_carnet_conducir, vencimiento_art, obra_social, art_compañia, 
-            productores_seguro, observaciones, usuario_id
+            clasificacion, cuil, apellido, nombre, puesto, tipo_licencia, fecha_nacimiento, fecha_ingreso, fecha_baja, 
+            telefono, email, domicilio, contacto_emergencia, estado, situacion_laboral, procedencia, fecha_alta_ieric, 
+            fecha_alta_arca, convenio_aplicable, puesto_arca, seguro_acc, seguro_acc_desc, svo, cond_pago, banco, cbu, 
+            cta_cese, calzado_talle, pantalon_talle, camisa_talle, vencimiento_preocupacional, vencimiento_carnet_conducir, 
+            vencimiento_art, obra_social, art_compañia, productores_seguro, observaciones, usuario_id
         ) VALUES (
-            '$clasificacion', '$cuil', '$apellido', '$nombre', '$puesto', $fecha_nacimiento, $fecha_ingreso, '$telefono', '$email', '$domicilio',
-            '$contacto_emergencia', '$estado', '$situacion_laboral', '$procedencia', $fecha_alta_ieric, $fecha_alta_arca, '$convenio_aplicable',
-            '$puesto_arca', '$seguro_acc', '$seguro_acc_desc', '$svo', '$cond_pago', '$banco', '$cbu', '$cta_cese', '$calzado_talle', '$pantalon_talle', '$camisa_talle',
-            $vencimiento_preocupacional, $vencimiento_carnet_conducir, $vencimiento_art, '$obra_social', '$art_compañia', 
-            '$productores_seguro', '$observaciones', $usuario_id_db
+            '$clasificacion', '$cuil', '$apellido', '$nombre', '$puesto', '$tipo_licencia', $fecha_nacimiento, $fecha_ingreso, $fecha_baja, 
+            '$telefono', '$email', '$domicilio', '$contacto_emergencia', '$estado', '$situacion_laboral', '$procedencia', $fecha_alta_ieric, 
+            $fecha_alta_arca, '$convenio_aplicable', '$puesto_arca', '$seguro_acc', '$seguro_acc_desc', '$svo', '$cond_pago', '$banco', '$cbu', 
+            '$cta_cese', '$calzado_talle', '$pantalon_talle', '$camisa_talle', $vencimiento_preocupacional, $vencimiento_carnet_conducir, 
+            $vencimiento_art, '$obra_social', '$art_compañia', '$productores_seguro', '$observaciones', $usuario_id_db
         )";
         $conn->query($sql);
         $personal_id = $conn->insert_id;

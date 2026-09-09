@@ -230,29 +230,21 @@ function aplicarBuscadores() {
     });
 }
 
-// FORMATO DE MILES CON PUNTOS Y COMAS DECIMALES EN TIEMPO REAL
-function aplicarMascaraMoneda(input) {
-    let val = input.value ? input.value.toString().trim() : '';
-    if (!val) return;
+// FORMATO DE MONEDA AL SALIR DEL CAMPO (BLUR)
+function formatearMonedaInput(val) {
+    if (!val) return '';
+    let limpio = val.toString().replace(/[^\d,]/g, '');
+    let partes = limpio.split(',');
 
-    // Si viene de la BD en formato numérico puro (ej: "10000.00")
-    if (val.includes('.') && !val.includes(',')) {
-        let num = parseFloat(val);
-        if (!isNaN(num)) {
-            val = num.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        }
-    } else {
-        // Formateo dinámico mientras el usuario escribe
-        val = val.replace(/[^\d,]/g, ''); 
-        let partes = val.split(',');
-        partes[0] = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-        if (partes[1] !== undefined) {
-            partes[1] = partes[1].substring(0, 2);
-        }
-        val = partes.join(',');
+    // Formatear parte entera con puntos de miles
+    partes[0] = partes[0].replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+    // Decimales maximo 2
+    if (partes[1] !== undefined) {
+        partes[1] = partes[1].replace(/\D/g, '').substring(0, 2);
     }
 
-    input.value = val;
+    return partes.join(',');
 }
 
 function calcularTotalGasto() {
@@ -429,10 +421,38 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     });
 
-    // LISTENERS PARA ENMASCARAR Y RECALCULAR TOTAL EN TIEMPO REAL
+    // LISTENERS PARA ENMASCARAR Y RECALCULAR TOTAL
+    // 1. Mientras se escribe: Permite ingresar números y comas libremente sin mover el cursor
     $('#neto, #iva, #ret_iibb, #otros_tributos').on('input', function() {
-        aplicarMascaraMoneda(this);
+        let val = $(this).val();
+        let limpio = val.replace(/[^\d,]/g, '');
+        let partes = limpio.split(',');
+        if (partes.length > 2) {
+            limpio = partes[0] + ',' + partes.slice(1).join('');
+        }
+        $(this).val(limpio);
         calcularTotalGasto();
+    });
+
+    // 2. Al perder el foco (blur): Aplica formato de miles y acomoda los decimales
+    $('#neto, #iva, #ret_iibb, #otros_tributos').on('blur', function() {
+        let val = $(this).val();
+        if (!val) return;
+
+        if (!val.includes(',')) {
+            val += ',00';
+        } else {
+            let partes = val.split(',');
+            if (partes[1].length === 1) val += '0';
+            if (partes[1].length === 0) val += '00';
+        }
+
+        $(this).val(formatearMonedaInput(val));
+    });
+
+    // 3. Al hacer foco (focus): Selecciona el texto para facilitar la reescritura rápida
+    $('#neto, #iva, #ret_iibb, #otros_tributos').on('focus', function() {
+        this.select();
     });
 
     $('#formGasto').submit(function(e) {
@@ -523,11 +543,18 @@ document.addEventListener("DOMContentLoaded", function() {
                 if (el && k !== 'archivo') { el.value = data[k]; }
             }
 
-            // Aplicar máscaras de formato en inputs recuperados de la BD
+            // Aplicar formato de moneda en inputs recuperados de la BD (en el evento blur/inicial)
             ['#neto', '#iva', '#ret_iibb', '#otros_tributos'].forEach(selector => {
                 let input = document.querySelector(selector);
                 if (input && input.value !== "") {
-                    aplicarMascaraMoneda(input);
+                    if (input.value.includes('.') && !input.value.includes(',')) {
+                        let num = parseFloat(input.value);
+                        if (!isNaN(num)) {
+                            input.value = num.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        }
+                    } else {
+                        input.value = formatearMonedaInput(input.value);
+                    }
                 }
             });
             calcularTotalGasto();

@@ -125,6 +125,14 @@
     color: #a0aab5 !important;
 }
 
+/* Submenu oculto por defecto */
+.submenu {
+    display: none;
+}
+.submenu.show {
+    display: block;
+}
+
 /* ================= COMPORTAMIENTO RESPONSIVO ================= */
 .sidebar-toggler {
     display: none;
@@ -205,7 +213,21 @@
         strcasecmp($rol_actual, 'arquitecto') === 0
     ): ?>
         <a href="/contable/modules/facturacion/"><i class="bi bi-receipt"></i> Facturación</a>
-        <a href="/contable/modules/presupuestos/" class="menu-link"><i class="bi bi-file-earmark-spreadsheet"></i> Presupuestos</a>
+        
+        <!-- MENÚ DESPLEGABLE DE PRESUPUESTOS -->
+        <div class="menu-section">
+            <a href="#" onclick="toggleMenuPresupuestos(event)">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Presupuestos
+            </a>
+            <div id="menuPresupuestos" class="submenu">
+                <a href="/contable/modules/presupuestos/" class="menu-link"><i class="bi bi-list-task me-2"></i> Ver Presupuestos</a>
+                <a href="/contable/modules/presupuestos/tareas.php" class="menu-link"><i class="bi bi-tools me-2"></i> Catálogo Tareas</a>
+                <a href="/contable/modules/presupuestos/materiales.php" class="menu-link"><i class="bi bi-box-seam me-2"></i> Catálogo Materiales</a>
+                <a href="/contable/modules/presupuestos/mano_obra.php" class="menu-link"><i class="bi bi-hammer me-2"></i> Catálogo Mano de Obra</a>
+                <a href="/contable/modules/presupuestos/equipos.php" class="menu-link"><i class="bi bi-truck me-2"></i> Catálogo Equipos</a>
+                <a href="/contable/modules/presupuestos/coeficientes.php" class="menu-link"><i class="bi bi-percent me-2"></i> Coeficientes</a>
+            </div>
+        </div>
     <?php endif; ?>
 
     <a href="/contable/modules/gastos/"><i class="bi bi-cart3"></i> Gastos</a>
@@ -286,20 +308,43 @@
 </div>
 
 <script>
+    
 function toggleDark(){
     fetch('/contable/ajax/toggle_dark.php')
     .then(()=>location.reload());
 }
 
+function toggleMenuPresupuestos(e){
+    e.preventDefault();
+    let menuPresupuestos = document.getElementById('menuPresupuestos');
+    let menuOperaciones = document.getElementById('menuOperaciones');
+    let menuConfig = document.getElementById('menuConfig');
+    
+    if (!menuPresupuestos.classList.contains('show')) {
+        menuPresupuestos.classList.add('show');
+        menuOperaciones.classList.remove('show');
+        menuConfig.classList.remove('show');
+        localStorage.setItem('menuPresupuestos', 'open');
+        localStorage.setItem('menuOperaciones', 'closed');
+        localStorage.setItem('menuConfig', 'closed');
+    } else {
+        menuPresupuestos.classList.remove('show');
+        localStorage.setItem('menuPresupuestos', 'closed');
+    }
+}
+
 function toggleMenuOperaciones(e){
     e.preventDefault();
+    let menuPresupuestos = document.getElementById('menuPresupuestos');
     let menuOperaciones = document.getElementById('menuOperaciones');
     let menuConfig = document.getElementById('menuConfig');
     
     if (!menuOperaciones.classList.contains('show')) {
         menuOperaciones.classList.add('show');
+        menuPresupuestos.classList.remove('show');
         menuConfig.classList.remove('show');
         localStorage.setItem('menuOperaciones', 'open');
+        localStorage.setItem('menuPresupuestos', 'closed');
         localStorage.setItem('menuConfig', 'closed');
     } else {
         menuOperaciones.classList.remove('show');
@@ -309,13 +354,16 @@ function toggleMenuOperaciones(e){
 
 function toggleMenuConfig(e){
     e.preventDefault();
+    let menuPresupuestos = document.getElementById('menuPresupuestos');
     let menuOperaciones = document.getElementById('menuOperaciones');
     let menuConfig = document.getElementById('menuConfig');
     
     if (!menuConfig.classList.contains('show')) {
         menuConfig.classList.add('show');
+        menuPresupuestos.classList.remove('show');
         menuOperaciones.classList.remove('show');
         localStorage.setItem('menuConfig', 'open');
+        localStorage.setItem('menuPresupuestos', 'closed');
         localStorage.setItem('menuOperaciones', 'closed');
     } else {
         menuConfig.classList.remove('show');
@@ -338,13 +386,17 @@ document.addEventListener('DOMContentLoaded', function(){
         overlay.addEventListener('click', toggleMobileSidebar);
     }
 
+    let menuPresupuestos = document.getElementById('menuPresupuestos');
     let menuOperaciones = document.getElementById('menuOperaciones');
     let menuConfig = document.getElementById('menuConfig');
 
-    if(localStorage.getItem('menuOperaciones') === 'open'){
+    if(localStorage.getItem('menuPresupuestos') === 'open' && menuPresupuestos){
+        menuPresupuestos.classList.add('show');
+    }
+    if(localStorage.getItem('menuOperaciones') === 'open' && menuOperaciones){
         menuOperaciones.classList.add('show');
     }
-    if(localStorage.getItem('menuConfig') === 'open'){
+    if(localStorage.getItem('menuConfig') === 'open' && menuConfig){
         menuConfig.classList.add('show');
     }
 
@@ -353,10 +405,13 @@ document.addEventListener('DOMContentLoaded', function(){
         let href = link.getAttribute('href');
         if(href && href !== '/contable/index.php' && url.includes(href)){
             link.classList.add('active');
-            if(link.closest('#menuOperaciones')){
+            if(link.closest('#menuPresupuestos') && menuPresupuestos){
+                menuPresupuestos.classList.add('show');
+            }
+            if(link.closest('#menuOperaciones') && menuOperaciones){
                 menuOperaciones.classList.add('show');
             }
-            if(link.closest('#menuConfig')){
+            if(link.closest('#menuConfig') && menuConfig){
                 menuConfig.classList.add('show');
             }
         } else if (href === '/contable/index.php' && url === href) {

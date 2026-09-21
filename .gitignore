@@ -30,7 +30,7 @@ Thumbs.db
 # =========================
 # Dependencias Composer (si algún día usamos Composer)
 # =========================
-vendor/
+# vendor/
 
 # =========================
 # Dependencias Node (si algún día usamos Vite o npm)

@@ -242,9 +242,9 @@ include '../../includes/sidebar.php';
         <h4 class="fw-bold text-dark mb-0">
             <i class="bi bi-calculator-fill text-secondary me-2"></i> Cálculo Costo Mano de Obra (UOCRA)
         </h4>
-        <span class="badge bg-dark fs-6" title="Fecha del último cambio realizado">
-            <i class="bi bi-clock-history me-1"></i> Actualizado: <?= $fecha_actualizacion ?>
-        </span>
+        <span class="badge bg-light text-dark border px-3 py-2 shadow-sm fs-6 fw-normal">
+                <i class="bi bi-clock-history me-1 text-primary"></i> <strong>Última mod.:</strong> <?= $fecha_actualizacion ?> hs
+            </span>
     </div>
 
     <!-- Pestañas de Navegación con IDs identificables -->

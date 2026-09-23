@@ -164,13 +164,13 @@ include '../../includes/sidebar.php';
                     <tr>
                         <th class="text-center" style="width: 5%;">ID</th>
                         <th>Material</th>
-                        <th class="text-end" style="width: 18%;">Precio Presentación (s/IVA)</th>
-                        <th class="text-center" style="width: 10%;">Unidad</th>
-                        <th class="text-end" style="width: 15%;">Precio unit. (s/IVA)</th>
-                        <th style="width: 15%;">Proveedor</th>
-                        <th class="text-center" style="width: 14%;">Fecha actualización</th>
-                        <th class="text-center" style="width: 10%;">Usuario</th>
-                        <th class="text-center" style="width: 8%;">Acciones</th>
+                        <th class="text-end text-nowrap" style="width: 18%;">Precio Presentación (s/IVA)</th>
+                        <th class="text-center text-nowrap" style="width: 10%;">Unidad</th>
+                        <th class="text-end text-nowrap" style="width: 15%;">Precio unit. (s/IVA)</th>
+                        <th class="text-nowrap" style="width: 15%;">Proveedor</th>
+                        <th class="text-center text-nowrap" style="width: 14%;">Fecha actualización</th>
+                        <th class="text-center text-nowrap" style="width: 10%;">Usuario</th>
+                        <th class="text-center text-nowrap" style="width: 8%;">Acciones</th>
                     </tr>
                 </thead>
             </table>

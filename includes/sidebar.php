@@ -114,7 +114,7 @@
 .menu-section > a {
     font-size: 0.8rem !important;
     letter-spacing: 0.8px !important;
-    color: #8a97a6 !important;
+    color: #b8c1cc !important;
     text-transform: uppercase !important;
     margin-top: 0.5rem !important;
 }
@@ -222,6 +222,7 @@
             <div id="menuPresupuestos" class="submenu">
                 <a href="/contable/modules/presupuestos/" class="menu-link"><i class="bi bi-list-task me-2"></i> Ver Presupuestos</a>
                 <a href="/contable/modules/presupuestos/tareas.php" class="menu-link"><i class="bi bi-tools me-2"></i> Catálogo Tareas</a>
+                <a href="/contable/modules/presupuestos/indirectos.php" class="menu-link"><i class="bi bi-file-spreadsheet me-2"></i> Gastos Indirectos</a>
                 <a href="/contable/modules/presupuestos/materiales.php" class="menu-link"><i class="bi bi-box-seam me-2"></i> Catálogo Materiales</a>
                 <a href="/contable/modules/presupuestos/mano_obra.php" class="menu-link"><i class="bi bi-hammer me-2"></i> Catálogo Mano de Obra</a>
                 <a href="/contable/modules/presupuestos/equipos.php" class="menu-link"><i class="bi bi-truck me-2"></i> Catálogo Equipos</a>
@@ -401,22 +402,28 @@ document.addEventListener('DOMContentLoaded', function(){
     }
 
     let url = window.location.pathname;
-    document.querySelectorAll('.menu-link, .sidebar > a').forEach(link => {
-        let href = link.getAttribute('href');
-        if(href && href !== '/contable/index.php' && url.includes(href)){
-            link.classList.add('active');
-            if(link.closest('#menuPresupuestos') && menuPresupuestos){
-                menuPresupuestos.classList.add('show');
-            }
-            if(link.closest('#menuOperaciones') && menuOperaciones){
-                menuOperaciones.classList.add('show');
-            }
-            if(link.closest('#menuConfig') && menuConfig){
-                menuConfig.classList.add('show');
-            }
-        } else if (href === '/contable/index.php' && url === href) {
-            link.classList.add('active');
+
+document.querySelectorAll('.menu-link, .sidebar > a').forEach(link => {
+    let href = link.getAttribute('href');
+
+    if (href && href !== '/contable/index.php' && url === href) {
+        link.classList.add('active');
+
+        if (link.closest('#menuPresupuestos') && menuPresupuestos) {
+            menuPresupuestos.classList.add('show');
         }
-    });
+
+        if (link.closest('#menuOperaciones') && menuOperaciones) {
+            menuOperaciones.classList.add('show');
+        }
+
+        if (link.closest('#menuConfig') && menuConfig) {
+            menuConfig.classList.add('show');
+        }
+
+    } else if (href === '/contable/index.php' && url === href) {
+        link.classList.add('active');
+    }
+});
 });
 </script>

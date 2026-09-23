@@ -162,15 +162,15 @@ include '../../includes/sidebar.php';
             <table id="tablaEquipos" class="table table-bordered table-striped w-100 align-middle">
                 <thead class="table-dark">
                     <tr>
-                        <th class="text-center" style="width: 5%;">ID</th>
-                        <th>Nombre</th>
-                        <th class="text-center" style="width: 10%;">Unidad</th>
-                        <th class="text-end" style="width: 15%;">Precio(s/IVA)</th>
-                        <th style="width: 13%;">Proveedor</th>
-                        <th style="width: 17%;">Observaciones</th>
-                        <th class="text-center" style="width: 12%;">Fecha act.</th>
-                        <th class="text-center" style="width: 10%;">Usuario</th>
-                        <th class="text-center" style="width: 8%;">Acciones</th>
+                        <th class="text-center text-nowrap" style="width: 5%;">ID</th>
+                        <th class="text-nowrap">Nombre</th>
+                        <th class="text-center text-nowrap" style="width: 10%;">Unidad</th>
+                        <th class="text-end text-nowrap" style="width: 15%;">Precio(s/IVA)</th>
+                        <th class="text-nowrap" style="width: 13%;">Proveedor</th>
+                        <th class="text-nowrap" style="width: 17%;">Observaciones</th>
+                        <th class="text-center text-nowrap" style="width: 12%;">Fecha act.</th>
+                        <th class="text-center text-nowrap" style="width: 10%;">Usuario</th>
+                        <th class="text-center text-nowrap" style="width: 8%;">Acciones</th>
                     </tr>
                 </thead>
             </table>

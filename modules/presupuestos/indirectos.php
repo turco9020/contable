@@ -425,7 +425,7 @@ body.modo-edicion-activo input[type=number] {
                                                     <td>
                                                         <?= htmlspecialchars($item['descripcion']) ?>
                                                         <?php if ($dep_op === 1): ?>
-                                                            <span class="badge bg-warning text-dark ms-1" title="Multiplica por Cantidad de Operarios"><i class="bi bi-person-fill"></i> Op</span>
+                                                            <span class="badge bg-warning text-dark ms-1" title="Multiplica por Cantidad de Operarios"><i class="bi bi-person-fill"></i> Operario</span>
                                                         <?php endif; ?>
                                                         <?php if ($dep_tm === 1): ?>
                                                             <span class="badge bg-secondary text-light ms-1" title="Multiplica por Días de Obra"><i class="bi bi-calendar-event"></i> Tiempo</span>

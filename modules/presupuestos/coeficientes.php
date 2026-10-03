@@ -7,65 +7,81 @@ echo "<script>localStorage.setItem('menuOperaciones', 'closed'); localStorage.se
 // Detectar variable de conexión MySQLi
 $db_conn = $conn ?? $conexion ?? $db ?? null;
 
-// Control de guardado mediante POST (MySQLi Prepared Statements)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'guardar_coeficiente') {
-    $id = intval($_POST['id'] ?? 0);
-    $nombre = trim($_POST['nombre']);
-    $descripcion = trim($_POST['descripcion']);
+// Control de guardado / eliminación mediante POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    
+    // GUARDAR O EDITAR PERFIL
+    if ($_POST['action'] === 'guardar_coeficiente') {
+        $id = intval($_POST['id'] ?? 0);
+        $nombre = trim($_POST['nombre']);
+        $descripcion = trim($_POST['descripcion']);
 
-    // Materiales
-    $mat_indirectos = floatval($_POST['mat_costos_indirectos']);
-    $mat_beneficio  = floatval($_POST['mat_beneficio']);
-    $mat_financieros= floatval($_POST['mat_costos_financieros']);
-    $mat_iibb       = floatval($_POST['mat_iibb']);
-    $mat_otros_imp  = floatval($_POST['mat_otros_impuestos']);
-    $mat_iva        = floatval($_POST['mat_iva']);
-    $mat_k          = floatval($_POST['mat_k_resultante']);
+        // Materiales
+        $mat_indirectos = floatval($_POST['mat_costos_indirectos']);
+        $mat_beneficio  = floatval($_POST['mat_beneficio']);
+        $mat_financieros= floatval($_POST['mat_costos_financieros']);
+        $mat_iibb       = floatval($_POST['mat_iibb']);
+        $mat_otros_imp  = floatval($_POST['mat_otros_impuestos']);
+        $mat_iva        = floatval($_POST['mat_iva']);
+        $mat_k          = floatval($_POST['mat_k_resultante']);
 
-    // Mano de Obra
-    $mo_indirectos  = floatval($_POST['mo_costos_indirectos']);
-    $mo_beneficio   = floatval($_POST['mo_beneficio']);
-    $mo_financieros = floatval($_POST['mo_costos_financieros']);
-    $mo_iibb        = floatval($_POST['mo_iibb']);
-    $mo_otros_imp   = floatval($_POST['mo_otros_impuestos']);
-    $mo_iva         = floatval($_POST['mo_iva']);
-    $mo_k           = floatval($_POST['mo_k_resultante']);
+        // Mano de Obra
+        $mo_indirectos  = floatval($_POST['mo_costos_indirectos']);
+        $mo_beneficio   = floatval($_POST['mo_beneficio']);
+        $mo_financieros = floatval($_POST['mo_costos_financieros']);
+        $mo_iibb        = floatval($_POST['mo_iibb']);
+        $mo_otros_imp   = floatval($_POST['mo_otros_impuestos']);
+        $mo_iva         = floatval($_POST['mo_iva']);
+        $mo_k           = floatval($_POST['mo_k_resultante']);
 
-    if ($id > 0) {
-        $stmt = $db_conn->prepare("UPDATE presupuesto_coeficientes_plantillas SET 
-            nombre=?, descripcion=?, 
-            mat_costos_indirectos=?, mat_beneficio=?, mat_costos_financieros=?, mat_iibb=?, mat_otros_impuestos=?, mat_iva=?, mat_k_resultante=?,
-            mo_costos_indirectos=?, mo_beneficio=?, mo_costos_financieros=?, mo_iibb=?, mo_otros_impuestos=?, mo_iva=?, mo_k_resultante=?
-            WHERE id=?");
-        $stmt->bind_param("ssddddddddddddddi", 
-            $nombre, $descripcion,
-            $mat_indirectos, $mat_beneficio, $mat_financieros, $mat_iibb, $mat_otros_imp, $mat_iva, $mat_k,
-            $mo_indirectos, $mo_beneficio, $mo_financieros, $mo_iibb, $mo_otros_imp, $mo_iva, $mo_k,
-            $id
-        );
-        $stmt->execute();
-    } else {
-        $stmt = $db_conn->prepare("INSERT INTO presupuesto_coeficientes_plantillas (
-            nombre, descripcion, 
-            mat_costos_indirectos, mat_beneficio, mat_costos_financieros, mat_iibb, mat_otros_impuestos, mat_iva, mat_k_resultante,
-            mo_costos_indirectos, mo_beneficio, mo_costos_financieros, mo_iibb, mo_otros_impuestos, mo_iva, mo_k_resultante
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-        $stmt->bind_param("ssdddddddddddddd", 
-            $nombre, $descripcion,
-            $mat_indirectos, $mat_beneficio, $mat_financieros, $mat_iibb, $mat_otros_imp, $mat_iva, $mat_k,
-            $mo_indirectos, $mo_beneficio, $mo_financieros, $mo_iibb, $mo_otros_imp, $mo_iva, $mo_k
-        );
-        $stmt->execute();
+        if ($id > 0) {
+            $stmt = $db_conn->prepare("UPDATE presupuesto_coeficientes_plantillas SET 
+                nombre=?, descripcion=?, 
+                mat_costos_indirectos=?, mat_beneficio=?, mat_costos_financieros=?, mat_iibb=?, mat_otros_impuestos=?, mat_iva=?, mat_k_resultante=?,
+                mo_costos_indirectos=?, mo_beneficio=?, mo_costos_financieros=?, mo_iibb=?, mo_otros_impuestos=?, mo_iva=?, mo_k_resultante=?
+                WHERE id=?");
+            $stmt->bind_param("ssddddddddddddddi", 
+                $nombre, $descripcion,
+                $mat_indirectos, $mat_beneficio, $mat_financieros, $mat_iibb, $mat_otros_imp, $mat_iva, $mat_k,
+                $mo_indirectos, $mo_beneficio, $mo_financieros, $mo_iibb, $mo_otros_imp, $mo_iva, $mo_k,
+                $id
+            );
+            $stmt->execute();
+        } else {
+            $stmt = $db_conn->prepare("INSERT INTO presupuesto_coeficientes_plantillas (
+                nombre, descripcion, 
+                mat_costos_indirectos, mat_beneficio, mat_costos_financieros, mat_iibb, mat_otros_impuestos, mat_iva, mat_k_resultante,
+                mo_costos_indirectos, mo_beneficio, mo_costos_financieros, mo_iibb, mo_otros_impuestos, mo_iva, mo_k_resultante
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+            $stmt->bind_param("ssdddddddddddddd", 
+                $nombre, $descripcion,
+                $mat_indirectos, $mat_beneficio, $mat_financieros, $mat_iibb, $mat_otros_imp, $mat_iva, $mat_k,
+                $mo_indirectos, $mo_beneficio, $mo_financieros, $mo_iibb, $mo_otros_imp, $mo_iva, $mo_k
+            );
+            $stmt->execute();
+        }
+        header('Location: coeficientes.php?msg=guardado');
+        exit;
     }
-    header('Location: coeficientes.php?msg=guardado');
-    exit;
+
+    // ELIMINAR PERFIL (Baja Lógica)
+    if ($_POST['action'] === 'eliminar_coeficiente') {
+        $id = intval($_POST['id'] ?? 0);
+        if ($id > 0 && $db_conn) {
+            $stmt = $db_conn->prepare("UPDATE presupuesto_coeficientes_plantillas SET activo = 0 WHERE id = ?");
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+        }
+        header('Location: coeficientes.php?msg=eliminado');
+        exit;
+    }
 }
 
 // Inclusión del layout estándar del sistema
 include '../../includes/header.php';
 include '../../includes/sidebar.php';
 
-// Consultar perfiles con MySQLi
+// Consultar perfiles activos con MySQLi
 $plantillas = [];
 if ($db_conn) {
     $result = $db_conn->query("SELECT * FROM presupuesto_coeficientes_plantillas WHERE activo = 1 ORDER BY id DESC");
@@ -98,7 +114,7 @@ if ($db_conn) {
                         <th>Descripción</th>
                         <th class="text-center">K Materiales</th>
                         <th class="text-center">K Mano de Obra</th>
-                        <th class="text-end pe-3">Acciones</th>
+                        <th class="text-center" style="width: 220px;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -109,15 +125,23 @@ if ($db_conn) {
                     <?php else: ?>
                         <?php foreach ($plantillas as $p): ?>
                         <tr>
-                            <td class="fw-bold"><?= htmlspecialchars($p['nombre']) ?></td>
+                            <td class="fw-semibold"><?= htmlspecialchars($p['nombre']) ?></td>
                             <td class="text-muted"><?= htmlspecialchars($p['descripcion']) ?></td>
-                            <td class="text-center"><span class="badge bg-info text-dark fs-6">K = <?= number_format($p['mat_k_resultante'], 3) ?></span></td>
-                            <td class="text-center"><span class="badge bg-warning text-dark fs-6">K = <?= number_format($p['mo_k_resultante'], 3) ?></span></td>
-                            <td class="text-end pe-3">
-                                <button class="btn btn-sm btn-outline-primary" onclick='editarPerfil(<?= json_encode($p) ?>)'>
-                                    <i class="bi bi-pencil me-1"></i> Editar
+                            <td class="text-center"><span class="badge bg-primary text-white fw-semibold fs-6">K = <?= number_format($p['mat_k_resultante'], 3) ?></span></td>
+                            <td class="text-center"><span class="badge bg-warning text-dark fw-semibold fs-6">K = <?= number_format($p['mo_k_resultante'], 3) ?></span></td>
+                            <td class="text-center">
+                            <div class="d-inline-flex gap-1">
+                                <button class="btn btn-sm btn-outline-secondary" title="Ver Detalle" onclick='verPerfil(<?= json_encode($p) ?>)'>
+                                    <i class="bi bi-eye"></i>
                                 </button>
-                            </td>
+                                <button class="btn btn-sm btn-outline-primary" title="Editar Completo" onclick='editarPerfil(<?= json_encode($p) ?>)'>
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" title="Eliminar Perfil" onclick="eliminarPerfil(<?= $p['id'] ?>, '<?= htmlspecialchars(addslashes($p['nombre'])) ?>')">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
+                            </div>
+                        </td>
                         </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -127,7 +151,7 @@ if ($db_conn) {
     </div>
 </div>
 
-<!-- MODAL CÁLCULO DE K -->
+<!-- MODAL CÁLCULO DE K (CREAR / EDITAR) -->
 <div class="modal fade" id="modalCoeficiente" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
@@ -266,13 +290,90 @@ if ($db_conn) {
     </div>
 </div>
 
+<!-- MODAL VER DETALLE (SOLO LECTURA) -->
+<div class="modal fade" id="modalVerPerfil" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold" id="ver_titulo"><i class="bi bi-eye me-2"></i> Detalle de Coeficiente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-light">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-muted">Nombre del Perfil</label>
+                        <div class="fw-bold fs-6" id="ver_nombre">-</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-muted">Descripción</label>
+                        <div class="text-secondary" id="ver_descripcion">-</div>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <!-- DETALLE MATERIALES -->
+                    <div class="col-md-6">
+                        <div class="card border-primary shadow-sm h-100">
+                            <div class="card-header bg-primary text-white fw-bold d-flex justify-content-between align-items-center py-2">
+                                <span class="small"><i class="bi bi-box-seam me-1"></i> MATERIALES</span>
+                                <span class="fs-6" id="ver_mat_k">K = 1.000</span>
+                            </div>
+                            <div class="card-body p-3">
+                                <table class="table table-sm table-borderless align-middle mb-0 small">
+                                    <tr><td>Costos Indirectos %</td><td class="text-end fw-bold" id="ver_mat_ind">0.00%</td></tr>
+                                    <tr><td>Beneficio %</td><td class="text-end fw-bold" id="ver_mat_ben">0.00%</td></tr>
+                                    <tr><td>Costos Financieros %</td><td class="text-end fw-bold" id="ver_mat_fin">0.00%</td></tr>
+                                    <tr><td>Ingresos Brutos %</td><td class="text-end fw-bold" id="ver_mat_iibb">0.00%</td></tr>
+                                    <tr><td>Otros Impuestos %</td><td class="text-end fw-bold" id="ver_mat_otros">0.00%</td></tr>
+                                    <tr><td>IVA %</td><td class="text-end fw-bold" id="ver_mat_iva">0.00%</td></tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DETALLE MANO DE OBRA -->
+                    <div class="col-md-6">
+                        <div class="card border-warning shadow-sm h-100">
+                            <div class="card-header bg-warning text-dark fw-bold d-flex justify-content-between align-items-center py-2">
+                                <span class="small"><i class="bi bi-tools me-1"></i> MANO DE OBRA</span>
+                                <span class="fs-6" id="ver_mo_k">K = 1.000</span>
+                            </div>
+                            <div class="card-body p-3">
+                                <table class="table table-sm table-borderless align-middle mb-0 small">
+                                    <tr><td>Costos Indirectos %</td><td class="text-end fw-bold" id="ver_mo_ind">0.00%</td></tr>
+                                    <tr><td>Beneficio %</td><td class="text-end fw-bold" id="ver_mo_ben">0.00%</td></tr>
+                                    <tr><td>Costos Financieros %</td><td class="text-end fw-bold" id="ver_mo_fin">0.00%</td></tr>
+                                    <tr><td>Ingresos Brutos %</td><td class="text-end fw-bold" id="ver_mo_iibb">0.00%</td></tr>
+                                    <tr><td>Otros Impuestos %</td><td class="text-end fw-bold" id="ver_mo_otros">0.00%</td></tr>
+                                    <tr><td>IVA %</td><td class="text-end fw-bold" id="ver_mo_iva">0.00%</td></tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- FORMULARIO OCULTO PARA ELIMINAR -->
+<form id="formEliminarCoeficiente" method="POST" style="display: none;">
+    <input type="hidden" name="action" value="eliminar_coeficiente">
+    <input type="hidden" name="id" id="eliminar_id" value="0">
+</form>
+
 <?php include '../../includes/footer.php'; ?>
 
 <script>
 let modalCoeficiente;
+let modalVerPerfil;
 
 document.addEventListener('DOMContentLoaded', function() {
     modalCoeficiente = new bootstrap.Modal(document.getElementById('modalCoeficiente'));
+    modalVerPerfil = new bootstrap.Modal(document.getElementById('modalVerPerfil'));
 
     document.querySelectorAll('.calc-mat').forEach(el => el.addEventListener('input', calcularMat));
     document.querySelectorAll('.calc-mo').forEach(el => el.addEventListener('input', calcularMO));
@@ -360,5 +461,53 @@ function editarPerfil(p) {
     calcularMat();
     calcularMO();
     modalCoeficiente.show();
+}
+
+function verPerfil(p) {
+    document.getElementById('ver_nombre').innerText = p.nombre;
+    document.getElementById('ver_descripcion').innerText = p.descripcion || 'Sin descripción';
+
+    document.getElementById('ver_mat_k').innerText = 'K = ' + parseFloat(p.mat_k_resultante).toFixed(3);
+    document.getElementById('ver_mat_ind').innerText = p.mat_costos_indirectos + '%';
+    document.getElementById('ver_mat_ben').innerText = p.mat_beneficio + '%';
+    document.getElementById('ver_mat_fin').innerText = p.mat_costos_financieros + '%';
+    document.getElementById('ver_mat_iibb').innerText = p.mat_iibb + '%';
+    document.getElementById('ver_mat_otros').innerText = p.mat_otros_impuestos + '%';
+    document.getElementById('ver_mat_iva').innerText = p.mat_iva + '%';
+
+    document.getElementById('ver_mo_k').innerText = 'K = ' + parseFloat(p.mo_k_resultante).toFixed(3);
+    document.getElementById('ver_mo_ind').innerText = p.mo_costos_indirectos + '%';
+    document.getElementById('ver_mo_ben').innerText = p.mo_beneficio + '%';
+    document.getElementById('ver_mo_fin').innerText = p.mo_costos_financieros + '%';
+    document.getElementById('ver_mo_iibb').innerText = p.mo_iibb + '%';
+    document.getElementById('ver_mo_otros').innerText = p.mo_otros_impuestos + '%';
+    document.getElementById('ver_mo_iva').innerText = p.mo_iva + '%';
+
+    modalVerPerfil.show();
+}
+
+function eliminarPerfil(id, nombre) {
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: '¿Eliminar perfil?',
+            text: `¿Estás seguro de eliminar el perfil "${nombre}"?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('eliminar_id').value = id;
+                document.getElementById('formEliminarCoeficiente').submit();
+            }
+        });
+    } else {
+        if (confirm(`¿Estás seguro de eliminar el perfil "${nombre}"?`)) {
+            document.getElementById('eliminar_id').value = id;
+            document.getElementById('formEliminarCoeficiente').submit();
+        }
+    }
 }
 </script>

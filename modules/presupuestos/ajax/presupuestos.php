@@ -100,7 +100,7 @@ if ($accion === 'cargar_maestros') {
         $tareas = [];
         $chk_t = $conn->query("SHOW TABLES LIKE 'presupuesto_tareas'");
         if ($chk_t && $chk_t->num_rows > 0) {
-            $sql_t = "SELECT t.id, t.codigo, t.nombre, t.unidad, t.costo_unitario_total,
+            $sql_t = "SELECT t.id, t.codigo, t.nombre, t.unidad, t.costo_unitario_total, t.observaciones, t.rendimiento_unidad,
                         COALESCE(SUM(CASE WHEN UPPER(d.tipo) = 'MATERIAL' THEN (d.cantidad * d.precio_unitario) ELSE 0 END), 0) AS costo_material_neto,
                         COALESCE(SUM(CASE WHEN UPPER(d.tipo) IN ('MO', 'EQUIPO', 'SUBCONTRATO') THEN (d.cantidad * d.precio_unitario) ELSE 0 END), 0) AS costo_mo_neto
                       FROM presupuesto_tareas t
@@ -126,7 +126,30 @@ if ($accion === 'cargar_maestros') {
                         'unidad' => $r['unidad'],
                         'costo_unitario_total' => $c_total,
                         'costo_material_neto' => $c_mat,
-                        'costo_mo_neto' => $c_mo
+                        'costo_mo_neto' => $c_mo,
+                        'observaciones' => $r['observaciones'] ?? '',
+                        'rendimiento_unidad' => floatval($r['rendimiento_unidad'] ?? 1)
+                    ];
+                }
+            }
+        }
+
+        // 4b. Detalle de insumos de cada APU (para el botón "Ver" y la pestaña Resumen)
+        $apu_detalles = [];
+        $chk_d = $conn->query("SHOW TABLES LIKE 'presupuesto_tarea_detalles'");
+        if ($chk_d && $chk_d->num_rows > 0) {
+            $res_d = $conn->query("SELECT tarea_id, tipo, descripcion, unidad, cantidad, precio_unitario, observaciones
+                                   FROM presupuesto_tarea_detalles
+                                   ORDER BY tarea_id ASC, FIELD(UPPER(tipo), 'MATERIAL', 'MO', 'EQUIPO', 'SUBCONTRATO'), id ASC");
+            if ($res_d) {
+                while ($r = $res_d->fetch_assoc()) {
+                    $apu_detalles[$r['tarea_id']][] = [
+                        'tipo' => strtoupper($r['tipo']),
+                        'descripcion' => $r['descripcion'],
+                        'unidad' => $r['unidad'],
+                        'cantidad' => floatval($r['cantidad']),
+                        'precio_unitario' => floatval($r['precio_unitario']),
+                        'observaciones' => $r['observaciones'] ?? ''
                     ];
                 }
             }
@@ -184,6 +207,7 @@ if ($accion === 'cargar_maestros') {
             'obras' => $obras,
             'coeficientes' => $coeficientes,
             'tareas' => $tareas,
+            'apu_detalles' => (object)$apu_detalles,
             'indirectos' => $indirectos,
             'condiciones_texto' => $condiciones_texto,
             'codigo_sugerido' => $codigo_sugerido,

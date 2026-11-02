@@ -14,6 +14,12 @@ include '../../includes/sidebar.php';
     height: 100%;
 }
 
+/* Modal "Ver APU" apilado encima del modal del presupuesto */
+#modalVerAPU { z-index: 1065; }
+
+/* Select de tarea + botón Ver en la misma línea */
+.apu-cell .ts-wrapper { flex: 1 1 auto; min-width: 0; }
+
 </style>
 
 <div class="content">
@@ -160,6 +166,11 @@ include '../../includes/sidebar.php';
                                 <i class="bi bi-file-text text-success me-1"></i> Condiciones
                             </button>
                         </li>
+                        <li class="nav-item">
+                            <button class="nav-link fw-bold py-1 px-3 text-dark" id="tab-res-btn" data-bs-toggle="tab" data-bs-target="#tab-res" type="button" role="tab">
+                                <i class="bi bi-clipboard-data text-danger me-1"></i> Resumen
+                            </button>
+                        </li>
                     </ul>
 
                     <div class="tab-content border border-top-0 p-3 bg-white rounded-bottom" id="tabPresupuestoContent">
@@ -304,6 +315,15 @@ include '../../includes/sidebar.php';
                             </div>
                         </div>
 
+                        <!-- PESTAÑA 5: RESUMEN -->
+                        <div class="tab-pane fade" id="tab-res" role="tabpanel">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="fw-bold text-secondary mb-0"><i class="bi bi-clipboard-data me-2"></i> Resumen de recursos del presupuesto</h6>
+                                <span class="small text-muted">Suma de los insumos de todas las APU × cantidades del presupuesto (costos netos, sin K)</span>
+                            </div>
+                            <div id="resumenContenido"></div>
+                        </div>
+
                         <!-- PESTAÑA 4: CONDICIONES -->
                         <div class="tab-pane fade" id="tab-cond" role="tabpanel">
                             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -319,12 +339,29 @@ include '../../includes/sidebar.php';
                 </div>
 
                 <div class="modal-footer py-2 bg-light">
-                    <button type="button" class="btn btn-sm btn-light border" data-bs-dismiss="modal">Cancelar</button>
+                    <span id="lblEstadoGuardado" class="small text-muted me-auto"></span>
+                    <button type="button" class="btn btn-sm btn-light border" data-bs-dismiss="modal">Cerrar</button>
                     <button type="submit" class="btn btn-sm btn-dark" id="btnGuardarPresupuesto">
                         <i class="bi bi-save me-1"></i> Guardar Presupuesto
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: VER DETALLE DE UNA APU -->
+<div class="modal fade" id="modalVerAPU" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header py-2 bg-info bg-opacity-10">
+                <h5 class="modal-title fs-6 fw-bold"><i class="bi bi-eye me-2"></i><span id="verApuTitulo"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" id="verApuBody"></div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-sm btn-light border" data-bs-dismiss="modal">Cerrar</button>
+            </div>
         </div>
     </div>
 </div>
@@ -345,6 +382,9 @@ let condicionesTextoGlobal = "";
 let codigoSugeridoGlobal = "";
 let fechaHoyGlobal = "";
 let contadorRubros = 0;
+let apuDetallesGlobal = {};      // insumos de cada APU, indexado por id de tarea
+let cambiosSinGuardar = false;   // hay ediciones sin guardar en el modal
+let cierreConfirmado = false;    // el usuario confirmó que quiere cerrar
 
 // Instancias de TomSelect estáticos
 let tsFiltroCliente, tsPresCliente, tsPresObra;
@@ -428,6 +468,7 @@ document.addEventListener("DOMContentLoaded", function() {
             obrasGlobal = res.obras || [];
             coeficientesGlobal = res.coeficientes || [];
             tareasGlobal = res.tareas || [];
+            apuDetallesGlobal = res.apu_detalles || {};
             indirectosGlobal = res.indirectos || [];
             condicionesTextoGlobal = res.condiciones_texto || "";
             codigoSugeridoGlobal = res.codigo_sugerido || "";
@@ -534,6 +575,10 @@ document.addEventListener("DOMContentLoaded", function() {
             });
         });
 
+        const $btnGuardar = $('#btnGuardarPresupuesto');
+        const htmlBtnGuardar = $btnGuardar.html();
+        $btnGuardar.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Guardando...');
+
         $.ajax({
             url: URL_AJAX + '?accion=guardar',
             type: 'POST',
@@ -542,8 +587,14 @@ document.addEventListener("DOMContentLoaded", function() {
             dataType: 'json',
             success: function(res) {
                 if (res.success) {
-                    Swal.fire({ icon: 'success', title: 'Presupuesto Guardado', timer: 1500, showConfirmButton: false });
-                    modalPresBS.hide();
+                    // Importante: a partir de acá los guardados actualizan este mismo presupuesto
+                    $('#presupuesto_id').val(res.id);
+                    cambiosSinGuardar = false;
+
+                    const hora = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+                    $('#lblEstadoGuardado').html('<i class="bi bi-check-circle-fill text-success me-1"></i>Guardado a las ' + hora + ' (versión ' + res.version + ')');
+
+                    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Avance guardado', timer: 1800, showConfirmButton: false });
                     tablaPresupuestos.ajax.reload(null, false);
                 } else {
                     Swal.fire('Error', res.error || 'No se pudo guardar el presupuesto', 'error');
@@ -551,11 +602,15 @@ document.addEventListener("DOMContentLoaded", function() {
             },
             error: function() {
                 Swal.fire('Error', 'Ocurrió un problema de comunicación al guardar.', 'error');
+            },
+            complete: function() {
+                $btnGuardar.prop('disabled', false).html(htmlBtnGuardar);
             }
         });
     });
 
     calcularKGeneralMatMo();
+    initControlesPresupuesto();
 });
 
 function actualizarObrasCombo(cid) {
@@ -678,7 +733,7 @@ function editarPresupuesto(id) {
                             let tr = `<tr class="item-row">
                                 <td class="text-center fw-bold small item-num">${itemCode}</td>
                                 <td>
-                                    <select class="form-select form-select-sm item-tarea-select"></select>
+                                    <div class="d-flex align-items-center gap-1 apu-cell"><select class="form-select form-select-sm item-tarea-select"></select><button type="button" class="btn btn-sm btn-outline-info btn-ver-apu d-none text-nowrap" title="Ver detalle de la APU" onclick="verAPUDesdeFila(this)"><i class="bi bi-eye me-1"></i>Ver</button></div>
                                     <input type="hidden" class="item-detalle-hidden" value="${it.detalle || ''}">
                                 </td>
                                 <td><input type="text" class="form-control form-control-sm text-center item-unidad" value="${it.unidad || 'UN'}"></td>
@@ -757,7 +812,7 @@ function agregarItemARubro(rNum) {
     <tr class="item-row">
         <td class="text-center fw-bold small item-num">${itemCode}</td>
         <td>
-            <select class="form-select form-select-sm item-tarea-select"></select>
+            <div class="d-flex align-items-center gap-1 apu-cell"><select class="form-select form-select-sm item-tarea-select"></select><button type="button" class="btn btn-sm btn-outline-info btn-ver-apu d-none text-nowrap" title="Ver detalle de la APU" onclick="verAPUDesdeFila(this)"><i class="bi bi-eye me-1"></i>Ver</button></div>
             <input type="hidden" class="item-detalle-hidden" value="">
         </td>
         <td><input type="text" class="form-control form-control-sm text-center item-unidad" value="UN"></td>
@@ -802,6 +857,7 @@ function inicializarTomSelectFila(selectElem, tareaIdVal, detalleVal) {
                 $(row).find('.item-detalle-hidden').val(value || '');
             }
 
+            actualizarBotonVerAPU(selectElem, value);
             recalcularMatrizPresupuesto();
         }
     });
@@ -826,6 +882,8 @@ function inicializarTomSelectFila(selectElem, tareaIdVal, detalleVal) {
         ts.addOption({ id: detalleVal, text: detalleVal });
         ts.setValue(detalleVal);
     }
+
+    actualizarBotonVerAPU(selectElem, ts.getValue());
 }
 
 function reindexarRubrosEItems() {
@@ -1203,5 +1261,285 @@ function eliminarPresupuesto(id) {
             }, 'json');
         }
     });
+}
+
+// =====================================================================
+// CONTROL DE CIERRE Y GUARDADO PARCIAL DEL MODAL
+// =====================================================================
+function initControlesPresupuesto() {
+    const modalEl = document.getElementById('modalPresupuesto');
+
+    // Cualquier edición dentro del modal marca cambios pendientes
+    $(modalEl).on('input change', function() { cambiosSinGuardar = true; });
+
+    // Al terminar de abrir, lo cargado por código no cuenta como "cambio"
+    modalEl.addEventListener('shown.bs.modal', function() {
+        cambiosSinGuardar = false;
+        $('#lblEstadoGuardado').empty();
+    });
+
+    // Cualquier intento de cierre (X, Cerrar, ESC) pide confirmación
+    modalEl.addEventListener('hide.bs.modal', function(e) {
+        if (cierreConfirmado) { cierreConfirmado = false; return; }
+        e.preventDefault();
+        confirmarCierrePresupuesto();
+    });
+
+    // Al cerrar, volver a la primera pestaña para la próxima apertura
+    modalEl.addEventListener('hidden.bs.modal', function() {
+        cambiosSinGuardar = false;
+        bootstrap.Tab.getOrCreateInstance(document.getElementById('tab-pres-btn')).show();
+    });
+
+    // Aviso del navegador si intenta recargar o salir con cambios sin guardar
+    window.addEventListener('beforeunload', function(e) {
+        if (cambiosSinGuardar && $('#modalPresupuesto').hasClass('show')) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+
+    // Modal "Ver APU" apilado sobre el modal del presupuesto
+    const apuEl = document.getElementById('modalVerAPU');
+    apuEl.addEventListener('shown.bs.modal', function() {
+        $('.modal-backdrop').last().css('z-index', 1060);
+    });
+    apuEl.addEventListener('hidden.bs.modal', function() {
+        // Bootstrap quita "modal-open" del body al cerrar el segundo modal
+        if ($('#modalPresupuesto').hasClass('show')) $('body').addClass('modal-open');
+    });
+
+    // La pestaña Resumen se recalcula cada vez que se abre
+    document.getElementById('tab-res-btn').addEventListener('shown.bs.tab', actualizarResumenPresupuesto);
+}
+
+function confirmarCierrePresupuesto() {
+    Swal.fire({
+        icon: 'warning',
+        title: cambiosSinGuardar ? '¿Cerrar sin guardar?' : '¿Cerrar el presupuesto?',
+        text: cambiosSinGuardar
+            ? 'Hay cambios sin guardar que se van a perder.'
+            : 'Podés volver a abrirlo desde el listado.',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, cerrar',
+        cancelButtonText: 'Seguir editando',
+        reverseButtons: true,
+        focusCancel: true
+    }).then(function(r) {
+        if (r.isConfirmed) {
+            cierreConfirmado = true;
+            modalPresBS.hide();
+        }
+    });
+}
+
+// =====================================================================
+// UTILIDADES
+// =====================================================================
+function escapeHtml(s) {
+    return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function(c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+}
+
+function formatCantidad(n) {
+    return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 }).format(n || 0);
+}
+
+const TIPOS_APU = [
+    { key: 'MATERIAL',    titulo: 'Materiales',   icono: 'bi-box-seam', color: 'primary' },
+    { key: 'MO',          titulo: 'Mano de Obra', icono: 'bi-people',   color: 'success' },
+    { key: 'EQUIPO',      titulo: 'Equipos',      icono: 'bi-truck',    color: 'warning' },
+    { key: 'SUBCONTRATO', titulo: 'Subcontratos', icono: 'bi-diagram-2', color: 'secondary' }
+];
+
+// =====================================================================
+// BOTÓN "VER" DE LA APU + MODAL DE DETALLE
+// =====================================================================
+function actualizarBotonVerAPU(selectElem, value) {
+    const esApu = value !== '' && value !== null && value !== undefined &&
+                  tareasGlobal.some(function(t) { return String(t.id) === String(value); });
+    $(selectElem).closest('td').find('.btn-ver-apu').toggleClass('d-none', !esApu);
+}
+
+function verAPUDesdeFila(btn) {
+    const fila = $(btn).closest('tr');
+    const sel = fila.find('.item-tarea-select')[0];
+    const id = (sel && sel.tomselect) ? sel.tomselect.getValue() : '';
+    const cant = parseFloat(fila.find('.item-cant').val()) || 0;
+    verAPU(id, cant);
+}
+
+function verAPU(tareaId, cantidadItem) {
+    const t = tareasGlobal.find(function(x) { return String(x.id) === String(tareaId); });
+    if (!t) return;
+
+    const detalles = apuDetallesGlobal[t.id] || [];
+    $('#verApuTitulo').text('[' + (t.codigo || '-') + '] ' + t.nombre);
+
+    let html = '<div class="row g-2 mb-2">' +
+        '<div class="col-md-3"><div class="border rounded p-2 bg-light h-100"><div class="small text-muted">Unidad</div><div class="fw-bold">' + escapeHtml(t.unidad || '-') + '</div></div></div>' +
+        '<div class="col-md-3"><div class="border rounded p-2 bg-light h-100"><div class="small text-muted">Costo unitario neto (APU)</div><div class="fw-bold">' + formatMoneda(t.costo_unitario_total) + '</div></div></div>' +
+        '<div class="col-md-3"><div class="border rounded p-2 bg-light h-100"><div class="small text-muted">Cantidad en este presupuesto</div><div class="fw-bold">' + formatCantidad(cantidadItem) + ' ' + escapeHtml(t.unidad || '') + '</div></div></div>' +
+        '<div class="col-md-3"><div class="border rounded p-2 bg-light h-100"><div class="small text-muted">Costo neto total (x cantidad)</div><div class="fw-bold text-success">' + formatMoneda((t.costo_unitario_total || 0) * (cantidadItem || 0)) + '</div></div></div>' +
+        '</div>';
+
+    if (t.observaciones) {
+        html += '<div class="alert alert-light border small py-2 mb-2" style="white-space: pre-line;">' + escapeHtml(t.observaciones) + '</div>';
+    }
+
+    if (detalles.length === 0) {
+        html += '<div class="alert alert-warning mb-0">Esta APU no tiene insumos cargados; solo tiene el costo unitario total.</div>';
+    }
+
+    TIPOS_APU.forEach(function(tipo) {
+        const filas = detalles.filter(function(d) { return d.tipo === tipo.key; });
+        if (filas.length === 0) return;
+
+        let subtotalTipo = 0;
+        let rowsHtml = '';
+        filas.forEach(function(d) {
+            const sub = d.cantidad * d.precio_unitario;
+            subtotalTipo += sub;
+            rowsHtml += '<tr>' +
+                '<td>' + escapeHtml(d.descripcion) +
+                    (d.observaciones ? '<div class="text-muted" style="font-size: 0.75rem;">' + escapeHtml(d.observaciones) + '</div>' : '') + '</td>' +
+                '<td class="text-center">' + escapeHtml(d.unidad) + '</td>' +
+                '<td class="text-end">' + formatCantidad(d.cantidad) + '</td>' +
+                '<td class="text-end">' + formatMoneda(d.precio_unitario) + '</td>' +
+                '<td class="text-end">' + formatMoneda(sub) + '</td>' +
+                '<td class="text-end fw-semibold">' + formatMoneda(sub * (cantidadItem || 0)) + '</td>' +
+                '</tr>';
+        });
+
+        html += '<h6 class="fw-bold mt-3 mb-1 text-' + tipo.color + '"><i class="bi ' + tipo.icono + ' me-1"></i>' + tipo.titulo + '</h6>' +
+            '<table class="table table-sm table-bordered align-middle small mb-0">' +
+            '<thead class="table-light"><tr>' +
+                '<th>Descripción</th>' +
+                '<th class="text-center" style="width: 70px;">Unid.</th>' +
+                '<th class="text-end" style="width: 100px;">Cant.</th>' +
+                '<th class="text-end" style="width: 130px;">P. Unit.</th>' +
+                '<th class="text-end" style="width: 130px;">Subtotal</th>' +
+                '<th class="text-end" style="width: 150px;">Total x cant.</th>' +
+            '</tr></thead>' +
+            '<tbody>' + rowsHtml + '</tbody>' +
+            '<tfoot><tr class="table-light fw-bold">' +
+                '<td colspan="4" class="text-end">Subtotal ' + tipo.titulo + '</td>' +
+                '<td class="text-end">' + formatMoneda(subtotalTipo) + '</td>' +
+                '<td class="text-end">' + formatMoneda(subtotalTipo * (cantidadItem || 0)) + '</td>' +
+            '</tr></tfoot></table>';
+    });
+
+    $('#verApuBody').html(html);
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalVerAPU')).show();
+}
+
+// =====================================================================
+// PESTAÑA RESUMEN: horas, materiales, equipos y subcontratos totales
+// =====================================================================
+function totalesPorUnidad(grupo) {
+    const t = {};
+    Object.keys(grupo).forEach(function(k) {
+        const g = grupo[k];
+        t[g.unidad] = (t[g.unidad] || 0) + g.cantidad;
+    });
+    const txt = Object.keys(t).map(function(u) { return (formatCantidad(t[u]) + ' ' + u).trim(); }).join(' · ');
+    return txt || '0';
+}
+
+function costoDeGrupo(grupo) {
+    return Object.keys(grupo).reduce(function(acc, k) { return acc + grupo[k].costo; }, 0);
+}
+
+function tarjetaResumen(titulo, valor, sub, color, icono) {
+    return '<div class="col-md-3"><div class="card border-' + color + ' h-100"><div class="card-body p-2 text-center">' +
+        '<div class="small text-muted fw-semibold text-uppercase"><i class="bi ' + icono + ' me-1"></i>' + titulo + '</div>' +
+        '<div class="fs-5 fw-bold text-' + color + '">' + valor + '</div>' +
+        '<div class="small text-muted">' + sub + '</div>' +
+        '</div></div></div>';
+}
+
+function tablaResumen(tipo, grupo) {
+    const claves = Object.keys(grupo).sort(function(a, b) {
+        return grupo[a].descripcion.localeCompare(grupo[b].descripcion, 'es');
+    });
+    if (claves.length === 0) return '';
+
+    let rows = '';
+    claves.forEach(function(k) {
+        const g = grupo[k];
+        rows += '<tr><td>' + escapeHtml(g.descripcion) + '</td>' +
+            '<td class="text-center">' + escapeHtml(g.unidad) + '</td>' +
+            '<td class="text-end fw-semibold">' + formatCantidad(g.cantidad) + '</td>' +
+            '<td class="text-end">' + formatMoneda(g.costo) + '</td></tr>';
+    });
+
+    return '<div class="col-lg-6"><h6 class="fw-bold mb-1 text-' + tipo.color + '"><i class="bi ' + tipo.icono + ' me-1"></i>' + tipo.titulo + '</h6>' +
+        '<table class="table table-sm table-bordered align-middle small mb-0">' +
+        '<thead class="table-light"><tr><th>Descripción</th><th class="text-center" style="width: 70px;">Unid.</th>' +
+        '<th class="text-end" style="width: 110px;">Cant. total</th><th class="text-end" style="width: 140px;">Costo neto</th></tr></thead>' +
+        '<tbody>' + rows + '</tbody>' +
+        '<tfoot><tr class="table-light fw-bold"><td colspan="2" class="text-end">Total</td>' +
+        '<td class="text-end">' + escapeHtml(totalesPorUnidad(grupo)) + '</td>' +
+        '<td class="text-end">' + formatMoneda(costoDeGrupo(grupo)) + '</td></tr></tfoot></table></div>';
+}
+
+function actualizarResumenPresupuesto() {
+    const acum = { MATERIAL: {}, MO: {}, EQUIPO: {}, SUBCONTRATO: {} };
+    let itemsConApu = 0;
+    let itemsSinApu = 0;
+
+    $('.rubro-block tr.item-row').each(function() {
+        const cant = parseFloat($(this).find('.item-cant').val()) || 0;
+        const sel = $(this).find('.item-tarea-select')[0];
+        const val = (sel && sel.tomselect) ? sel.tomselect.getValue() : '';
+        if (!val) return; // fila vacía
+
+        const detalles = apuDetallesGlobal[val];
+        if (!detalles || detalles.length === 0) { itemsSinApu++; return; }
+        itemsConApu++;
+
+        detalles.forEach(function(d) {
+            const grupo = acum[d.tipo];
+            if (!grupo) return;
+            const unidad = (d.unidad || '').toUpperCase();
+            const clave = (d.descripcion || '').trim().toUpperCase() + '|' + unidad;
+            if (!grupo[clave]) grupo[clave] = { descripcion: (d.descripcion || '').trim(), unidad: unidad, cantidad: 0, costo: 0 };
+            grupo[clave].cantidad += d.cantidad * cant;
+            grupo[clave].costo += d.cantidad * d.precio_unitario * cant;
+        });
+    });
+
+    if (itemsConApu === 0) {
+        $('#resumenContenido').html('<div class="alert alert-info mb-0">Todavía no hay tareas APU seleccionadas. Elegí APU en la pestaña Presupuesto para ver el resumen de horas, materiales y equipos.</div>');
+        return;
+    }
+
+    const costoTotal = costoDeGrupo(acum.MATERIAL) + costoDeGrupo(acum.MO) + costoDeGrupo(acum.EQUIPO) + costoDeGrupo(acum.SUBCONTRATO);
+
+    let html = '';
+    if (itemsSinApu > 0) {
+        html += '<div class="alert alert-warning py-2 small"><i class="bi bi-exclamation-triangle me-1"></i>' +
+            itemsSinApu + ' ítem(s) no tienen una APU con insumos cargados (detalle libre o APU sin desglose), por lo que no se incluyen en este resumen.</div>';
+    }
+
+    html += '<div class="row g-2 mb-3">' +
+        tarjetaResumen('Mano de obra', escapeHtml(totalesPorUnidad(acum.MO)), formatMoneda(costoDeGrupo(acum.MO)) + ' neto', 'success', 'bi-people') +
+        tarjetaResumen('Materiales', Object.keys(acum.MATERIAL).length + ' insumos', formatMoneda(costoDeGrupo(acum.MATERIAL)) + ' neto', 'primary', 'bi-box-seam') +
+        tarjetaResumen('Equipos', escapeHtml(totalesPorUnidad(acum.EQUIPO)), formatMoneda(costoDeGrupo(acum.EQUIPO)) + ' neto', 'warning', 'bi-truck') +
+        tarjetaResumen('Subcontratos', Object.keys(acum.SUBCONTRATO).length + ' ítems', formatMoneda(costoDeGrupo(acum.SUBCONTRATO)) + ' neto', 'secondary', 'bi-diagram-2') +
+        '</div>';
+
+    html += '<div class="row g-3">' +
+        tablaResumen(TIPOS_APU[1], acum.MO) +
+        tablaResumen(TIPOS_APU[0], acum.MATERIAL) +
+        tablaResumen(TIPOS_APU[2], acum.EQUIPO) +
+        tablaResumen(TIPOS_APU[3], acum.SUBCONTRATO) +
+        '</div>';
+
+    html += '<div class="text-end mt-3"><span class="text-muted small me-2">Costo directo neto (sin K):</span>' +
+        '<span class="fw-bold fs-5">' + formatMoneda(costoTotal) + '</span></div>';
+
+    $('#resumenContenido').html(html);
 }
 </script>

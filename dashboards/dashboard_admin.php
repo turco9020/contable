@@ -1,7 +1,7 @@
-<!-- FILA 1: KPIs FINANCIEROS (5 TARJETAS COMPACTAS) -->
+<!-- FILA 1: KPIs FINANCIEROS (6 TARJETAS COMPACTAS) -->
 <div class="row g-2 mb-3">
     <!-- Gastos (Actual vs Anterior) -->
-    <div class="col-12 col-md-4 col-xl-2.4" style="width: 20%;">
+    <div class="col-12 col-md-4 col-xl-2" style="width: 16.66%;">
         <div class="card shadow-sm border-0 border-start border-danger border-3 p-2 bg-white h-100">
             <span class="text-muted fw-semibold text-uppercase" style="font-size: 9.5px;">Gastos</span>
             <div id="gastosMes" class="fw-bold text-danger fs-5 mt-1">$ 0,00</div>
@@ -13,7 +13,7 @@
     </div>
 
     <!-- Ventas (Actual vs Anterior) -->
-    <div class="col-12 col-md-4 col-xl-2.4" style="width: 20%;">
+    <div class="col-12 col-md-4 col-xl-2" style="width: 16.66%;">
         <div class="card shadow-sm border-0 border-start border-info border-3 p-2 bg-white h-100">
             <span class="text-muted fw-semibold text-uppercase" style="font-size: 9.5px;">Ventas</span>
             <div id="ventasMes" class="fw-bold text-info fs-5 mt-1">$ 0,00</div>
@@ -25,7 +25,7 @@
     </div>
 
     <!-- Rentabilidad (Actual vs Anterior) -->
-    <div class="col-12 col-md-4 col-xl-2.4" style="width: 20%;">
+    <div class="col-12 col-md-4 col-xl-2" style="width: 16.66%;">
         <div class="card shadow-sm border-0 border-start border-success border-3 p-2 bg-white h-100">
             <span class="text-muted fw-semibold text-uppercase" style="font-size: 9.5px;">Rentabilidad Neta</span>
             <div id="rentabilidadMes" class="fw-bold text-success fs-5 mt-1">$ 0,00</div>
@@ -37,7 +37,7 @@
     </div>
 
     <!-- DIFERENCIA DE IVA (VENTAS - COMPRAS) -->
-    <div class="col-12 col-md-4 col-xl-2.4" style="width: 20%;">
+    <div class="col-12 col-md-4 col-xl-2" style="width: 16.66%;">
         <div class="card shadow-sm border-0 border-start border-warning border-3 p-2 bg-white h-100">
             <span class="text-muted fw-semibold text-uppercase" style="font-size: 9.5px;">Dif. IVA (Ventas - Compras)</span>
             <div id="diferenciaIva" class="fw-bold text-dark fs-5 mt-1">$ 0,00</div>
@@ -48,8 +48,23 @@
         </div>
     </div>
 
+    <!-- IIBB SEGÚN LO FACTURADO (NETO x ALÍCUOTA DE CADA FACTURA) -->
+    <div class="col-12 col-md-4 col-xl-2" style="width: 16.66%;">
+        <div class="card shadow-sm border-0 border-start border-primary border-3 p-2 bg-white h-100">
+            <span class="text-muted fw-semibold text-uppercase" style="font-size: 9.5px;">
+                IIBB (s/ Facturado)
+                <i id="iibbAviso" class="bi bi-exclamation-triangle-fill text-warning ms-1 d-none" title=""></i>
+            </span>
+            <div id="iibbMes" class="fw-bold text-primary fs-5 mt-1">$ 0,00</div>
+            <div class="text-muted border-top pt-1 mt-1 d-flex justify-content-between align-items-center" style="font-size: 10px;">
+                <span>Mes Ant:</span>
+                <span id="iibbMesAnterior" class="fw-semibold text-secondary">$ 0,00</span>
+            </div>
+        </div>
+    </div>
+
     <!-- CHEQUES EMITIDOS A CUBRIR -->
-    <div class="col-12 col-md-4 col-xl-2.4" style="width: 20%;">
+    <div class="col-12 col-md-4 col-xl-2" style="width: 16.66%;">
         <div class="card shadow-sm border-0 border-start border-dark border-3 p-2 bg-white h-100">
             <span class="text-muted fw-semibold text-uppercase" style="font-size: 9.5px;"><i class="bi bi-card-checklist me-1"></i>Cheques Emitidos a Cubrir</span>
             <div id="chequesEmitidosMes" class="fw-bold text-dark fs-6 mt-1"><span id="chequesEmitidosMesValor">$ 0,00</span> <small class="text-muted fw-normal" style="font-size: 9px;">(Este mes)</small>

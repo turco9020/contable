@@ -71,6 +71,23 @@ $retencionesMes = (float)($conn->query($sqlRetenciones)->fetch_assoc()['total'] 
 
 
 // =========================
+// IIBB SEGÚN LO FACTURADO (MES ACTUAL Y ANTERIOR)
+// Neto x alícuota guardada en cada factura al momento de facturar
+// =========================
+$sqlIibb = "
+SELECT
+    IFNULL(SUM(CASE WHEN MONTH(fecha) = MONTH(CURDATE()) AND YEAR(fecha) = YEAR(CURDATE()) THEN neto * IFNULL(iibb_alicuota, 0) / 100 ELSE 0 END), 0) AS mes_actual,
+    IFNULL(SUM(CASE WHEN MONTH(fecha) = MONTH(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) AND YEAR(fecha) = YEAR(DATE_SUB(CURDATE(), INTERVAL 1 MONTH)) THEN neto * IFNULL(iibb_alicuota, 0) / 100 ELSE 0 END), 0) AS mes_anterior,
+    IFNULL(SUM(CASE WHEN MONTH(fecha) = MONTH(CURDATE()) AND YEAR(fecha) = YEAR(CURDATE()) AND iibb_actividad_id IS NULL THEN 1 ELSE 0 END), 0) AS sin_alicuota_mes
+FROM facturas_venta
+";
+$rIibb = $conn->query($sqlIibb)->fetch_assoc();
+$iibbMes = round((float)($rIibb['mes_actual'] ?? 0), 2);
+$iibbMesAnterior = round((float)($rIibb['mes_anterior'] ?? 0), 2);
+$iibbSinAlicuotaMes = (int)($rIibb['sin_alicuota_mes'] ?? 0);
+
+
+// =========================
 // CHEQUES EMITIDOS A CUBRIR
 // =========================
 $sqlChequesMes = "
@@ -355,6 +372,9 @@ echo json_encode([
     "rentabilidad_mes_anterior" => $rentabilidadMesAnterior,
     "diferencia_iva"        => $diferenciaIva,
     "retenciones_mes"       => $retencionesMes,
+    "iibb_mes"              => $iibbMes,
+    "iibb_mes_anterior"     => $iibbMesAnterior,
+    "iibb_sin_alicuota_mes" => $iibbSinAlicuotaMes,
     "cheques_emitidos_mes"  => $chequesEmitidosMes,
     "cheques_emitidos_total"=> $chequesEmitidosTotal,
     "rubros_mes"            => $rubrosMes,

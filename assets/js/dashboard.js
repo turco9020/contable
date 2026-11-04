@@ -82,6 +82,15 @@ if (typeof window.dashboardInicializado !== 'undefined') {
                 if ($('#rentabilidadMesAnterior').length) $('#rentabilidadMesAnterior').html(formatoMoneda(data.rentabilidad_mes_anterior));
                 if ($('#diferenciaIva').length) $('#diferenciaIva').html(formatoMoneda(data.diferencia_iva));
                 if ($('#retencionesMes').length) $('#retencionesMes').html(formatoMoneda(data.retenciones_mes));
+                if ($('#iibbMes').length) $('#iibbMes').html(formatoMoneda(data.iibb_mes));
+                if ($('#iibbMesAnterior').length) $('#iibbMesAnterior').html(formatoMoneda(data.iibb_mes_anterior));
+                if ($('#iibbAviso').length) {
+                    // Aviso si hay facturas del mes sin alícuota IIBB (no suman al total)
+                    let sinAlicuota = parseInt(data.iibb_sin_alicuota_mes || 0);
+                    $('#iibbAviso')
+                        .toggleClass('d-none', sinAlicuota === 0)
+                        .attr('title', sinAlicuota + (sinAlicuota === 1 ? ' factura del mes no tiene' : ' facturas del mes no tienen') + ' alícuota IIBB y no se incluyen en el total');
+                }
                 if ($('#chequesEmitidosMesValor').length) {$('#chequesEmitidosMesValor').html(formatoMoneda(data.cheques_emitidos_mes));}
                 if ($('#chequesEmitidosTotal').length) $('#chequesEmitidosTotal').html(formatoMoneda(data.cheques_emitidos_total));
 

@@ -291,6 +291,7 @@
                 <a href="/contable/modules/config/tipos_comprobante/" class="menu-link">Tipos de Comprobante</a>
                 <a href="/contable/modules/config/retenciones/" class="menu-link">Tipos de Retenciones</a>
                 <a href="/contable/modules/config/cajas/" class="menu-link">Cajas</a>
+                <a href="/contable/modules/config/configuracion/" class="menu-link"><i class="bi bi-gear me-2"></i>Configuración</a>
                 <hr>
                 <a href="/contable/modules/usuarios/" class="menu-link"><i class="bi bi-people"></i> Usuarios</a>
                 <a href="/contable/modules/roles/" class="menu-link"><i class="bi bi-shield-lock"></i> Roles</a>

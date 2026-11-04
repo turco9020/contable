@@ -8,12 +8,15 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/auth.php';
 
 header('Content-Type: application/json');
 
-if (!esAdmin()) {
+$accion = $_GET['accion'] ?? '';
+
+// Listar está disponible para cualquier usuario logueado (ej: el select de Facturación);
+// guardar y eliminar quedan solo para admin
+$acciones_lectura = ['iibb_listar'];
+if (!in_array($accion, $acciones_lectura) && !esAdmin()) {
     echo json_encode(['status' => 'ERROR', 'msg' => 'Sin permisos']);
     exit;
 }
-
-$accion = $_GET['accion'] ?? '';
 
 // =====================================================================
 // PESTAÑA: PORCENTAJES IIBB

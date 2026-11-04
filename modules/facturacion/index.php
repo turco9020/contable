@@ -128,19 +128,25 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
                             <textarea name="detalle" id="detalle" class="form-control" rows="3" placeholder="Descripción de los artículos o servicios prestados..." required></textarea>
                         </div>
 
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label">Importe Neto</label>
-                            <input type="number" step="0.01" name="neto" id="neto" class="form-control" value="0.00" required>
+                            <input type="text" inputmode="decimal" name="neto" id="neto" class="form-control text-end input-monto" value="0,00" required>
                         </div>
 
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label">IVA</label>
-                            <input type="number" step="0.01" name="iva" id="iva" class="form-control" value="0.00" required>
+                            <input type="text" inputmode="decimal" name="iva" id="iva" class="form-control text-end input-monto" value="0,00" required>
                         </div>
 
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label">Importe Total</label>
-                            <input type="number" step="0.01" name="total" id="total" class="form-control" value="0.00" required>
+                            <input type="text" inputmode="decimal" name="total" id="total" class="form-control text-end input-monto" value="0,00" required>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label">Alícuota IIBB</label>
+                            <select name="iibb_actividad_id" id="iibb_actividad_id" class="form-select"></select>
+                            <div class="form-text small mt-1" id="iibb_importe"></div>
                         </div>
 
                         <div class="col-12">
@@ -247,11 +253,55 @@ let tabla;
 let modalFactura;
 let globalClientesParaMapeo = [];
 let estadoPestañaActual = 'POR_COBRAR';
+let buscadoresTom = {};
 
 // ==========================================
 // VARIABLES DE RETENCIONES
 // ==========================================
 let modalRetencionesBS;
+
+// ==========================================
+// FORMATO DE IMPORTES (1.234.567,89)
+// ==========================================
+function parseMonto(v) {
+    let s = String(v === null || v === undefined ? '' : v).trim().replace(/[^\d.,-]/g, '');
+    if (s === '') return 0;
+    if (s.includes(',')) {
+        // Formato argentino: el punto es de miles y la coma decimal
+        s = s.replace(/\./g, '').replace(',', '.');
+    } else if (!/^-?\d+\.\d{1,2}$/.test(s)) {
+        // Sin coma: un punto seguido de 1 o 2 dígitos es decimal (ej: 1500.5), si no es de miles
+        s = s.replace(/\./g, '');
+    }
+    let n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+}
+
+function formatMonto(n) {
+    return Number(n || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// ==========================================
+// ALÍCUOTA IIBB
+// ==========================================
+function etiquetaIIBB(alicuota, actividad, tratamiento) {
+    let tieneAlicuota = alicuota !== null && alicuota !== undefined && alicuota !== '';
+    let pct = tieneAlicuota
+        ? Number(alicuota).toLocaleString('es-AR', { maximumFractionDigits: 3 }) + ' %'
+        : (tratamiento || 'Sin alícuota');
+    return pct + ' - ' + actividad;
+}
+
+function actualizarImporteIIBB() {
+    let opt = $('#iibb_actividad_id option:selected');
+    let ali = opt.attr('data-alicuota');
+    if (!opt.val() || ali === undefined || ali === '') {
+        $('#iibb_importe').text('');
+        return;
+    }
+    let importe = parseMonto($('#neto').val()) * parseFloat(ali) / 100;
+    $('#iibb_importe').text('IIBB: $ ' + formatMonto(importe));
+}
 
 $.fn.dataTable.ext.search.push(
     function(settings, data, dataIndex, rowData) {
@@ -454,10 +504,20 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     $('#neto, #iva').on('input', function(){
-        let n = parseFloat($('#neto').val()) || 0;
-        let i = parseFloat($('#iva').val()) || 0;
-        $('#total').val((n + i).toFixed(2));
+        let n = parseMonto($('#neto').val());
+        let i = parseMonto($('#iva').val());
+        $('#total').val(formatMonto(n + i));
+        actualizarImporteIIBB();
     });
+
+    // Al salir del campo se muestra con punto de miles y coma decimal
+    $('.input-monto').on('blur', function(){
+        $(this).val(formatMonto(parseMonto($(this).val())));
+    }).on('focus', function(){
+        this.select();
+    });
+
+    $('#iibb_actividad_id').on('change', actualizarImporteIIBB);
 
     // ==========================================
     // PARSER AFIP MEDIANTE PDF.JS
@@ -550,7 +610,11 @@ document.addEventListener("DOMContentLoaded", function() {
                                         return cuitDB === numeroCuitPDF;
                                     });
                                     if (encontrado) {
-                                        $('#cliente_id').val(encontrado.id);
+                                        if (buscadoresTom['#cliente_id']) {
+                                            buscadoresTom['#cliente_id'].setValue(encontrado.id);
+                                        } else {
+                                            $('#cliente_id').val(encontrado.id);
+                                        }
                                         break;
                                     }
                                 }
@@ -575,16 +639,17 @@ document.addEventListener("DOMContentLoaded", function() {
 
                             if(matchNeto) {
                                 let neto = matchNeto[1].replace(/\./g, '').replace(',', '.');
-                                $('#neto').val(parseFloat(neto).toFixed(2));
+                                $('#neto').val(formatMonto(parseFloat(neto)));
                             }
                             if(matchIva) {
                                 let iva = matchIva[1].replace(/\./g, '').replace(',', '.');
-                                $('#iva').val(parseFloat(iva).toFixed(2));
+                                $('#iva').val(formatMonto(parseFloat(iva)));
                             }
                             if(matchTotal) {
                                 let total = matchTotal[1].replace(/\./g, '').replace(',', '.');
-                                $('#total').val(parseFloat(total).toFixed(2));
+                                $('#total').val(formatMonto(parseFloat(total)));
                             }
+                            actualizarImporteIIBB();
 
                             let cartel = document.createElement("div");
                             cartel.className = "alert alert-success mt-2 py-1 eval-aviso";
@@ -603,8 +668,34 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 });
 
+function aplicarBuscadores() {
+    const IDs = ['#cliente_id', '#obra_id'];
+
+    IDs.forEach(id => {
+        let el = document.querySelector(id);
+        if (!el) return;
+
+        if (buscadoresTom[id]) {
+            buscadoresTom[id].destroy();
+        }
+
+        buscadoresTom[id] = new TomSelect(el, {
+            create: false,
+            sortField: { field: "text", order: "asc" },
+            placeholder: "-- Seleccionar o Buscar --",
+            allowEmptyOption: true
+        });
+    });
+}
+
 function cargarSelects(callback = null) {
     let peticiones = [];
+
+    // Se quitan los buscadores para recargar las opciones del select original
+    Object.keys(buscadoresTom).forEach(id => {
+        buscadoresTom[id].destroy();
+        delete buscadoresTom[id];
+    });
 
     peticiones.push($.get('/contable/ajax/clientes.php?accion=listar', function(r) {
         let s = $('#cliente_id').empty().append('<option value="">Seleccione Cliente</option>');
@@ -627,9 +718,27 @@ function cargarSelects(callback = null) {
         if(r.data) r.data.forEach(x => s.append(`<option value="${x.id}">🚧 ${x.nombre}  [ID: ${x.id}]</option>`));
     }, 'json'));
 
-    if(callback) {
-        $.when.apply($, peticiones).then(callback);
-    }
+    peticiones.push($.get('/contable/ajax/configuracion.php?accion=iibb_listar', function(r) {
+        let s = $('#iibb_actividad_id').empty().append('<option value="">-- Sin IIBB --</option>');
+        let activas = (r.data || []).filter(x => x.activo == 1);
+        activas.forEach(x => {
+            $('<option>')
+                .val(x.id)
+                .text(etiquetaIIBB(x.alicuota, x.actividad, x.tratamiento))
+                .attr('data-alicuota', x.alicuota !== null ? x.alicuota : '')
+                .appendTo(s);
+        });
+        // En una factura nueva, si hay una sola actividad activa se elige sola
+        if (!$('#id').val() && activas.length === 1) s.val(activas[0].id);
+        actualizarImporteIIBB();
+    }, 'json'));
+
+    // Primero se cargan los valores (al editar) y después se crean los buscadores,
+    // así Tom Select arranca con la opción ya elegida
+    $.when.apply($, peticiones).then(function() {
+        if(callback) callback();
+        aplicarBuscadores();
+    });
 }
 
 window.abrirModal = function() {
@@ -642,7 +751,8 @@ window.abrirModal = function() {
     $('#estado').val('DEBE');
     $('#id').val('');
     $('#archivo_actual').html('');
-    
+    $('#iibb_importe').text('');
+
     cargarSelects();
     modalFactura.show();
 }
@@ -669,9 +779,10 @@ window.editarFactura = function(data) {
     $('#nro_factura').val(data.nro_factura);
     $('#fecha_vencimiento').val(data.fecha_vencimiento);
     $('#detalle').val(data.detalle);
-    $('#neto').val(data.neto);
-    $('#iva').val(data.iva);
-    $('#total').val(data.total);
+    $('#neto').val(formatMonto(data.neto));
+    $('#iva').val(formatMonto(data.iva));
+    $('#total').val(formatMonto(data.total));
+    $('#iibb_importe').text('');
     $('#observaciones').val(data.observaciones);
     $('#estado').val(data.estado ? data.estado : 'DEBE');
 
@@ -680,6 +791,20 @@ window.editarFactura = function(data) {
         $('#cliente_id').val(data.cliente_id);
         $('#centro_costo_id').val(data.centro_costo_id);
         $('#obra_id').val(data.obra_id || "");
+
+        // IIBB: se muestra la alícuota guardada en la factura (puede diferir de la actual)
+        // y si la actividad ya no está activa se agrega igual al select
+        let selIIBB = $('#iibb_actividad_id');
+        if (data.iibb_actividad_id) {
+            let opt = selIIBB.find(`option[value="${data.iibb_actividad_id}"]`);
+            if (!opt.length) opt = $('<option>').val(data.iibb_actividad_id).appendTo(selIIBB);
+            opt.text(etiquetaIIBB(data.iibb_alicuota, data.iibb_actividad || 'Actividad eliminada', data.iibb_tratamiento))
+               .attr('data-alicuota', data.iibb_alicuota !== null ? data.iibb_alicuota : '');
+            selIIBB.val(data.iibb_actividad_id);
+        } else {
+            selIIBB.val('');
+        }
+        actualizarImporteIIBB();
     });
 
     if(data.archivo){
@@ -694,6 +819,11 @@ window.editarFactura = function(data) {
 $('#formFactura').submit(function(e) {
     e.preventDefault();
     let formData = new FormData(this);
+
+    // Los importes se muestran como 1.234,56 pero al servidor van como número (1234.56)
+    ['neto', 'iva', 'total'].forEach(campo => {
+        formData.set(campo, parseMonto($('#' + campo).val()).toFixed(2));
+    });
 
     let inputReal = document.getElementById('archivo');
     let inputEscaneo = document.getElementById('archivo_escanear');

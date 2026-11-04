@@ -42,6 +42,11 @@ if($accion == 'listar'){
             f.tipo_comprobante_id,
             f.centro_costo_id,
             f.obra_id,
+            f.iibb_actividad_id,
+            f.iibb_alicuota,
+            ia.codigo AS iibb_codigo,
+            ia.actividad AS iibb_actividad,
+            ia.tratamiento AS iibb_tratamiento,
             f.estado,
             f.usuario_id,
             IFNULL(u.usuario, 'Sistema') AS usuario_nombre,
@@ -52,7 +57,8 @@ if($accion == 'listar'){
         LEFT JOIN clientes c ON c.id = f.cliente_id
         LEFT JOIN tipos_comprobante tc ON tc.id = f.tipo_comprobante_id
         LEFT JOIN centros_costos cc ON cc.id = f.centro_costo_id
-        LEFT JOIN usuarios u ON u.id = f.usuario_id 
+        LEFT JOIN usuarios u ON u.id = f.usuario_id
+        LEFT JOIN config_iibb_actividades ia ON ia.id = f.iibb_actividad_id
         $where
         ORDER BY f.fecha DESC, f.id DESC
     ";
@@ -96,7 +102,30 @@ if($accion == 'guardar'){
     
     // CAPTURA Y PROCESAMIENTO DEL CAMPO NUEVO (OBRA)
     $obra_id = !empty($_POST['obra_id']) ? (int)$_POST['obra_id'] : "NULL";
-    
+
+    // ALÍCUOTA IIBB: se guarda una copia del porcentaje al momento de facturar,
+    // así los reportes no cambian si después se actualiza la alícuota en Configuración
+    $iibb_actividad_id = !empty($_POST['iibb_actividad_id']) ? (int)$_POST['iibb_actividad_id'] : 0;
+    $iibb_alicuota = "NULL";
+    if($iibb_actividad_id){
+        // Si se edita sin cambiar de actividad, se conserva la alícuota original
+        if($id){
+            $res_ant = $conn->query("SELECT iibb_actividad_id, iibb_alicuota FROM facturas_venta WHERE id=" . (int)$id);
+            $ant = $res_ant ? $res_ant->fetch_assoc() : null;
+            if($ant && (int)$ant['iibb_actividad_id'] === $iibb_actividad_id && $ant['iibb_alicuota'] !== null){
+                $iibb_alicuota = (float)$ant['iibb_alicuota'];
+            }
+        }
+        if($iibb_alicuota === "NULL"){
+            $res_ali = $conn->query("SELECT alicuota FROM config_iibb_actividades WHERE id=$iibb_actividad_id");
+            $ali = $res_ali ? $res_ali->fetch_assoc() : null;
+            if($ali && $ali['alicuota'] !== null){
+                $iibb_alicuota = (float)$ali['alicuota'];
+            }
+        }
+    }
+    $iibb_actividad_sql = $iibb_actividad_id ? $iibb_actividad_id : "NULL";
+
     // Procesar archivo
     $archivo_nombre = null;
     if(isset($_FILES['archivo']) && $_FILES['archivo']['error'] == 0){
@@ -123,7 +152,9 @@ if($accion == 'guardar'){
                     detalle='$detalle',
                     neto=$neto, 
                     iva=$iva, 
-                    total=$total, 
+                    total=$total,
+                    iibb_actividad_id=$iibb_actividad_sql,
+                    iibb_alicuota=$iibb_alicuota,
                     observaciones='$observaciones',
                     centro_costo_id=$centro_costo_id,
                     obra_id=$obra_id,
@@ -142,8 +173,8 @@ if($accion == 'guardar'){
         
     } else {
         // NUEVO 
-        $sql = "INSERT INTO facturas_venta (fecha, tipo_comprobante_id, cliente_id, punto_venta, nro_factura, fecha_vencimiento, detalle, neto, iva, total, observaciones, centro_costo_id, obra_id, archivo, estado, usuario_id) 
-                VALUES ('$fecha', $tipo_comprobante_id, $cliente_id, $punto_venta, $nro_factura, $fecha_vencimiento, '$detalle', $neto, $iva, $total, '$observaciones', $centro_costo_id, $obra_id, " . ($archivo_nombre ? "'$archivo_nombre'" : "NULL") . ", '$estado', $usuario)";
+        $sql = "INSERT INTO facturas_venta (fecha, tipo_comprobante_id, cliente_id, punto_venta, nro_factura, fecha_vencimiento, detalle, neto, iva, total, iibb_actividad_id, iibb_alicuota, observaciones, centro_costo_id, obra_id, archivo, estado, usuario_id)
+                VALUES ('$fecha', $tipo_comprobante_id, $cliente_id, $punto_venta, $nro_factura, $fecha_vencimiento, '$detalle', $neto, $iva, $total, $iibb_actividad_sql, $iibb_alicuota, '$observaciones', $centro_costo_id, $obra_id, " . ($archivo_nombre ? "'$archivo_nombre'" : "NULL") . ", '$estado', $usuario)";
     }
     
     if($conn->query($sql)){

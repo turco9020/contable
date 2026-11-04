@@ -43,6 +43,7 @@ $vehiculos = $conn->query("SELECT id, CONCAT(marca, ' ', modelo, ' (', IFNULL(do
                         <select name="tipo_reporte" id="tipo_reporte" class="form-select form-select-lg border-dark fw-semibold">
                             <option value="gastos_vs_ventas">Gastos vs. Ventas (Resultado Operativo Netos)</option>
                             <option value="posicion_iva">Posición Fiscal IVA (IVA Ventas vs. IVA Compras)</option>
+                            <option value="posicion_iibb">Posición Fiscal IIBB (Determinado vs. Retenciones/Percepciones)</option>
                             <option value="gastos_generales">Gastos y Compras (Detallado)</option>
                             <option value="ventas_generales">Ventas y Facturación (Detallado)</option>
                             <option value="ventas_cliente">Ventas por Cliente</option>
@@ -360,6 +361,8 @@ function consultarReporte() {
             dataTableReporte = $('#tablaReportes').DataTable({
                 responsive: true,
                 destroy: true,
+                // La posición IIBB es un resumen: se respeta el orden de las filas que arma el servidor
+                order: tipoReporte === 'posicion_iibb' ? [] : [[0, 'asc']],
                 language: {
                     url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
                 },

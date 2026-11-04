@@ -558,7 +558,155 @@ switch ($tipo) {
         ];
 
         $response['total'] = '$ ' . number_format($saldoIVA, 2, ',', '.');
-        break;    
+        break;
+
+    // ==========================================
+    // 10. POSICIÓN FISCAL IIBB
+    // Determinado (neto x alícuota guardada en cada factura) - retenciones - percepciones
+    // ==========================================
+    case 'posicion_iibb':
+        // Facturas de venta
+        $wVentas = ["1=1"];
+        if (!empty($f_desde))    $wVentas[] = "fv.fecha >= '" . $conn->real_escape_string($f_desde) . "'";
+        if (!empty($f_hasta))    $wVentas[] = "fv.fecha <= '" . $conn->real_escape_string($f_hasta) . "'";
+        if (!empty($obra_id))    $wVentas[] = "fv.obra_id = " . intval($obra_id);
+        if (!empty($centro_id))  $wVentas[] = "fv.centro_costo_id = " . intval($centro_id);
+        if (!empty($cliente_id)) $wVentas[] = "fv.cliente_id = " . intval($cliente_id);
+        $whereVentas = implode(" AND ", $wVentas);
+
+        // Retenciones de IIBB sufridas (cargadas en Facturación)
+        $wRet = ["(tr.nombre LIKE '%IIBB%' OR tr.nombre LIKE '%Ingresos Brutos%')"];
+        if (!empty($f_desde))    $wRet[] = "rv.fecha_retencion >= '" . $conn->real_escape_string($f_desde) . "'";
+        if (!empty($f_hasta))    $wRet[] = "rv.fecha_retencion <= '" . $conn->real_escape_string($f_hasta) . "'";
+        if (!empty($cliente_id)) $wRet[] = "fv.cliente_id = " . intval($cliente_id);
+        $whereRet = implode(" AND ", $wRet);
+
+        // Percepciones de IIBB en compras (gastos.ret_iibb)
+        $wCompras = ["1=1"];
+        if (!empty($f_desde))   $wCompras[] = "g.fecha >= '" . $conn->real_escape_string($f_desde) . "'";
+        if (!empty($f_hasta))   $wCompras[] = "g.fecha <= '" . $conn->real_escape_string($f_hasta) . "'";
+        if (!empty($obra_id))   $wCompras[] = "g.obra_id = " . intval($obra_id);
+        if (!empty($centro_id)) $wCompras[] = "g.centro_costo_id = " . intval($centro_id);
+        if (!empty($prov_id))   $wCompras[] = "g.proveedor_id = " . intval($prov_id);
+        if (!empty($vehiculo_id)) $wCompras[] = "g.vehiculo_id = " . intval($vehiculo_id);
+        if (!empty($clasificacion_vehiculo)) $wCompras[] = "v.clasificacion = '" . $conn->real_escape_string($clasificacion_vehiculo) . "'";
+        $whereCompras = implode(" AND ", $wCompras);
+        $joinVehiculo = !empty($clasificacion_vehiculo) ? " LEFT JOIN vehiculos v ON g.vehiculo_id = v.id " : "";
+
+        // Una fila por actividad y alícuota aplicada
+        $q = "SELECT fv.iibb_actividad_id, fv.iibb_alicuota,
+                     MAX(ia.codigo) AS codigo, MAX(ia.actividad) AS actividad, MAX(ia.tratamiento) AS tratamiento,
+                     COUNT(fv.id) AS cant, IFNULL(SUM(fv.neto), 0) AS base
+              FROM facturas_venta fv
+              LEFT JOIN config_iibb_actividades ia ON ia.id = fv.iibb_actividad_id
+              WHERE $whereVentas
+              GROUP BY fv.iibb_actividad_id, fv.iibb_alicuota
+              ORDER BY fv.iibb_actividad_id IS NULL, codigo ASC, fv.iibb_alicuota ASC";
+        $res = $conn->query($q);
+        if (!$res) {
+            echo json_encode(['status' => false, 'message' => 'Error SQL: ' . $conn->error]);
+            exit;
+        }
+
+        $fmt = function($n) { return '$ ' . number_format($n, 2, ',', '.'); };
+
+        $filasActividad = [];
+        $filaSinAlicuota = null;
+        $baseDeterminada = 0;
+        $iibbDeterminado = 0;
+
+        while ($r = $res->fetch_assoc()) {
+            $base = (float)$r['base'];
+
+            // Facturas sin actividad IIBB: se informan pero no suman
+            if ($r['iibb_actividad_id'] === null) {
+                $filaSinAlicuota = [
+                    'concepto'  => '<span class="text-muted"><i class="bi bi-exclamation-triangle text-warning me-1"></i>Facturas sin alícuota IIBB (' . (int)$r['cant'] . ') - no se incluyen</span>',
+                    'base'      => '<span class="text-muted">' . $fmt($base) . '</span>',
+                    'alicuota'  => '-',
+                    'importe'   => '-',
+                    'resultado' => '-'
+                ];
+                continue;
+            }
+
+            $nombre = $r['actividad'] !== null
+                ? '[' . htmlspecialchars($r['codigo']) . '] ' . htmlspecialchars($r['actividad'])
+                : 'Actividad eliminada';
+
+            if ($r['iibb_alicuota'] === null) {
+                // Actividad exenta / no gravada
+                $alicuotaTxt = htmlspecialchars($r['tratamiento'] ?: 'Exento');
+                $importe = 0;
+            } else {
+                $ali = (float)$r['iibb_alicuota'];
+                $alicuotaTxt = rtrim(rtrim(number_format($ali, 3, ',', '.'), '0'), ',') . ' %';
+                $importe = $base * $ali / 100;
+            }
+
+            $baseDeterminada += $base;
+            $iibbDeterminado += $importe;
+
+            $filasActividad[] = [
+                'concepto'  => $nombre . ' <small class="text-muted">(' . (int)$r['cant'] . ' fact.)</small>',
+                'base'      => $fmt($base),
+                'alicuota'  => $alicuotaTxt,
+                'importe'   => $fmt($importe),
+                'resultado' => '-'
+            ];
+        }
+
+        $rRet = $conn->query("SELECT IFNULL(SUM(rv.importe), 0) AS total
+                              FROM retenciones_venta rv
+                              INNER JOIN tipos_retenciones tr ON tr.id = rv.tipo_retencion_id
+                              LEFT JOIN facturas_venta fv ON fv.id = rv.factura_id
+                              WHERE $whereRet");
+        $rPerc = $conn->query("SELECT IFNULL(SUM(g.ret_iibb), 0) AS total FROM gastos g $joinVehiculo WHERE $whereCompras");
+        if (!$rRet || !$rPerc) {
+            echo json_encode(['status' => false, 'message' => 'Error SQL: ' . $conn->error]);
+            exit;
+        }
+        $retenciones  = (float)$rRet->fetch_assoc()['total'];
+        $percepciones = (float)$rPerc->fetch_assoc()['total'];
+        $saldoIIBB = $iibbDeterminado - $retenciones - $percepciones;
+
+        $response['columns'] = ['Concepto', 'Base Imponible (Neto $)', 'Alícuota', 'Importe ($)', 'Resultado Posición IIBB'];
+
+        $response['data'] = $filasActividad;
+        $response['data'][] = [
+            'concepto'  => '<b>IIBB DETERMINADO</b>',
+            'base'      => '<b>' . $fmt($baseDeterminada) . '</b>',
+            'alicuota'  => '',
+            'importe'   => '<b>' . $fmt($iibbDeterminado) . '</b>',
+            'resultado' => '-'
+        ];
+        if ($filaSinAlicuota) $response['data'][] = $filaSinAlicuota;
+        $response['data'][] = [
+            'concepto'  => '(−) Retenciones IIBB sufridas',
+            'base'      => '',
+            'alicuota'  => '',
+            'importe'   => $fmt($retenciones),
+            'resultado' => '-'
+        ];
+        $response['data'][] = [
+            'concepto'  => '(−) Percepciones IIBB en compras',
+            'base'      => '',
+            'alicuota'  => '',
+            'importe'   => $fmt($percepciones),
+            'resultado' => '-'
+        ];
+        $response['data'][] = [
+            'concepto'  => '<b>SALDO IIBB PERÍODO</b>',
+            'base'      => '',
+            'alicuota'  => '',
+            'importe'   => '<b>' . $fmt($saldoIIBB) . '</b>',
+            'resultado' => $saldoIIBB >= 0
+                ? '<b class="text-danger">A PAGAR: ' . $fmt($saldoIIBB) . '</b>'
+                : '<b class="text-success">A FAVOR: ' . $fmt(abs($saldoIIBB)) . '</b>'
+        ];
+
+        $response['total'] = $fmt($saldoIIBB);
+        break;
 }
 
 echo json_encode($response);

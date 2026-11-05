@@ -3,6 +3,20 @@
     "_instrucciones": "INSTRUCCIONES DE USO: Para agregar una nueva actualización, duplicá un bloque entre llaves {} debajo de este. Agregalo SIEMPRE arriba de todo para que aparezca primero en el sistema. Los campos 'version', 'fecha', 'titulo' y el array 'cambios' son obligatorios."
   },
   {
+    "version": "v1.3.0",
+    "fecha": "05/11/2026",
+    "titulo": "Pólizas de Caución y Modo Oscuro",
+    "cambios": [
+      "Nueva pestaña Pólizas de Caución en Obras: tipo, aseguradora, N° de póliza, vigencia, monto caucionado y PDF adjunto.",
+      "Estado automático de cada póliza: Vigente, Vence en X días, Vencida o Liberada.",
+      "Resumen del monto caucionado por tipo de póliza (no cuenta las liberadas).",
+      "Nuevo reporte Pólizas de Caución Vigentes, ordenado por fecha de vencimiento.",
+      "Modo oscuro funcional en todo el sistema: tarjetas, tablas, formularios, selectores y tablero de Tareas.",
+      "Footer fijo al pie de la ventana.",
+      "Las ventanas modales se pueden arrastrar desde el título."
+    ]
+  },
+  {
     "version": "v1.2.0",
     "fecha": "03/09/2026",
     "titulo": "Lanzamiento y Mejoras del Dashboard",

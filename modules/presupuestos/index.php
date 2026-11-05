@@ -1404,6 +1404,7 @@ function verAPU(tareaId, cantidadItem) {
             rowsHtml += '<tr>' +
                 '<td>' + escapeHtml(d.descripcion) +
                     (d.observaciones ? '<div class="text-muted" style="font-size: 0.75rem;">' + escapeHtml(d.observaciones) + '</div>' : '') + '</td>' +
+                '<td class="text-center text-nowrap"><span class="badge bg-light text-muted border fw-normal">' + escapeHtml(d.fecha_actualizacion || '-') + '</span></td>' +
                 '<td class="text-center">' + escapeHtml(d.unidad) + '</td>' +
                 '<td class="text-end">' + formatCantidad(d.cantidad) + '</td>' +
                 '<td class="text-end">' + formatMoneda(d.precio_unitario) + '</td>' +
@@ -1416,6 +1417,7 @@ function verAPU(tareaId, cantidadItem) {
             '<table class="table table-sm table-bordered align-middle small mb-0">' +
             '<thead class="table-light"><tr>' +
                 '<th>Descripción</th>' +
+                '<th class="text-center" style="width: 100px;">Fecha act.</th>' +
                 '<th class="text-center" style="width: 70px;">Unid.</th>' +
                 '<th class="text-end" style="width: 100px;">Cant.</th>' +
                 '<th class="text-end" style="width: 130px;">P. Unit.</th>' +
@@ -1424,7 +1426,7 @@ function verAPU(tareaId, cantidadItem) {
             '</tr></thead>' +
             '<tbody>' + rowsHtml + '</tbody>' +
             '<tfoot><tr class="table-light fw-bold">' +
-                '<td colspan="4" class="text-end">Subtotal ' + tipo.titulo + '</td>' +
+                '<td colspan="5" class="text-end">Subtotal ' + tipo.titulo + '</td>' +
                 '<td class="text-end">' + formatMoneda(subtotalTipo) + '</td>' +
                 '<td class="text-end">' + formatMoneda(subtotalTipo * (cantidadItem || 0)) + '</td>' +
             '</tr></tfoot></table>';

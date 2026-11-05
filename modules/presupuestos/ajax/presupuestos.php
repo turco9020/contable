@@ -138,9 +138,23 @@ if ($accion === 'cargar_maestros') {
         $apu_detalles = [];
         $chk_d = $conn->query("SHOW TABLES LIKE 'presupuesto_tarea_detalles'");
         if ($chk_d && $chk_d->num_rows > 0) {
-            $res_d = $conn->query("SELECT tarea_id, tipo, descripcion, unidad, cantidad, precio_unitario, observaciones
-                                   FROM presupuesto_tarea_detalles
-                                   ORDER BY tarea_id ASC, FIELD(UPPER(tipo), 'MATERIAL', 'MO', 'EQUIPO', 'SUBCONTRATO'), id ASC");
+            // Fecha de la última actualización de Mano de Obra (es una sola para todas las categorías)
+            $fecha_mo = '';
+            $res_mo = $conn->query("SELECT DATE_FORMAT(MAX(fecha_actualizacion), '%d/%m/%Y') AS f FROM presupuesto_mo_auditoria");
+            if ($res_mo && ($row_mo = $res_mo->fetch_assoc())) {
+                $fecha_mo = $row_mo['f'] ?? '';
+            }
+
+            // La fecha de materiales y equipos sale de su ficha, vinculada por recurso_id
+            $res_d = $conn->query("SELECT d.tarea_id, d.tipo, d.descripcion, d.unidad, d.cantidad, d.precio_unitario, d.observaciones,
+                                          DATE_FORMAT(CASE UPPER(d.tipo)
+                                              WHEN 'MATERIAL' THEN m.fecha_actualizacion
+                                              WHEN 'EQUIPO' THEN e.fecha_actualizacion
+                                          END, '%d/%m/%Y') AS fecha_actualizacion
+                                   FROM presupuesto_tarea_detalles d
+                                   LEFT JOIN presupuesto_materiales m ON m.id = d.recurso_id AND UPPER(d.tipo) = 'MATERIAL'
+                                   LEFT JOIN presupuesto_equipos e ON e.id = d.recurso_id AND UPPER(d.tipo) = 'EQUIPO'
+                                   ORDER BY d.tarea_id ASC, FIELD(UPPER(d.tipo), 'MATERIAL', 'MO', 'EQUIPO', 'SUBCONTRATO'), d.id ASC");
             if ($res_d) {
                 while ($r = $res_d->fetch_assoc()) {
                     $apu_detalles[$r['tarea_id']][] = [
@@ -149,7 +163,8 @@ if ($accion === 'cargar_maestros') {
                         'unidad' => $r['unidad'],
                         'cantidad' => floatval($r['cantidad']),
                         'precio_unitario' => floatval($r['precio_unitario']),
-                        'observaciones' => $r['observaciones'] ?? ''
+                        'observaciones' => $r['observaciones'] ?? '',
+                        'fecha_actualizacion' => strtoupper($r['tipo']) === 'MO' ? $fecha_mo : ($r['fecha_actualizacion'] ?? '')
                     ];
                 }
             }

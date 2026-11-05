@@ -56,6 +56,7 @@ $vehiculos = $conn->query("SELECT id, CONCAT(marca, ' ', modelo, ' (', IFNULL(do
                             <option value="historico_cajas">Informe Histórico de Movimientos de Cajas</option>
                             <option value="informe_retenciones">Informe de Retenciones en Ventas</option>
                             <option value="informe_cheques">Informe Histórico de Cheques</option>
+                            <option value="polizas_vigentes">Pólizas de Caución Vigentes</option>
                             <option value="historico_usuarios">Auditoría / Movimientos por Usuario</option>
                         </select>
                     </div>
@@ -361,8 +362,8 @@ function consultarReporte() {
             dataTableReporte = $('#tablaReportes').DataTable({
                 responsive: true,
                 destroy: true,
-                // La posición IIBB es un resumen: se respeta el orden de las filas que arma el servidor
-                order: tipoReporte === 'posicion_iibb' ? [] : [[0, 'asc']],
+                // Estos reportes vienen ordenados desde el servidor (resumen IIBB / pólizas por vencimiento)
+                order: ['posicion_iibb', 'polizas_vigentes'].includes(tipoReporte) ? [] : [[0, 'asc']],
                 language: {
                     url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
                 },

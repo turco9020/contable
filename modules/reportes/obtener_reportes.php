@@ -707,6 +707,73 @@ switch ($tipo) {
 
         $response['total'] = $fmt($saldoIIBB);
         break;
+
+    // ==========================================
+    // 11. PÓLIZAS DE CAUCIÓN VIGENTES (al día de hoy)
+    // ==========================================
+    case 'polizas_vigentes':
+        $w = ["op.liberada = 0", "(op.vigencia_hasta IS NULL OR op.vigencia_hasta >= CURDATE())"];
+        if (!empty($obra_id))    $w[] = "op.obra_id = " . intval($obra_id);
+        if (!empty($cliente_id)) $w[] = "o.cliente_id = " . intval($cliente_id);
+        $whereSql = implode(" AND ", $w);
+
+        $q = "SELECT IFNULL(o.nombre, '-') AS obra,
+                     IFNULL(cl.nombre, '-') AS cliente,
+                     op.tipo, op.aseguradora, op.nro_poliza,
+                     op.vigencia_desde, op.vigencia_hasta,
+                     DATEDIFF(op.vigencia_hasta, CURDATE()) AS dias,
+                     op.monto
+              FROM obra_polizas op
+              LEFT JOIN obras o ON o.id = op.obra_id
+              LEFT JOIN clientes cl ON cl.id = o.cliente_id
+              WHERE $whereSql
+              ORDER BY op.vigencia_hasta IS NULL, op.vigencia_hasta ASC, o.nombre ASC";
+
+        $res = $conn->query($q);
+        if (!$res) {
+            echo json_encode(['status' => false, 'message' => 'Error SQL: ' . $conn->error]);
+            exit;
+        }
+
+        $tiposPoliza = [
+            'OFERTA'       => 'Cumpl. de oferta',
+            'CONTRATO'     => 'Cumpl. de contrato',
+            'AMPLIACION'   => 'Ampliación',
+            'FONDO_REPARO' => 'Fondo de reparo',
+            'ANTICIPO'     => 'Anticipo financiero',
+            'OTRA'         => 'Otra'
+        ];
+        $fechaDMY = function($f) { return $f ? date('d/m/Y', strtotime($f)) : '-'; };
+
+        $response['columns'] = ['Obra', 'Cliente', 'Tipo', 'Aseguradora', 'N° Póliza', 'Desde', 'Hasta', 'Vence', 'Monto Caucionado ($)'];
+
+        $totalG = 0;
+        while ($r = $res->fetch_assoc()) {
+            $monto = (float)$r['monto'];
+            $totalG += $monto;
+
+            if ($r['vigencia_hasta'] === null) {
+                $vence = '<span class="text-muted">Sin vencimiento</span>';
+            } else {
+                $dias = (int)$r['dias'];
+                $txt = $dias === 0 ? 'Hoy' : 'en ' . $dias . ($dias === 1 ? ' día' : ' días');
+                $vence = $dias <= 30 ? '<b class="text-warning">' . $txt . '</b>' : $txt;
+            }
+
+            $response['data'][] = [
+                'obra'        => htmlspecialchars($r['obra']),
+                'cliente'     => htmlspecialchars($r['cliente']),
+                'tipo'        => $tiposPoliza[$r['tipo']] ?? $r['tipo'],
+                'aseguradora' => htmlspecialchars($r['aseguradora'] ?: '-'),
+                'nro_poliza'  => htmlspecialchars($r['nro_poliza'] ?: '-'),
+                'desde'       => $fechaDMY($r['vigencia_desde']),
+                'hasta'       => $fechaDMY($r['vigencia_hasta']),
+                'vence'       => $vence,
+                'monto'       => '$ ' . number_format($monto, 2, ',', '.')
+            ];
+        }
+        $response['total'] = '$ ' . number_format($totalG, 2, ',', '.');
+        break;
 }
 
 echo json_encode($response);

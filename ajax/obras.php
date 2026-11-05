@@ -198,6 +198,119 @@ if($accion == 'eliminar_archivo') {
     exit;
 }
 
+// ================= PÓLIZAS DE CAUCIÓN DE LA OBRA =================
+$acciones_polizas = ['listar_polizas', 'guardar_poliza', 'eliminar_poliza'];
+if(in_array($accion, $acciones_polizas)) {
+    header('Content-Type: application/json');
+    if($usuario_logueado <= 0) {
+        echo json_encode(["success" => false, "msg" => "Sesión expirada"]);
+        exit;
+    }
+}
+
+if($accion == 'listar_polizas') {
+    $obra_id = intval($_GET['obra_id'] ?? 0);
+    $polizas = [];
+
+    if($obra_id > 0) {
+        $stmt = $conn->prepare("SELECT id, tipo, aseguradora, nro_poliza, vigencia_desde, vigencia_hasta, monto, liberada, archivo, nombre_original, observaciones
+                                FROM obra_polizas WHERE obra_id = ?
+                                ORDER BY liberada ASC, vigencia_hasta IS NULL, vigencia_hasta ASC, id DESC");
+        $stmt->bind_param('i', $obra_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        while($row = $res->fetch_assoc()) {
+            $polizas[] = $row;
+        }
+    }
+    echo json_encode(["success" => true, "polizas" => $polizas]);
+    exit;
+}
+
+if($accion == 'guardar_poliza') {
+    $id = intval($_POST['poliza_id'] ?? 0);
+    $obra_id = intval($_POST['poliza_obra_id'] ?? 0);
+    $tipos_validos = ['OFERTA','CONTRATO','AMPLIACION','FONDO_REPARO','ANTICIPO','OTRA'];
+    $tipo = $_POST['tipo'] ?? '';
+    $aseguradora = trim($_POST['aseguradora'] ?? '');
+    $nro_poliza = trim($_POST['nro_poliza'] ?? '');
+    $vigencia_desde = !empty($_POST['vigencia_desde']) ? $_POST['vigencia_desde'] : null;
+    $vigencia_hasta = !empty($_POST['vigencia_hasta']) ? $_POST['vigencia_hasta'] : null;
+    $monto = (float)($_POST['monto'] ?? 0);
+    $liberada = isset($_POST['liberada']) ? 1 : 0;
+    $observaciones = trim($_POST['observaciones'] ?? '');
+
+    if($obra_id <= 0 || !in_array($tipo, $tipos_validos)) {
+        echo json_encode(["success" => false, "msg" => "Faltan datos de la póliza."]);
+        exit;
+    }
+
+    // Adjunto (opcional): se guarda en la carpeta de la obra
+    $archivo_db = null;
+    $nombre_original = null;
+    if(isset($_FILES['poliza_archivo']) && $_FILES['poliza_archivo']['error'] == UPLOAD_ERR_OK) {
+        $carpeta_polizas = $_SERVER['DOCUMENT_ROOT'] . '/contable/uploads/obras/' . $obra_id . '/polizas/';
+        if(!is_dir($carpeta_polizas)) mkdir($carpeta_polizas, 0777, true);
+
+        $ext = pathinfo($_FILES['poliza_archivo']['name'], PATHINFO_EXTENSION);
+        $nombre_sistema = 'poliza_' . uniqid() . '.' . $ext;
+        if(move_uploaded_file($_FILES['poliza_archivo']['tmp_name'], $carpeta_polizas . $nombre_sistema)) {
+            $archivo_db = $obra_id . '/polizas/' . $nombre_sistema;
+            $nombre_original = $_FILES['poliza_archivo']['name'];
+        }
+    }
+
+    if($id) {
+        // Si se sube un archivo nuevo, se borra el anterior
+        if($archivo_db) {
+            $stmt = $conn->prepare("SELECT archivo FROM obra_polizas WHERE id = ? AND obra_id = ?");
+            $stmt->bind_param('ii', $id, $obra_id);
+            $stmt->execute();
+            $ant = $stmt->get_result()->fetch_assoc();
+            if($ant && !empty($ant['archivo'])) {
+                $ruta_ant = $_SERVER['DOCUMENT_ROOT'] . '/contable/uploads/obras/' . $ant['archivo'];
+                if(file_exists($ruta_ant)) unlink($ruta_ant);
+            }
+        }
+
+        $stmt = $conn->prepare("UPDATE obra_polizas SET tipo=?, aseguradora=?, nro_poliza=?, vigencia_desde=?, vigencia_hasta=?, monto=?, liberada=?, observaciones=?,
+                                    archivo=COALESCE(?, archivo), nombre_original=COALESCE(?, nombre_original)
+                                WHERE id=? AND obra_id=?");
+        $stmt->bind_param('sssssdisssii', $tipo, $aseguradora, $nro_poliza, $vigencia_desde, $vigencia_hasta, $monto, $liberada, $observaciones, $archivo_db, $nombre_original, $id, $obra_id);
+    } else {
+        $usuario_id_db = $usuario_logueado > 0 ? intval($usuario_logueado) : null;
+        $stmt = $conn->prepare("INSERT INTO obra_polizas (obra_id, tipo, aseguradora, nro_poliza, vigencia_desde, vigencia_hasta, monto, liberada, archivo, nombre_original, observaciones, usuario_id)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param('isssssdisssi', $obra_id, $tipo, $aseguradora, $nro_poliza, $vigencia_desde, $vigencia_hasta, $monto, $liberada, $archivo_db, $nombre_original, $observaciones, $usuario_id_db);
+    }
+
+    if($stmt->execute()) {
+        echo json_encode(["success" => true]);
+    } else {
+        echo json_encode(["success" => false, "msg" => $conn->error]);
+    }
+    exit;
+}
+
+if($accion == 'eliminar_poliza') {
+    $id = intval($_POST['id'] ?? 0);
+
+    $stmt = $conn->prepare("SELECT archivo FROM obra_polizas WHERE id = ?");
+    $stmt->bind_param('i', $id);
+    $stmt->execute();
+    if($row = $stmt->get_result()->fetch_assoc()) {
+        if(!empty($row['archivo'])) {
+            $ruta_fisica = $_SERVER['DOCUMENT_ROOT'] . '/contable/uploads/obras/' . $row['archivo'];
+            if(file_exists($ruta_fisica)) unlink($ruta_fisica);
+        }
+        $stmt = $conn->prepare("DELETE FROM obra_polizas WHERE id = ?");
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+    }
+    echo json_encode(["success" => true]);
+    exit;
+}
+
 // ================= ELIMINAR OBRA COMPLETA =================
 if($accion == 'eliminar'){
     $id = intval($_POST['id']);

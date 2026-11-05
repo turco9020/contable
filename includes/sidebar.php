@@ -284,6 +284,7 @@
             <?php endif; ?>
             
             <?php if(esAdmin()): ?>
+                <a href="/contable/modules/config/configuracion/" class="menu-link"><i class="bi bi-gear me-2"></i>Configuración</a>
                 <a href="/contable/modules/config/categorias/" class="menu-link">Categorías</a>
                 <a href="/contable/modules/config/subcategorias/" class="menu-link">Subcategorías</a>
                 <a href="/contable/modules/config/centros/" class="menu-link">Centros de costo</a>
@@ -291,7 +292,6 @@
                 <a href="/contable/modules/config/tipos_comprobante/" class="menu-link">Tipos de Comprobante</a>
                 <a href="/contable/modules/config/retenciones/" class="menu-link">Tipos de Retenciones</a>
                 <a href="/contable/modules/config/cajas/" class="menu-link">Cajas</a>
-                <a href="/contable/modules/config/configuracion/" class="menu-link"><i class="bi bi-gear me-2"></i>Configuración</a>
                 <hr>
                 <a href="/contable/modules/usuarios/" class="menu-link"><i class="bi bi-people"></i> Usuarios</a>
                 <a href="/contable/modules/roles/" class="menu-link"><i class="bi bi-shield-lock"></i> Roles</a>

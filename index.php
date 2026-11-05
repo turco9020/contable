@@ -60,7 +60,7 @@ $rol_actual = $_SESSION['rol'] ?? 'Usuario';
             <div class="col-12 col-md-4 col-xl-2" id="tarea-card-<?= $t['id'] ?>">
                 <div class="card h-100 <?= $clase_borde ?> p-2 cursor-pointer" 
                      onclick="verTareaDashboard(<?= $t['id'] ?>)"
-                     style="background-color: #ffffff; cursor: pointer; transition: transform 0.15s;"
+                     style="cursor: pointer; transition: transform 0.15s;"
                      onmouseover="this.style.transform='scale(1.02)'" 
                      onmouseout="this.style.transform='scale(1)'">
                     

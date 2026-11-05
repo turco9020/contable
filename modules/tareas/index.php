@@ -104,6 +104,28 @@ if ($res) {
     border-bottom: 2px solid #212529;
     background: transparent;
 }
+
+/* MODO OSCURO */
+[data-bs-theme="dark"] .kanban-column-card {
+    background-color: var(--bs-tertiary-bg) !important;
+}
+[data-bs-theme="dark"] .task-card {
+    background: var(--bs-body-bg);
+    border-color: var(--bs-border-color) !important;
+}
+[data-bs-theme="dark"] .task-card-nueva {
+    background-color: rgba(13, 110, 253, 0.15) !important;
+}
+[data-bs-theme="dark"] .badge-prio-ALTA { background-color: rgba(217, 37, 80, 0.18); color: #ff8fa3; border-color: rgba(217, 37, 80, 0.4); }
+[data-bs-theme="dark"] .badge-prio-MEDIA { background-color: rgba(245, 158, 11, 0.18); color: #fbbf24; border-color: rgba(245, 158, 11, 0.4); }
+[data-bs-theme="dark"] .badge-prio-BAJA { background-color: rgba(34, 197, 94, 0.18); color: #4ade80; border-color: rgba(34, 197, 94, 0.4); }
+[data-bs-theme="dark"] .task-date-info {
+    color: var(--bs-secondary-color);
+}
+[data-bs-theme="dark"] .nav-tabs-minimal .nav-link.active {
+    color: var(--bs-body-color);
+    border-bottom-color: var(--bs-body-color);
+}
 </style>
 
 <div class="content p-4">

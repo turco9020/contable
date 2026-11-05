@@ -1,12 +1,4 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Sistema Contable</title>
-    </head>
-<body>
-
-<div class="topbar d-flex justify-content-between align-items-center footer-lite w-100 px-3">
+<div class="d-flex justify-content-between align-items-center footer-lite">
     <div class="text-muted small">
         Sistema Contable © Recursos Globales® <?= date('Y') ?>
     </div>
@@ -18,15 +10,31 @@
 </div>
 
 <style>
+/* FOOTER FIJO AL PIE DE LA VENTANA (el contenido se desplaza por detrás) */
 .footer-lite {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1020; /* debajo del sidebar (1040) y de los modales (1050+) */
     height: 40px;
-    background: transparent;
+    padding: 0 1rem;
+    background-color: #f4f6f9;
     border-top: 1px solid #e5e5e5;
-    margin-top: 10px;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
     font-size: 12px;
     box-sizing: border-box;
+}
+
+/* Espacio al final de la página para que el footer no tape el contenido */
+body {
+    padding-bottom: 50px;
+}
+
+/* En escritorio arranca después del sidebar (260px) */
+@media (min-width: 992px) {
+    .footer-lite {
+        left: 260px;
+    }
 }
 
 /* hover suave */
@@ -34,25 +42,24 @@
     color: #000;
 }
 
-/* Estado normal o pantalla completa */
-.content-wrapper, .footer-lite {
-    margin-left: 0;
-    transition: margin-left 0.3s ease; /* Transición suave al abrir/cerrar */
-}
-
-/* Cuando el sidebar está visible en pantallas grandes */
-@media (min-width: 992px) {
-    body.sidebar-open .footer-lite,
-    body:not(.sidebar-collapsed) .footer-lite {
-        margin-left: 250px !important; /* Ajusta este valor al ancho real de tu sidebar */
-        width: calc(100% - 250px) !important;
-    }
-}
-
 /* DARK MODE */
 body.dark .footer-lite {
+    background-color: #181a1f;
     border-color: #444;
     color: #aaa;
+}
+body.dark .footer-lite a:hover {
+    color: #fff;
+}
+
+/* MODALES MOVIBLES: en escritorio se arrastran desde el título */
+@media (min-width: 992px) {
+    .modal-header {
+        cursor: move;
+    }
+    .modal-header .btn-close {
+        cursor: pointer;
+    }
 }
 
 /* MAYUSCULAS GLOBAL */
@@ -162,6 +169,28 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     });
+});
+</script>
+
+<script>
+// ==========================================
+// MODALES MOVIBLES (SOLO ESCRITORIO)
+// Se arrastran tomándolos del título; al cerrarlos vuelven a su lugar
+// ==========================================
+$(document).on('shown.bs.modal', '.modal', function () {
+    if (!window.matchMedia('(min-width: 992px)').matches || !$.fn.draggable) return;
+
+    let $dialog = $(this).find('.modal-dialog');
+    if (!$dialog.data('ui-draggable')) {
+        $dialog.draggable({
+            handle: '.modal-header',
+            cancel: 'button, a, input, select, textarea'
+        });
+    }
+});
+
+$(document).on('hidden.bs.modal', '.modal', function () {
+    $(this).find('.modal-dialog').css({ top: '', left: '' });
 });
 </script>
 

@@ -4,8 +4,9 @@ include __DIR__ . '/auth.php';
 ?>
 
 <!DOCTYPE html>
-<html>
+<html lang="es" data-bs-theme="<?= (($_SESSION['dark'] ?? '') === 'dark') ? 'dark' : 'light' ?>">
 <head>
+    <meta charset="UTF-8">
     <title>Sistema Contable</title>
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -28,7 +29,7 @@ include __DIR__ . '/auth.php';
         }
 
         body.dark {
-            background-color: #1e1e2f;
+            background-color: #181a1f;
             color: #ddd;
         }
 
@@ -126,6 +127,95 @@ include __DIR__ . '/auth.php';
 .card-caja:hover {
     transform: translateY(-2px);
     box-shadow: 0 .5rem 1rem rgba(0,0,0,.15) !important;
+}
+
+/* =====================================================================
+   MODO OSCURO
+   Bootstrap 5.3 adapta solo cards, modales, inputs y tablas con data-bs-theme="dark".
+   Estas reglas corrigen las clases y colores claros fijos que usan los módulos.
+   ===================================================================== */
+[data-bs-theme="dark"] .bg-white {
+    background-color: var(--bs-body-bg) !important;
+}
+[data-bs-theme="dark"] .bg-light {
+    background-color: var(--bs-tertiary-bg) !important;
+}
+[data-bs-theme="dark"] .text-dark:not(.bg-warning):not(.bg-info) {
+    color: var(--bs-body-color) !important;
+}
+[data-bs-theme="dark"] .table-light {
+    --bs-table-bg: var(--bs-tertiary-bg);
+    --bs-table-color: var(--bs-body-color);
+    --bs-table-border-color: var(--bs-border-color);
+    --bs-table-striped-bg: var(--bs-secondary-bg);
+    --bs-table-hover-bg: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+    border-color: var(--bs-border-color);
+}
+[data-bs-theme="dark"] .btn-light {
+    --bs-btn-bg: var(--bs-tertiary-bg);
+    --bs-btn-color: var(--bs-body-color);
+    --bs-btn-border-color: var(--bs-border-color);
+    --bs-btn-hover-bg: var(--bs-secondary-bg);
+    --bs-btn-hover-color: var(--bs-body-color);
+    --bs-btn-hover-border-color: var(--bs-border-color);
+    --bs-btn-active-bg: var(--bs-secondary-bg);
+    --bs-btn-active-color: var(--bs-body-color);
+}
+[data-bs-theme="dark"] .btn-outline-dark {
+    --bs-btn-color: #dee2e6;
+    --bs-btn-border-color: #6c757d;
+    --bs-btn-hover-bg: #495057;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-border-color: #6c757d;
+    --bs-btn-active-bg: #495057;
+    --bs-btn-active-color: #fff;
+}
+[data-bs-theme="dark"] .border-dark {
+    border-color: var(--bs-border-color) !important;
+}
+
+/* Fondos claros escritos en línea (style="background-color: #...").
+   rgb(255, 255, 255) cubre los casos en que JS reescribe el style (ej: efectos al pasar el mouse) */
+[data-bs-theme="dark"] [style*="background-color: rgb(255, 255, 255)"],
+[data-bs-theme="dark"] [style*="background: rgb(255, 255, 255)"],
+[data-bs-theme="dark"] [style*="background-color: #fff"],
+[data-bs-theme="dark"] [style*="background: #fff"],
+[data-bs-theme="dark"] [style*="background-color: #f8f9fa"],
+[data-bs-theme="dark"] [style*="background-color: #f9f9f9"],
+[data-bs-theme="dark"] [style*="background-color: #f4f6f"],
+[data-bs-theme="dark"] [style*="background-color: #e9ecef"],
+[data-bs-theme="dark"] [style*="background-color: #e2e3e5"] {
+    background-color: var(--bs-tertiary-bg) !important;
+}
+[data-bs-theme="dark"] [style*="background-color: #fef9e7"],
+[data-bs-theme="dark"] [style*="background-color: #fffbeb"],
+[data-bs-theme="dark"] [style*="background-color: #ffeef0"],
+[data-bs-theme="dark"] [style*="background-color: #f0fdf4"],
+[data-bs-theme="dark"] [style*="background-color: #f0f7ff"] {
+    background-color: var(--bs-secondary-bg) !important;
+}
+
+/* Tom Select (trae fondo blanco fijo) */
+[data-bs-theme="dark"] .ts-control,
+[data-bs-theme="dark"] .ts-wrapper.single.input-active .ts-control,
+[data-bs-theme="dark"] .ts-dropdown {
+    background-color: var(--bs-body-bg) !important;
+    color: var(--bs-body-color) !important;
+    border-color: var(--bs-border-color) !important;
+}
+[data-bs-theme="dark"] .ts-control input {
+    color: var(--bs-body-color);
+}
+[data-bs-theme="dark"] .ts-dropdown .active,
+[data-bs-theme="dark"] .ts-dropdown .option:hover {
+    background-color: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+}
+
+/* DataTables: filas alternadas visibles sobre fondo oscuro */
+[data-bs-theme="dark"] table.dataTable.table-striped > tbody > tr.odd > * {
+    box-shadow: inset 0 0 0 9999px rgba(255, 255, 255, 0.04);
 }
 
     </style>

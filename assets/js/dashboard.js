@@ -258,7 +258,7 @@ if (typeof window.dashboardInicializado !== 'undefined') {
                 <div class="col-12 col-md-6 col-xl-4 mb-2" id="tarea-card-${t.id}">
                     <div class="card h-100 ${borderClase} p-2" 
                          onclick="verTareaDashboard(${t.id})" 
-                         style="border-radius: 6px; background: #ffffff; cursor: pointer; transition: transform 0.15s;"
+                         style="border-radius: 6px; cursor: pointer; transition: transform 0.15s;"
                          onmouseover="this.style.transform='scale(1.02)'" 
                          onmouseout="this.style.transform='scale(1)'">
                         

@@ -218,6 +218,32 @@ include __DIR__ . '/auth.php';
     box-shadow: inset 0 0 0 9999px rgba(255, 255, 255, 0.04);
 }
 
+/* Editor Quill (Condiciones Generales): bordes e íconos claros fijos */
+[data-bs-theme="dark"] .ql-toolbar.ql-snow,
+[data-bs-theme="dark"] .ql-container.ql-snow {
+    border-color: var(--bs-border-color);
+}
+[data-bs-theme="dark"] .ql-toolbar.ql-snow {
+    background-color: var(--bs-tertiary-bg);
+}
+[data-bs-theme="dark"] .ql-snow .ql-stroke {
+    stroke: var(--bs-body-color);
+}
+[data-bs-theme="dark"] .ql-snow .ql-fill {
+    fill: var(--bs-body-color);
+}
+[data-bs-theme="dark"] .ql-snow.ql-toolbar button:hover .ql-stroke,
+[data-bs-theme="dark"] .ql-snow.ql-toolbar button.ql-active .ql-stroke {
+    stroke: #6ea8fe;
+}
+[data-bs-theme="dark"] .ql-snow.ql-toolbar button:hover .ql-fill,
+[data-bs-theme="dark"] .ql-snow.ql-toolbar button.ql-active .ql-fill {
+    fill: #6ea8fe;
+}
+[data-bs-theme="dark"] .ql-editor.ql-blank::before {
+    color: var(--bs-secondary-color);
+}
+
     </style>
     
     <!-- SweetAlert2 para confirmaciones elegantes -->

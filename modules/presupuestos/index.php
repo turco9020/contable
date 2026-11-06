@@ -337,7 +337,7 @@ include '../../includes/sidebar.php';
                                     </button>
                                 </div>
                             </div>
-                            <textarea id="condiciones_texto" class="form-control" rows="12" placeholder="Escriba o ajuste las condiciones generales del presupuesto..."></textarea>
+                            <div id="condiciones_editor"></div>
                         </div>
 
                     </div>
@@ -373,6 +373,14 @@ include '../../includes/sidebar.php';
 
 <?php include '../../includes/footer.php'; ?>
 
+<!-- Editor de texto con formato para las Condiciones Generales -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css">
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+<script src="/contable/modules/presupuestos/assets/js/condiciones_editor.js"></script>
+<style>
+#condiciones_editor .ql-editor { min-height: 300px; font-size: 0.95rem; }
+</style>
+
 <script>
 const URL_AJAX = '/contable/modules/presupuestos/ajax/presupuestos.php';
 
@@ -385,6 +393,7 @@ let tareasGlobal = [];
 let indirectosGlobal = [];
 let condicionesTextoGlobal = "";
 let condicionesBasesGlobal = [];  // bases de Condiciones Generales (Presupuestos > Condiciones Generales)
+let editorCondiciones;            // editor Quill de la pestaña Condiciones
 let codigoSugeridoGlobal = "";
 let fechaHoyGlobal = "";
 let contadorRubros = 0;
@@ -397,6 +406,7 @@ let tsFiltroCliente, tsPresCliente, tsPresObra;
 
 document.addEventListener("DOMContentLoaded", function() {
     modalPresBS = new bootstrap.Modal(document.getElementById('modalPresupuesto'));
+    editorCondiciones = crearEditorCondiciones('#condiciones_editor', 'Escriba o ajuste las condiciones generales del presupuesto...');
 
     // Inicialización de TomSelect principales
     tsFiltroCliente = new TomSelect('#filtro_cliente', {
@@ -503,7 +513,7 @@ document.addEventListener("DOMContentLoaded", function() {
             $('#pres_codigo').val(codigoSugeridoGlobal);
             $('#pres_fecha').val(fechaHoyGlobal);
             renderizarCondicionesBases();
-            $('#condiciones_texto').val(condicionesTextoGlobal);
+            setCondicionesEditor(editorCondiciones, condicionesTextoGlobal);
 
             renderizarIndirectosBase();
         } else {
@@ -532,7 +542,7 @@ document.addEventListener("DOMContentLoaded", function() {
             estado: $('#pres_estado').val(),
             coeficiente_k_base: $('#pres_k_base').val(),
             coeficiente_k_general: $('#pres_k_general').val(),
-            condiciones: $('#condiciones_texto').val(),
+            condiciones: getCondicionesEditor(editorCondiciones),
             total_neto: parseMonedaFloat($('#lblSubtotalDirecto').text()),
             total_presupuestado: parseMonedaFloat($('#lblTotalPresupuesto').text()),
             rubros: []
@@ -664,7 +674,7 @@ function nuevoPresupuesto() {
     
     renderizarIndirectosBase();
     seleccionarCondicionesBaseDefecto();
-    $('#condiciones_texto').val(condicionesTextoGlobal);
+    setCondicionesEditor(editorCondiciones, condicionesTextoGlobal);
     agregarRubro();
 
     modalPresBS.show();
@@ -686,7 +696,7 @@ function editarPresupuesto(id) {
             $('#pres_titulo').val(p.titulo || '');
             $('#pres_k_base').val(p.coeficiente_k_base || '1.0000');
             $('#pres_k_general').val(p.coeficiente_k_general || '1.0000');
-            $('#condiciones_texto').val(p.condiciones || condicionesTextoGlobal);
+            setCondicionesEditor(editorCondiciones, p.condiciones || condicionesTextoGlobal);
             $('#condiciones_base').val(''); // conserva el texto guardado; la base se elige solo si se quiere reemplazar
             
             // --- RESTAURACIÓN DE PARÁMETROS E INDIRECTOS ---
@@ -1209,11 +1219,11 @@ function aplicarCondicionesBase() {
 
     const aplicar = function() {
         // Se copia el texto: los cambios en el presupuesto no modifican la base
-        $('#condiciones_texto').val(base.contenido).trigger('input');
+        setCondicionesEditor(editorCondiciones, base.contenido);
+        cambiosSinGuardar = true;
     };
 
-    const actual = ($('#condiciones_texto').val() || '').trim();
-    if (actual === '' || actual === base.contenido.trim()) {
+    if (condicionesEditorVacio(editorCondiciones)) {
         aplicar();
         return;
     }

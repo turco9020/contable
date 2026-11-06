@@ -20,6 +20,8 @@ if (!isset($conn) || $conn->connect_error) {
     exit;
 }
 
+require_once __DIR__ . '/../includes/condiciones_html.php';
+
 $accion = $_GET['accion'] ?? '';
 $usuario_logueado = $_SESSION['id'] ?? 0;
 
@@ -259,6 +261,9 @@ if ($accion === 'guardar') {
         echo json_encode(['success' => false, 'error' => 'Datos inválidos']);
         exit;
     }
+
+    // Condiciones con formato: solo negrita, cursiva, subrayado y listas
+    $post_data['condiciones'] = limpiarCondicionesHtml($post_data['condiciones'] ?? '');
 
     $id = intval($post_data['id'] ?? 0);
     $codigo = $conn->real_escape_string($post_data['codigo'] ?? '');

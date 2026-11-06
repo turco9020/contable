@@ -1,6 +1,7 @@
 <?php
 require_once '../../config/database.php';
 require_once '../../includes/auth.php'; // valida la sesión antes de procesar cualquier POST
+require_once __DIR__ . '/includes/condiciones_html.php';
 
 $db_conn = $conn ?? null;
 
@@ -33,7 +34,7 @@ if ($tabla_ok && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']
     if ($_POST['action'] === 'guardar_condicion') {
         $id          = intval($_POST['id'] ?? 0);
         $nombre      = trim($_POST['nombre'] ?? '');
-        $contenido   = trim($_POST['contenido'] ?? '');
+        $contenido   = limpiarCondicionesHtml($_POST['contenido'] ?? ''); // solo deja negrita, cursiva, subrayado y listas
         $por_defecto = isset($_POST['por_defecto']) ? 1 : 0;
 
         if ($nombre === '' || $contenido === '') {
@@ -161,10 +162,7 @@ $msg = $mensajes[$_GET['msg'] ?? ''] ?? null;
                         </tr>
                     <?php else: ?>
                         <?php foreach ($bases as $b): ?>
-                        <?php
-                            $resumen = preg_replace('/\s+/', ' ', $b['contenido']);
-                            if (mb_strlen($resumen) > 160) $resumen = mb_substr($resumen, 0, 160) . '…';
-                        ?>
+                        <?php $resumen = condicionesResumen($b['contenido']); // sin formato, solo el comienzo del texto ?>
                         <tr>
                             <td class="fw-semibold">
                                 <?= htmlspecialchars($b['nombre']) ?>
@@ -224,7 +222,8 @@ $msg = $mensajes[$_GET['msg'] ?? ''] ?? null;
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold small">Texto de las condiciones</label>
-                        <textarea name="contenido" id="cond_contenido" class="form-control" rows="14" required placeholder="Escriba las condiciones generales..."></textarea>
+                        <input type="hidden" name="contenido" id="cond_contenido">
+                        <div id="cond_editor" style="min-height: 320px;"></div>
                     </div>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="por_defecto" id="cond_defecto" value="1">
@@ -253,15 +252,39 @@ $msg = $mensajes[$_GET['msg'] ?? ''] ?? null;
 
 <?php include '../../includes/footer.php'; ?>
 
+<!-- Editor de texto con formato -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css">
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+<script src="/contable/modules/presupuestos/assets/js/condiciones_editor.js"></script>
+
+<style>
+#cond_editor .ql-editor { min-height: 320px; font-size: 0.95rem; }
+</style>
+
 <script>
 let modalCondicion;
+let editorCondicion;
 
 document.addEventListener('DOMContentLoaded', function() {
     modalCondicion = new bootstrap.Modal(document.getElementById('modalCondicion'));
+    editorCondicion = crearEditorCondiciones('#cond_editor');
+
+    // Al guardar, el HTML del editor pasa al campo oculto
+    document.getElementById('formCondicion').addEventListener('submit', function(e) {
+        if (condicionesEditorVacio(editorCondicion)) {
+            e.preventDefault();
+            if (typeof Swal !== 'undefined') {
+                Swal.fire('Falta el texto', 'Escribí el texto de las condiciones antes de guardar.', 'warning');
+            }
+            return;
+        }
+        document.getElementById('cond_contenido').value = getCondicionesEditor(editorCondicion);
+    });
 });
 
 function abrirModalNueva() {
     document.getElementById('formCondicion').reset();
+    setCondicionesEditor(editorCondicion, '');
     document.getElementById('cond_id').value = 0;
     document.getElementById('modalCondTitulo').innerHTML = '<i class="bi bi-file-text me-2"></i> Nueva Base';
     modalCondicion.show();
@@ -270,7 +293,7 @@ function abrirModalNueva() {
 function editarBase(b) {
     document.getElementById('cond_id').value = b.id;
     document.getElementById('cond_nombre').value = b.nombre;
-    document.getElementById('cond_contenido').value = b.contenido;
+    setCondicionesEditor(editorCondicion, b.contenido);
     document.getElementById('cond_defecto').checked = String(b.por_defecto) === '1';
     document.getElementById('modalCondTitulo').innerHTML = '<i class="bi bi-pencil me-2"></i> Editar Base';
     modalCondicion.show();

@@ -326,11 +326,16 @@ include '../../includes/sidebar.php';
 
                         <!-- PESTAÑA 4: CONDICIONES -->
                         <div class="tab-pane fade" id="tab-cond" role="tabpanel">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                                 <h6 class="fw-bold text-secondary mb-0"><i class="bi bi-file-text me-2"></i> Condiciones Generales del Presupuesto</h6>
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="cargarCondicionesMaestro()">
-                                    <i class="bi bi-arrow-counterclockwise me-1"></i> Recargar del Maestro
-                                </button>
+                                <div class="d-flex align-items-center gap-1">
+                                    <select id="condiciones_base" class="form-select form-select-sm" style="min-width: 240px;" title="Bases cargadas en Presupuestos > Condiciones Generales">
+                                        <option value="">-- Elegir una base --</option>
+                                    </select>
+                                    <button type="button" class="btn btn-sm btn-outline-primary text-nowrap" onclick="aplicarCondicionesBase()">
+                                        <i class="bi bi-box-arrow-in-down me-1"></i> Aplicar
+                                    </button>
+                                </div>
                             </div>
                             <textarea id="condiciones_texto" class="form-control" rows="12" placeholder="Escriba o ajuste las condiciones generales del presupuesto..."></textarea>
                         </div>
@@ -379,6 +384,7 @@ let coeficientesGlobal = [];
 let tareasGlobal = [];
 let indirectosGlobal = [];
 let condicionesTextoGlobal = "";
+let condicionesBasesGlobal = [];  // bases de Condiciones Generales (Presupuestos > Condiciones Generales)
 let codigoSugeridoGlobal = "";
 let fechaHoyGlobal = "";
 let contadorRubros = 0;
@@ -471,6 +477,7 @@ document.addEventListener("DOMContentLoaded", function() {
             apuDetallesGlobal = res.apu_detalles || {};
             indirectosGlobal = res.indirectos || [];
             condicionesTextoGlobal = res.condiciones_texto || "";
+            condicionesBasesGlobal = res.condiciones_bases || [];
             codigoSugeridoGlobal = res.codigo_sugerido || "";
             fechaHoyGlobal = res.fecha_hoy || "";
 
@@ -495,8 +502,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
             $('#pres_codigo').val(codigoSugeridoGlobal);
             $('#pres_fecha').val(fechaHoyGlobal);
+            renderizarCondicionesBases();
             $('#condiciones_texto').val(condicionesTextoGlobal);
-            
+
             renderizarIndirectosBase();
         } else {
             console.error("Error backend:", res.error);
@@ -655,6 +663,7 @@ function nuevoPresupuesto() {
     contadorRubros = 0;
     
     renderizarIndirectosBase();
+    seleccionarCondicionesBaseDefecto();
     $('#condiciones_texto').val(condicionesTextoGlobal);
     agregarRubro();
 
@@ -678,6 +687,7 @@ function editarPresupuesto(id) {
             $('#pres_k_base').val(p.coeficiente_k_base || '1.0000');
             $('#pres_k_general').val(p.coeficiente_k_general || '1.0000');
             $('#condiciones_texto').val(p.condiciones || condicionesTextoGlobal);
+            $('#condiciones_base').val(''); // conserva el texto guardado; la base se elige solo si se quiere reemplazar
             
             // --- RESTAURACIÓN DE PARÁMETROS E INDIRECTOS ---
             $('#pres_ind_operarios').val(p.indirectos_operarios || 2);
@@ -1170,8 +1180,56 @@ function recalcularTotalIndirectos() {
     calcularKGeneralMatMo();
 }
 
-function cargarCondicionesMaestro() {
-    $('#condiciones_texto').val(condicionesTextoGlobal);
+// =====================================================================
+// CONDICIONES GENERALES: desplegable de bases
+// =====================================================================
+function renderizarCondicionesBases() {
+    const combo = $('#condiciones_base').empty()
+        .append('<option value="">' + (condicionesBasesGlobal.length ? '-- Elegir una base --' : '-- No hay bases cargadas --') + '</option>');
+    condicionesBasesGlobal.forEach(function(b) {
+        combo.append($('<option>').val(b.id).text(b.nombre + (b.por_defecto ? ' (por defecto)' : '')));
+    });
+    seleccionarCondicionesBaseDefecto();
+}
+
+function seleccionarCondicionesBaseDefecto() {
+    const def = condicionesBasesGlobal.find(function(b) { return b.por_defecto; });
+    $('#condiciones_base').val(def ? String(def.id) : '');
+}
+
+function aplicarCondicionesBase() {
+    const id = $('#condiciones_base').val();
+    const base = condicionesBasesGlobal.find(function(b) { return String(b.id) === String(id); });
+    if (!base) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('Elegí una base', 'Seleccioná una base del desplegable para aplicarla.', 'info');
+        }
+        return;
+    }
+
+    const aplicar = function() {
+        // Se copia el texto: los cambios en el presupuesto no modifican la base
+        $('#condiciones_texto').val(base.contenido).trigger('input');
+    };
+
+    const actual = ($('#condiciones_texto').val() || '').trim();
+    if (actual === '' || actual === base.contenido.trim()) {
+        aplicar();
+        return;
+    }
+
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: '¿Reemplazar las condiciones?',
+            text: 'El texto actual de este presupuesto se reemplaza por la base "' + base.nombre + '".',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, reemplazar',
+            cancelButtonText: 'Cancelar'
+        }).then(function(r) { if (r.isConfirmed) aplicar(); });
+    } else if (confirm('¿Reemplazar el texto actual por la base "' + base.nombre + '"?')) {
+        aplicar();
+    }
 }
 
 function calcularKGeneralMatMo() {

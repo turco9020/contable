@@ -227,6 +227,7 @@
                 <a href="/contable/modules/presupuestos/mano_obra.php" class="menu-link"><i class="bi bi-hammer me-2"></i> Catálogo Mano de Obra</a>
                 <a href="/contable/modules/presupuestos/equipos.php" class="menu-link"><i class="bi bi-truck me-2"></i> Catálogo Equipos</a>
                 <a href="/contable/modules/presupuestos/coeficientes.php" class="menu-link"><i class="bi bi-percent me-2"></i> Coeficientes</a>
+                <a href="/contable/modules/presupuestos/condiciones.php" class="menu-link"><i class="bi bi-file-text me-2"></i> Condiciones Generales</a>
             </div>
         </div>
     <?php endif; ?>

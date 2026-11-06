@@ -201,13 +201,27 @@ if ($accion === 'cargar_maestros') {
             }
         }
 
-        // 6. Condiciones Generales
+        // 6. Condiciones Generales: todas las bases activas y el texto de la base por defecto
         $condiciones_texto = "";
+        $condiciones_bases = [];
         $chk_cg = $conn->query("SHOW TABLES LIKE 'presupuesto_condiciones_generales'");
         if ($chk_cg && $chk_cg->num_rows > 0) {
-            $res_cond_m = $conn->query("SELECT contenido FROM presupuesto_condiciones_generales WHERE por_defecto = 1 LIMIT 1");
-            if ($res_cond_m && $row_c = $res_cond_m->fetch_assoc()) {
-                $condiciones_texto = $row_c['contenido'];
+            $res_cond_m = $conn->query("SELECT id, nombre, contenido, por_defecto
+                                        FROM presupuesto_condiciones_generales
+                                        WHERE activo = 1
+                                        ORDER BY por_defecto DESC, nombre ASC");
+            if ($res_cond_m) {
+                while ($row_c = $res_cond_m->fetch_assoc()) {
+                    $condiciones_bases[] = [
+                        'id' => intval($row_c['id']),
+                        'nombre' => $row_c['nombre'],
+                        'contenido' => $row_c['contenido'],
+                        'por_defecto' => intval($row_c['por_defecto'])
+                    ];
+                    if (intval($row_c['por_defecto']) === 1 && $condiciones_texto === "") {
+                        $condiciones_texto = $row_c['contenido'];
+                    }
+                }
             }
         }
 
@@ -225,6 +239,7 @@ if ($accion === 'cargar_maestros') {
             'apu_detalles' => (object)$apu_detalles,
             'indirectos' => $indirectos,
             'condiciones_texto' => $condiciones_texto,
+            'condiciones_bases' => $condiciones_bases,
             'codigo_sugerido' => $codigo_sugerido,
             'fecha_hoy' => date('Y-m-d')
         ]);

@@ -268,7 +268,7 @@
         <div class="card shadow-sm border-0 bg-white h-100">
             <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-1.5 px-3">
                 <span class="small fw-bold" style="font-size: 11px;"><i class="bi bi-receipt-cutoff me-1"></i>Facturas x Cobrar</span>
-                <a href="/contable/modules/ventas/" class="btn btn-outline-light btn-xs py-0 px-1" style="font-size: 9.5px;">Ver todas</a>
+                <a href="/contable/modules/facturacion/" class="btn btn-outline-light btn-xs py-0 px-1" style="font-size: 9.5px;">Ver todas</a>
             </div>
             <div class="card-body p-0">
                 <table class="table table-sm table-hover mb-0" id="tablaFacturasCobrar" style="font-size: 11.5px;">
@@ -285,7 +285,7 @@
         <div class="card shadow-sm border-0 bg-white h-100">
             <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-1.5 px-3">
                 <span class="small fw-bold" style="font-size: 11px;"><i class="bi bi-shield-check me-1"></i>Retenciones Sufridas (Mes)</span>
-                <a href="/contable/modules/retenciones/" class="btn btn-outline-light btn-xs py-0 px-1" style="font-size: 9.5px;">Ver todas</a>
+                <a href="/contable/modules/reportes/" class="btn btn-outline-light btn-xs py-0 px-1" style="font-size: 9.5px;">Ver todas</a>
             </div>
             <div class="card-body p-0">
                 <table class="table table-sm table-hover mb-0" id="tablaRetenciones" style="font-size: 11.5px;">

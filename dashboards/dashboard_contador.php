@@ -96,7 +96,7 @@
         <div class="card shadow-sm border-0 h-100">
             <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2">
                 <span class="small fw-bold"><i class="bi bi-receipt-cutoff me-1"></i>Facturas x Cobrar</span>
-                <a href="/contable/modules/ventas/" class="btn btn-outline-light btn-xs py-0 px-1" style="font-size: 10px;">Ver todas</a>
+                <a href="/contable/modules/facturacion/" class="btn btn-outline-light btn-xs py-0 px-1" style="font-size: 10px;">Ver todas</a>
             </div>
             <div class="card-body p-0">
                 <table class="table table-sm table-hover mb-0" id="tablaFacturasCobrar" style="font-size: 12px;">

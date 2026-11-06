@@ -266,25 +266,26 @@
         </div>
     </div>
 
+    <!-- Flota, Obras y Personal: ítems sueltos debajo de Operaciones (las rutas siguen en modules/config/) -->
+    <a href="/contable/modules/config/vehiculos/index.php"><i class="bi bi-truck"></i> Flota / Vehículos</a>
+
+    <?php $rol_actual = $_SESSION['rol'] ?? '';
+    if (
+        strcasecmp($rol_actual, 'admin') === 0 ||
+        strcasecmp($rol_actual, 'contador') === 0 ||
+        strcasecmp($rol_actual, 'arquitecto') === 0
+    ): ?>
+        <a href="/contable/modules/config/obras/"><i class="bi bi-building"></i> Obras</a>
+        <a href="/contable/modules/config/personal/"><i class="bi bi-people"></i> Personal / RRHH</a>
+    <?php endif; ?>
+
+    <?php if(esAdmin()): ?>
     <div class="menu-section">
         <a href="#" onclick="toggleMenuConfig(event)">
             <i class="bi bi-sliders"></i> Configuraciones
         </a>
         <div id="menuConfig" class="submenu">
-            <a href="/contable/modules/config/vehiculos/index.php" class="nav-link text-white ps-4"><i class="bi bi-truck me-2"></i> Flota / Vehículos</a>
-
-            <?php $rol_actual = $_SESSION['rol'] ?? '';
-            if (
-                strcasecmp($rol_actual, 'admin') === 0 || 
-                strcasecmp($rol_actual, 'contador') === 0 || 
-                strcasecmp($rol_actual, 'arquitecto') === 0
-            ): ?>
-                <a href="/contable/modules/config/obras/" class="menu-link"><i class="bi bi-building me-2"></i>Obras</a>
-                <a href="/contable/modules/config/personal/" class="menu-link"><i class="bi bi-people me-2"></i> Personal / RRHH</a>
-            <?php endif; ?>
-            
-            <?php if(esAdmin()): ?>
-                <a href="/contable/modules/config/configuracion/" class="menu-link"><i class="bi bi-gear me-2"></i>Configuración</a>
+                <a href="/contable/modules/config/configuracion/" class="menu-link">Configuración</a>
                 <a href="/contable/modules/config/categorias/" class="menu-link">Categorías</a>
                 <a href="/contable/modules/config/subcategorias/" class="menu-link">Subcategorías</a>
                 <a href="/contable/modules/config/centros/" class="menu-link">Centros de costo</a>
@@ -295,9 +296,9 @@
                 <hr>
                 <a href="/contable/modules/usuarios/" class="menu-link"><i class="bi bi-people"></i> Usuarios</a>
                 <a href="/contable/modules/roles/" class="menu-link"><i class="bi bi-shield-lock"></i> Roles</a>
-            <?php endif; ?>
         </div>
     </div>
+    <?php endif; ?>
 
     <hr style="margin-top: auto;">
     <a href="/contable/modules/novedades/"><i class="bi bi-journal-arrow-up text-info"></i> Novedades</a>            
@@ -321,11 +322,11 @@ function toggleMenuPresupuestos(e){
     let menuPresupuestos = document.getElementById('menuPresupuestos');
     let menuOperaciones = document.getElementById('menuOperaciones');
     let menuConfig = document.getElementById('menuConfig');
-    
+
     if (!menuPresupuestos.classList.contains('show')) {
         menuPresupuestos.classList.add('show');
         menuOperaciones.classList.remove('show');
-        menuConfig.classList.remove('show');
+        if (menuConfig) menuConfig.classList.remove('show'); // solo existe para admin
         localStorage.setItem('menuPresupuestos', 'open');
         localStorage.setItem('menuOperaciones', 'closed');
         localStorage.setItem('menuConfig', 'closed');
@@ -343,8 +344,8 @@ function toggleMenuOperaciones(e){
     
     if (!menuOperaciones.classList.contains('show')) {
         menuOperaciones.classList.add('show');
-        menuPresupuestos.classList.remove('show');
-        menuConfig.classList.remove('show');
+        if (menuPresupuestos) menuPresupuestos.classList.remove('show'); // depende del rol
+        if (menuConfig) menuConfig.classList.remove('show');             // solo existe para admin
         localStorage.setItem('menuOperaciones', 'open');
         localStorage.setItem('menuPresupuestos', 'closed');
         localStorage.setItem('menuConfig', 'closed');
@@ -362,7 +363,7 @@ function toggleMenuConfig(e){
     
     if (!menuConfig.classList.contains('show')) {
         menuConfig.classList.add('show');
-        menuPresupuestos.classList.remove('show');
+        if (menuPresupuestos) menuPresupuestos.classList.remove('show'); // depende del rol
         menuOperaciones.classList.remove('show');
         localStorage.setItem('menuConfig', 'open');
         localStorage.setItem('menuPresupuestos', 'closed');

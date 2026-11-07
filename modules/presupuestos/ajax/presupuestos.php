@@ -337,6 +337,143 @@ if ($accion === 'guardar') {
     exit;
 }
 
+// ================= CAMBIAR ESTADO DESDE EL LISTADO =================
+// Crea una versión nueva, copia de la última pero con el estado nuevo, para que
+// quede registrado quién lo cambió y cuándo, y para que editar después respete el
+// estado. Las versiones anteriores no se modifican.
+if ($accion === 'cambiar_estado') {
+    $estados_validos = ['Borrador', 'Enviado', 'Aprobado', 'Rechazado', 'Archivado'];
+    $id = intval($_POST['id'] ?? 0);
+    $estado_nuevo = $_POST['estado'] ?? '';
+
+    if ($id <= 0 || !in_array($estado_nuevo, $estados_validos, true)) {
+        echo json_encode(['success' => false, 'error' => 'Datos inválidos']);
+        exit;
+    }
+
+    $conn->begin_transaction();
+    try {
+        // Bloquea el presupuesto: serializa con otros guardados y cambios de estado
+        $res_p = $conn->query("SELECT estado FROM presupuestos WHERE id = $id FOR UPDATE");
+        if (!$res_p || !($row_p = $res_p->fetch_assoc())) {
+            throw new Exception('El presupuesto no existe o fue eliminado.');
+        }
+        $estado_anterior = $row_p['estado'];
+
+        if ($estado_anterior === $estado_nuevo) {
+            $conn->rollback();
+            echo json_encode(['success' => true, 'sin_cambios' => true]);
+            exit;
+        }
+
+        $res_v = $conn->query("SELECT snapshot_json, version_numero FROM presupuesto_versiones
+                               WHERE presupuesto_id = $id ORDER BY version_numero DESC LIMIT 1");
+        $ultima = $res_v ? $res_v->fetch_assoc() : null;
+        if (!$ultima) {
+            throw new Exception('El presupuesto no tiene versiones guardadas.');
+        }
+
+        $snapshot = json_decode($ultima['snapshot_json'], true) ?: [];
+        $snapshot['estado'] = $estado_nuevo;
+        $ver_num = intval($ultima['version_numero']) + 1;
+
+        $snapshot_sql = $conn->real_escape_string(json_encode($snapshot, JSON_UNESCAPED_UNICODE));
+        $comentario = $conn->real_escape_string("Cambio de estado: $estado_anterior → $estado_nuevo");
+        $estado_sql = $conn->real_escape_string($estado_nuevo);
+
+        if (!$conn->query("INSERT INTO presupuesto_versiones (presupuesto_id, version_numero, snapshot_json, comentario, usuario_id)
+                           VALUES ($id, $ver_num, '$snapshot_sql', '$comentario', $usuario_logueado)")) {
+            throw new Exception($conn->error);
+        }
+        if (!$conn->query("UPDATE presupuestos SET estado = '$estado_sql' WHERE id = $id")) {
+            throw new Exception($conn->error);
+        }
+
+        $conn->commit();
+    } catch (Throwable $e) {
+        $conn->rollback();
+        echo json_encode(['success' => false, 'error' => 'No se pudo cambiar el estado: ' . $e->getMessage()]);
+        exit;
+    }
+
+    echo json_encode(['success' => true, 'version' => $ver_num, 'estado' => $estado_nuevo]);
+    exit;
+}
+
+// ================= BORRAR UNA VERSIÓN =================
+// Borrado definitivo de una versión del historial. Reglas:
+// - No se puede borrar la única versión (para eso está Eliminar presupuesto).
+// - Si se borra la última, el presupuesto vuelve a los datos de la versión anterior,
+//   para que el listado y Editar coincidan.
+// - Los números no se renumeran (pueden quedar huecos: v1, v2, v4).
+if ($accion === 'borrar_version') {
+    $id = intval($_POST['id'] ?? 0);
+    $version_id = intval($_POST['version_id'] ?? 0);
+    if ($id <= 0 || $version_id <= 0) {
+        echo json_encode(['success' => false, 'error' => 'Datos inválidos']);
+        exit;
+    }
+
+    $conn->begin_transaction();
+    try {
+        $res_p = $conn->query("SELECT id FROM presupuestos WHERE id = $id FOR UPDATE");
+        if (!$res_p || $res_p->num_rows === 0) {
+            throw new Exception('El presupuesto no existe o fue eliminado.');
+        }
+
+        $res_v = $conn->query("SELECT version_numero FROM presupuesto_versiones WHERE presupuesto_id = $id AND id = $version_id");
+        $ver = $res_v ? $res_v->fetch_assoc() : null;
+        if (!$ver) {
+            throw new Exception('La versión no pertenece a este presupuesto.');
+        }
+
+        $res_c = $conn->query("SELECT COUNT(*) AS total, MAX(version_numero) AS ultima FROM presupuesto_versiones WHERE presupuesto_id = $id");
+        $info = $res_c->fetch_assoc();
+        if (intval($info['total']) <= 1) {
+            throw new Exception('Es la única versión del presupuesto. Para borrarla, eliminá el presupuesto completo.');
+        }
+        $era_ultima = intval($ver['version_numero']) === intval($info['ultima']);
+
+        if (!$conn->query("DELETE FROM presupuesto_versiones WHERE id = $version_id AND presupuesto_id = $id")) {
+            throw new Exception($conn->error);
+        }
+
+        // Si era la última, el presupuesto toma los datos de la que queda como última
+        $nueva_ultima = null;
+        if ($era_ultima) {
+            $res_n = $conn->query("SELECT snapshot_json, version_numero FROM presupuesto_versiones
+                                   WHERE presupuesto_id = $id ORDER BY version_numero DESC LIMIT 1");
+            $fila_n = $res_n->fetch_assoc();
+            $s = json_decode($fila_n['snapshot_json'], true) ?: [];
+            $nueva_ultima = intval($fila_n['version_numero']);
+
+            $codigo  = $conn->real_escape_string($s['codigo'] ?? '');
+            $fecha   = $conn->real_escape_string(($s['fecha'] ?? '') ?: date('Y-m-d'));
+            $cli     = intval($s['cliente_id'] ?? 0) ?: 'NULL';
+            $obra    = intval($s['obra_id'] ?? 0) ?: 'NULL';
+            $titulo  = $conn->real_escape_string($s['titulo'] ?? '');
+            $estado  = $conn->real_escape_string($s['estado'] ?? 'Borrador');
+            $neto    = floatval($s['total_neto'] ?? 0);
+            $k       = floatval($s['coeficiente_k_general'] ?? 1);
+            $total   = floatval($s['total_presupuestado'] ?? 0);
+
+            $sql = "UPDATE presupuestos SET codigo='$codigo', fecha='$fecha', cliente_id=$cli, obra_id=$obra,
+                    titulo='$titulo', estado='$estado', total_neto=$neto, coeficiente_k_general=$k,
+                    total_presupuestado=$total WHERE id=$id";
+            if (!$conn->query($sql)) throw new Exception($conn->error);
+        }
+
+        $conn->commit();
+    } catch (Throwable $e) {
+        $conn->rollback();
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        exit;
+    }
+
+    echo json_encode(['success' => true, 'era_ultima' => $era_ultima, 'nueva_ultima' => $nueva_ultima]);
+    exit;
+}
+
 // ================= HISTORIAL DE VERSIONES (bajo demanda) =================
 // Solo trae los datos para la lista; el JSON completo se pide al ver una versión.
 if ($accion === 'historial') {

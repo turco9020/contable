@@ -451,6 +451,9 @@ let cambiosSinGuardar = false;   // hay ediciones sin guardar en el modal
 let cierreConfirmado = false;    // el usuario confirmó que quiere cerrar
 let recuperadaDeVersion = 0;     // N° de versión recuperada desde el historial (0 = edición normal)
 
+const ESTADOS_PRESUPUESTO = ['Borrador', 'Enviado', 'Aprobado', 'Rechazado', 'Archivado'];
+const COLOR_ESTADO = { 'Borrador': 'bg-secondary', 'Enviado': 'bg-primary', 'Aprobado': 'bg-success', 'Rechazado': 'bg-danger', 'Archivado': 'bg-dark' };
+
 // Instancias de TomSelect estáticos
 let tsFiltroCliente, tsPresCliente, tsPresObra;
 
@@ -508,9 +511,20 @@ document.addEventListener("DOMContentLoaded", function() {
             },
             { 
                 data: 'estado',
-                render: function(d) {
-                    let map = { 'Borrador': 'bg-secondary', 'Enviado': 'bg-primary', 'Aprobado': 'bg-success', 'Rechazado': 'bg-danger', 'Archivado': 'bg-dark' };
-                    return '<span class="badge ' + (map[d] || 'bg-secondary') + '">' + d + '</span>';
+                render: function(d, type, row) {
+                    if (type !== 'display') return d; // para ordenar y buscar, el texto plano
+                    // Etiqueta con desplegable para cambiar el estado sin abrir el presupuesto
+                    let opciones = ESTADOS_PRESUPUESTO.map(function(e) {
+                        return '<li><a class="dropdown-item small' + (e === d ? ' active' : '') + '" href="#" ' +
+                               'onclick="cambiarEstadoPresupuesto(event, ' + row.id + ', \'' + e + '\')">' +
+                               '<span class="badge ' + COLOR_ESTADO[e] + ' me-2">&nbsp;</span>' + e + '</a></li>';
+                    }).join('');
+                    return '<div class="dropdown">' +
+                               '<button type="button" class="badge border-0 dropdown-toggle ' + (COLOR_ESTADO[d] || 'bg-secondary') + '" ' +
+                               'data-bs-toggle="dropdown" data-bs-popper-config=\'{"strategy":"fixed"}\' aria-expanded="false" title="Cambiar estado">' +
+                               escapeHtml(d) + '</button>' +
+                               '<ul class="dropdown-menu shadow-sm">' + opciones + '</ul>' +
+                           '</div>';
                 }
             },
             { data: 'usuario_nombre', render: function(d) { return d ? '<small><i class="bi bi-person"></i> ' + d + '</small>' : '<small>Sistema</small>'; } },
@@ -1586,6 +1600,44 @@ function confirmarCierrePresupuesto() {
 }
 
 // =====================================================================
+// CAMBIO DE ESTADO DESDE EL LISTADO (crea una versión nueva)
+// =====================================================================
+function cambiarEstadoPresupuesto(e, id, estadoNuevo) {
+    e.preventDefault();
+    const fila = tablaPresupuestos.rows().data().toArray().find(function(r) { return String(r.id) === String(id); });
+    const estadoActual = fila ? fila.estado : '';
+    if (estadoActual === estadoNuevo) return;
+
+    Swal.fire({
+        icon: 'question',
+        title: '¿Cambiar el estado?',
+        html: (fila ? '<b>' + escapeHtml(fila.codigo || '') + '</b><br>' : '') +
+              '<span class="badge ' + (COLOR_ESTADO[estadoActual] || 'bg-secondary') + '">' + escapeHtml(estadoActual) + '</span>' +
+              ' <i class="bi bi-arrow-right mx-1"></i> ' +
+              '<span class="badge ' + COLOR_ESTADO[estadoNuevo] + '">' + estadoNuevo + '</span>' +
+              '<br><small class="text-muted">Se guarda como una versión nueva en el historial.</small>',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, cambiar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+    }).then(function(r) {
+        if (!r.isConfirmed) return;
+        $.post(URL_AJAX + '?accion=cambiar_estado', { id: id, estado: estadoNuevo }, function(res) {
+            if (res.success) {
+                tablaPresupuestos.ajax.reload(null, false);
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success',
+                            title: res.sin_cambios ? 'El estado ya era ' + estadoNuevo : 'Estado cambiado a ' + estadoNuevo + ' (versión ' + res.version + ')',
+                            timer: 2200, showConfirmButton: false });
+            } else {
+                Swal.fire('Error', res.error || 'No se pudo cambiar el estado.', 'error');
+            }
+        }, 'json').fail(function() {
+            Swal.fire('Error', 'No se pudo establecer conexión con el servidor.', 'error');
+        });
+    });
+}
+
+// =====================================================================
 // HISTORIAL DE VERSIONES
 // Se consulta solo al abrir la ventana; el JSON completo de una versión se
 // pide recién al ver su detalle o al recuperarla.
@@ -1610,6 +1662,7 @@ function abrirHistorial(id) {
         }
 
         let filas = '';
+        const puedeBorrar = res.versiones.length > 1; // la única versión no se borra
         res.versiones.forEach(function(v, i) {
             const esUltima = (i === 0); // vienen de la más reciente a la más antigua
             filas += '<tr' + (esUltima ? ' class="table-success"' : '') + '>' +
@@ -1624,6 +1677,9 @@ function abrirHistorial(id) {
                         '<a class="btn btn-sm btn-outline-danger" title="Ver PDF de esta versión" href="/contable/modules/presupuestos/pdf.php?id=' + id + '&version=' + v.id + '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf"></i></a>' +
                         '<button class="btn btn-sm btn-outline-secondary" title="Ver detalle (solo lectura)" onclick="verDetalleVersion(' + id + ', ' + v.id + ')"><i class="bi bi-eye"></i></button>' +
                         '<button class="btn btn-sm btn-outline-primary" title="Recuperar esta versión para seguir trabajando" onclick="recuperarVersion(' + id + ', ' + v.id + ', ' + v.version_numero + ', ' + (esUltima ? 'true' : 'false') + ')"><i class="bi bi-arrow-counterclockwise"></i></button>' +
+                        (puedeBorrar
+                            ? '<button class="btn btn-sm btn-outline-danger" title="Borrar esta versión" onclick="borrarVersion(' + id + ', ' + v.id + ', ' + v.version_numero + ', ' + (esUltima ? 'true' : 'false') + ')"><i class="bi bi-trash"></i></button>'
+                            : '') +
                     '</div>' +
                 '</td>' +
             '</tr>';
@@ -1637,7 +1693,7 @@ function abrirHistorial(id) {
                     '<th>Comentario</th>' +
                     '<th style="width: 100px;">Usuario</th>' +
                     '<th class="text-end" style="width: 130px;">Total</th>' +
-                    '<th class="text-center" style="width: 120px;">Acciones</th>' +
+                    '<th class="text-center" style="width: 160px;">Acciones</th>' +
                 '</tr></thead>' +
                 '<tbody>' + filas + '</tbody>' +
             '</table></div>'
@@ -1761,6 +1817,38 @@ function htmlDetalleVersion(p, v) {
         '<div class="border rounded p-2 small">' + (p.condiciones || '<span class="text-muted">Sin condiciones.</span>') + '</div>';
 
     return html;
+}
+
+// Borrar una versión (definitivo). Si es la última, el presupuesto vuelve a la anterior.
+function borrarVersion(id, versionId, numero, esUltima) {
+    Swal.fire({
+        icon: 'warning',
+        title: '¿Borrar la versión ' + numero + '?',
+        html: 'La versión se elimina definitivamente y no se puede recuperar.' +
+              (esUltima ? '<br><small class="text-muted">Es la última versión: el presupuesto vuelve a quedar como la versión anterior (estado, totales y contenido).</small>' : '') +
+              '<br><small class="text-muted">Los números de las demás versiones no cambian.</small>',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, borrar',
+        confirmButtonColor: '#d33',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true,
+        focusCancel: true
+    }).then(function(r) {
+        if (!r.isConfirmed) return;
+        $.post(URL_AJAX + '?accion=borrar_version', { id: id, version_id: versionId }, function(res) {
+            if (res.success) {
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success',
+                            title: 'Versión ' + numero + ' borrada' + (res.era_ultima ? ' · ahora la última es la ' + res.nueva_ultima : ''),
+                            timer: 2500, showConfirmButton: false });
+                abrirHistorial(id);                        // refresca la lista
+                tablaPresupuestos.ajax.reload(null, false); // estado/total del listado
+            } else {
+                Swal.fire('No se pudo borrar', res.error || 'Ocurrió un error al borrar la versión.', 'error');
+            }
+        }, 'json').fail(function() {
+            Swal.fire('Error', 'No se pudo establecer conexión con el servidor.', 'error');
+        });
+    });
 }
 
 // Recuperar: carga la versión en el formulario, sin crear otro presupuesto

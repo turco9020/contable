@@ -582,6 +582,25 @@ document.addEventListener("DOMContentLoaded", function() {
             setCondicionesEditor(editorCondiciones, condicionesTextoGlobal);
 
             renderizarIndirectosBase();
+
+            // Entrada directa desde otro módulo (ej: pestaña Presupuestos de una Obra), ya con
+            // los catálogos cargados:
+            //   ?abrir=ID      abre ese presupuesto en el formulario
+            //   ?historial=ID  abre su historial de versiones
+            const params = new URLSearchParams(window.location.search);
+            const idAbrir = parseInt(params.get('abrir'), 10);
+            const idHistorial = parseInt(params.get('historial'), 10);
+            if (idAbrir > 0 || idHistorial > 0) {
+                history.replaceState(null, '', window.location.pathname); // que recargar no lo vuelva a abrir
+            }
+            if (idAbrir > 0) {
+                editarPresupuesto(idAbrir);
+            } else if (idHistorial > 0) {
+                // El título del historial sale de la fila del listado: esperar a que cargue
+                const lanzarHistorial = function() { abrirHistorial(idHistorial); };
+                if (tablaPresupuestos.ajax.json()) lanzarHistorial();
+                else $('#tablaPresupuestos').one('draw.dt', lanzarHistorial);
+            }
         } else {
             console.error("Error backend:", res.error);
             if (typeof Swal !== 'undefined') {

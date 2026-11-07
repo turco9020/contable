@@ -159,6 +159,29 @@ if($accion == 'listar_facturas') {
     exit;
 }
 
+// ================= PRESUPUESTOS VINCULADOS A LA OBRA =================
+// Solo datos de la tabla presupuestos y el número de la última versión
+// (no se leen los snapshots).
+if($accion == 'listar_presupuestos') {
+    $obra_id = intval($_GET['obra_id'] ?? 0);
+    $presupuestos = [];
+
+    if($obra_id > 0) {
+        $res = $conn->query("SELECT p.id, p.codigo, p.titulo, p.fecha, p.estado, p.total_presupuestado,
+                                    (SELECT MAX(v.version_numero) FROM presupuesto_versiones v WHERE v.presupuesto_id = p.id) AS ultima_version
+                             FROM presupuestos p
+                             WHERE p.obra_id = $obra_id
+                             ORDER BY p.fecha DESC, p.id DESC");
+        if($res) {
+            while($row = $res->fetch_assoc()) {
+                $presupuestos[] = $row;
+            }
+        }
+    }
+    echo json_encode(["success" => true, "presupuestos" => $presupuestos]);
+    exit;
+}
+
 // ================= NUEVO: TRAER GASTOS ASOCIADOS A LA OBRA =================
 if($accion == 'listar_gastos') {
     $obra_id = intval($_GET['obra_id'] ?? 0);

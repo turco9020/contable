@@ -173,6 +173,11 @@ include '../../../includes/sidebar.php';
                                         <i class="bi bi-shield-check me-1 text-warning"></i> Pólizas de Caución (<span id="cantPolizas">0</span>)
                                     </button>
                                 </li>
+                                <li class="nav-item">
+                                    <button class="nav-link fw-bold text-dark py-1 px-3" id="tab-presupuestos-btn" data-bs-toggle="tab" data-bs-target="#tab-presupuestos" type="button" role="tab">
+                                        <i class="bi bi-file-earmark-spreadsheet me-1 text-info"></i> Presupuestos (<span id="cantPresupuestosObra">0</span>)
+                                    </button>
+                                </li>
                             </ul>
 
                             <div class="tab-content border border-top-0 p-2 rounded-bottom bg-white" id="tabModulosObraContent">
@@ -202,6 +207,13 @@ include '../../../includes/sidebar.php';
                                     <div id="contenidoPolizasObra">
                                         <!-- Dinámico -->
                                     </div>
+                                </div>
+
+                                <!-- TAB PRESUPUESTOS VINCULADOS (módulo Presupuestos) -->
+                                <div class="tab-pane fade" id="tab-presupuestos" role="tabpanel">
+                                    <ul class="list-group list-group-flush" id="listaPresupuestosObra">
+                                        <!-- Dinámico -->
+                                    </ul>
                                 </div>
                             </div>
                         </div>
@@ -342,10 +354,10 @@ window.abrirModal = function(modo) {
     $('#formObra')[0].reset();
     $('#id').val('');
     $('#verPresupuestoActual').html('');
-    $('#listaArchivosObra, #listaFacturasObra, #listaGastosObra').html('');
+    $('#listaArchivosObra, #listaFacturasObra, #listaGastosObra, #listaPresupuestosObra').html('');
     
     $('#seccionResumenFinanciero').addClass('d-none');
-    $('#cantDocRepo, #cantFacVentas, #cantFacGastos').text('0');
+    $('#cantDocRepo, #cantFacVentas, #cantFacGastos, #cantPresupuestosObra').text('0');
 
     polizasObraId = 0;
     polizasObraActual = [];
@@ -376,7 +388,7 @@ window.editar = function(id){
     globalTotalVentas = 0;
     globalTotalGastos = 0;
 
-    $('#listaArchivosObra, #listaFacturasObra, #listaGastosObra').html('');
+    $('#listaArchivosObra, #listaFacturasObra, #listaGastosObra, #listaPresupuestosObra').html('');
     $('#formObra')[0].reset();
     $('#verPresupuestoActual').html('');
     $('#formObra').find('input, select, textarea').prop('disabled', false);
@@ -420,6 +432,7 @@ window.editar = function(id){
         window.cargarFacturasAsociadas(d.id);
         window.cargarGastosAsociados(d.id);
         window.cargarPolizasObra(d.id);
+        window.cargarPresupuestosObra(d.id);
     });
     modalObraBS.show();
 }
@@ -531,6 +544,53 @@ window.cargarFacturasAsociadas = function(obraId) {
             lista.append('<li class="list-group-item text-muted text-center py-2 small">No hay facturas de venta vinculadas a esta obra.</li>');
         }
         calcularBalanceGlobal();
+    }, 'json');
+}
+
+// Presupuestos del módulo Presupuestos vinculados a la obra (no suman al balance:
+// son cotizaciones, no movimientos)
+const COLOR_ESTADO_PRESUPUESTO = { 'Borrador': 'bg-secondary', 'Enviado': 'bg-primary', 'Aprobado': 'bg-success', 'Rechazado': 'bg-danger', 'Archivado': 'bg-dark' };
+
+window.cargarPresupuestosObra = function(obraId) {
+    $.get('/contable/ajax/obras.php?accion=listar_presupuestos', { obra_id: obraId }, function(r) {
+        let lista = $('#listaPresupuestosObra');
+        lista.empty();
+        const presupuestos = (r.success && r.presupuestos) ? r.presupuestos : [];
+        $('#cantPresupuestosObra').text(presupuestos.length);
+
+        if (presupuestos.length === 0) {
+            lista.append('<li class="list-group-item text-muted text-center py-2 small">No hay presupuestos vinculados a esta obra.</li>');
+            return;
+        }
+
+        presupuestos.forEach(p => {
+            const total = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(parseFloat(p.total_presupuestado) || 0);
+            const fecha = p.fecha ? p.fecha.split('-').reverse().join('/') : '-';
+            const color = COLOR_ESTADO_PRESUPUESTO[p.estado] || 'bg-secondary';
+            const version = p.ultima_version ? `<small class="text-muted ms-1">v${p.ultima_version}</small>` : '';
+
+            const botonPdf = p.ultima_version
+                ? `<a href="/contable/modules/presupuestos/pdf.php?id=${p.id}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-danger py-0 px-2" title="Ver PDF (última versión)"><i class="bi bi-file-earmark-pdf"></i></a>`
+                : `<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" disabled title="Sin versiones guardadas"><i class="bi bi-file-earmark-pdf"></i></button>`;
+
+            lista.append(`
+                <li class="list-group-item d-flex justify-content-between align-items-center py-1 px-2 small">
+                    <div class="text-truncate me-2">
+                        <i class="bi bi-file-earmark-spreadsheet text-info me-2"></i>
+                        <span class="fw-semibold">${escapeHtml(p.codigo || '-')}</span>${version}
+                        <span class="ms-1">– ${escapeHtml(p.titulo || '')}</span>
+                        <small class="text-muted ms-2">(${fecha})</small>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                        <span class="badge ${color}">${escapeHtml(p.estado || '-')}</span>
+                        <span class="fw-bold text-dark">${total}</span>
+                        ${botonPdf}
+                        <a href="/contable/modules/presupuestos/?historial=${p.id}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary py-0 px-2" title="Historial de versiones"><i class="bi bi-clock-history"></i></a>
+                        <a href="/contable/modules/presupuestos/?abrir=${p.id}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary py-0 px-2" title="Abrir en el módulo Presupuestos"><i class="bi bi-box-arrow-up-right"></i></a>
+                    </div>
+                </li>
+            `);
+        });
     }, 'json');
 }
 

@@ -110,6 +110,9 @@ include '../../includes/sidebar.php';
                 <div class="modal-body p-3">
                     <input type="hidden" id="presupuesto_id" value="0">
 
+                    <!-- Avisos de carga: versión recuperada / totales que no coinciden -->
+                    <div id="avisosCargaPresupuesto"></div>
+
                     <!-- DATOS GENERALES -->
                     <div class="row g-2 mb-3 bg-light p-2 rounded border">
                         <div class="col-md-2">
@@ -184,9 +187,14 @@ include '../../includes/sidebar.php';
                                         <option value="1.0000" data-mat="1.0000" data-mo="1.0000">1.0000 - Sin Coeficiente (Neto)</option>
                                     </select>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-dark" onclick="agregarRubro()">
-                                    <i class="bi bi-plus-lg me-1"></i> AGREGAR RUBRO
-                                </button>
+                                <div class="d-flex gap-1">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="actualizarPreciosAPUActuales()" title="Reemplaza los precios guardados por el costo actual de cada APU y el K base elegido">
+                                        <i class="bi bi-arrow-repeat me-1"></i> Actualizar precios con APU actuales
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-dark" onclick="agregarRubro()">
+                                        <i class="bi bi-plus-lg me-1"></i> AGREGAR RUBRO
+                                    </button>
+                                </div>
                             </div>
 
                             <div id="contenedorRubros" class="d-flex flex-column gap-3 mb-3"></div>
@@ -355,6 +363,41 @@ include '../../includes/sidebar.php';
     </div>
 </div>
 
+<!-- MODAL: HISTORIAL DE VERSIONES (se consulta al abrirlo) -->
+<div class="modal fade" id="modalHistorial" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white py-2">
+                <h5 class="modal-title fs-6 fw-bold"><i class="bi bi-clock-history me-2"></i>Historial de versiones <span id="historialTitulo" class="fw-normal text-white-50 ms-1"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-2" id="historialBody"></div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-sm btn-light border" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: DETALLE DE UNA VERSIÓN (solo lectura, sin recalcular) -->
+<div class="modal fade" id="modalVerVersion" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header py-2 bg-secondary bg-opacity-10">
+                <h5 class="modal-title fs-6 fw-bold"><i class="bi bi-eye me-2"></i><span id="verVersionTitulo"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body" id="verVersionBody"></div>
+            <div class="modal-footer py-2">
+                <span class="small text-muted me-auto"><i class="bi bi-lock me-1"></i>Consulta de solo lectura: los valores son los guardados en la versión.</span>
+                <a class="btn btn-sm btn-outline-danger" id="verVersionPdf" href="#" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="verVersionRecuperar"><i class="bi bi-arrow-counterclockwise me-1"></i>Recuperar</button>
+                <button type="button" class="btn btn-sm btn-light border" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- MODAL: VER DETALLE DE UNA APU -->
 <div class="modal fade" id="modalVerAPU" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
@@ -379,6 +422,8 @@ include '../../includes/sidebar.php';
 <script src="/contable/modules/presupuestos/assets/js/condiciones_editor.js"></script>
 <style>
 #condiciones_editor .ql-editor { min-height: 300px; font-size: 0.95rem; }
+/* P x K con el precio guardado en la versión (no se recalcula con la APU actual) */
+.item-punit.precio-fijo { box-shadow: inset 3px 0 0 var(--bs-info); }
 </style>
 
 <script>
@@ -400,6 +445,7 @@ let contadorRubros = 0;
 let apuDetallesGlobal = {};      // insumos de cada APU, indexado por id de tarea
 let cambiosSinGuardar = false;   // hay ediciones sin guardar en el modal
 let cierreConfirmado = false;    // el usuario confirmó que quiere cerrar
+let recuperadaDeVersion = 0;     // N° de versión recuperada desde el historial (0 = edición normal)
 
 // Instancias de TomSelect estáticos
 let tsFiltroCliente, tsPresCliente, tsPresObra;
@@ -472,6 +518,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     return '<div class="d-inline-flex gap-1">' +
                            '<button class="btn btn-sm btn-outline-primary" title="Editar" onclick="editarPresupuesto(' + d.id + ')"><i class="bi bi-pencil"></i></button>' +
                            '<a class="btn btn-sm btn-outline-danger" title="Ver PDF (última versión guardada)" href="/contable/modules/presupuestos/pdf.php?id=' + d.id + '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf"></i></a>' +
+                           '<button class="btn btn-sm btn-outline-secondary" title="Historial de versiones" onclick="abrirHistorial(' + d.id + ')"><i class="bi bi-clock-history"></i></button>' +
                            '<button class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="eliminarPresupuesto(' + d.id + ')"><i class="bi bi-trash"></i></button>' +
                            '</div>';
                 }
@@ -546,6 +593,16 @@ document.addEventListener("DOMContentLoaded", function() {
             condiciones: getCondicionesEditor(editorCondiciones),
             total_neto: parseMonedaFloat($('#lblSubtotalDirecto').text()),
             total_presupuestado: parseMonedaFloat($('#lblTotalPresupuesto').text()),
+            // Porcentajes de la pestaña Coeficiente K (para poder reconstruir la versión tal cual)
+            k_parametros: {
+                beneficio:   parseFloat($('#k_mo_ben').val()) || 0,
+                financieros: parseFloat($('#k_mo_fin').val()) || 0,
+                iibb:        parseFloat($('#k_mo_iibb').val()) || 0,
+                otros:       parseFloat($('#k_mo_otros').val()) || 0,
+                iva:         parseFloat($('#k_mo_iva').val()) || 0
+            },
+            // Solo en el primer guardado después de recuperar: el servidor arma el comentario
+            recuperada_de_version: recuperadaDeVersion,
             rubros: []
         };
 
@@ -610,6 +667,13 @@ document.addEventListener("DOMContentLoaded", function() {
                     $('#presupuesto_id').val(res.id);
                     cambiosSinGuardar = false;
 
+                    // La recuperación ya quedó registrada: los próximos guardados son normales
+                    if (recuperadaDeVersion > 0) {
+                        $('#avisosCargaPresupuesto').html('<div class="alert alert-success py-2 small mb-2"><i class="bi bi-check-circle me-1"></i>' +
+                            'Se guardó como <strong>versión ' + res.version + '</strong>, continuando desde la versión ' + recuperadaDeVersion + '.</div>');
+                        recuperadaDeVersion = 0;
+                    }
+
                     const hora = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
                     $('#lblEstadoGuardado').html('<i class="bi bi-check-circle-fill text-success me-1"></i>Guardado a las ' + hora + ' (versión ' + res.version + ')');
 
@@ -664,6 +728,8 @@ function limpiarFiltros() {
 function nuevoPresupuesto() {
     $('#formPresupuesto')[0].reset();
     $('#presupuesto_id').val('0');
+    recuperadaDeVersion = 0;
+    $('#avisosCargaPresupuesto').empty();
     $('#pres_codigo').val(codigoSugeridoGlobal);
     $('#pres_fecha').val(fechaHoyGlobal);
     
@@ -684,106 +750,182 @@ function nuevoPresupuesto() {
 function editarPresupuesto(id) {
     $.get(URL_AJAX + '?accion=obtener_detalle&id=' + id, function(res) {
         if (res.success && res.detalle) {
-            let p = res.detalle;
-            $('#presupuesto_id').val(id);
-            $('#pres_codigo').val(p.codigo || '');
-            $('#pres_fecha').val(p.fecha || '');
-
-            tsPresCliente.setValue(p.cliente_id || '');
-            actualizarObrasCombo(p.cliente_id || '');
-            tsPresObra.setValue(p.obra_id || '');
-
-            $('#pres_estado').val(p.estado || 'Borrador');
-            $('#pres_titulo').val(p.titulo || '');
-            $('#pres_k_base').val(p.coeficiente_k_base || '1.0000');
-            $('#pres_k_general').val(p.coeficiente_k_general || '1.0000');
-            setCondicionesEditor(editorCondiciones, p.condiciones || condicionesTextoGlobal);
-            $('#condiciones_base').val(''); // conserva el texto guardado; la base se elige solo si se quiere reemplazar
-            
-            // --- RESTAURACIÓN DE PARÁMETROS E INDIRECTOS ---
-            $('#pres_ind_operarios').val(p.indirectos_operarios || 2);
-            $('#pres_ind_dias').val(p.indirectos_dias || 30);
-            renderizarIndirectosBase(p.indirectos_items || null);
-            // ----------------------------------------------
-
-            $('#contenedorRubros').empty();
-            contadorRubros = 0;
-
-            if (p.rubros && p.rubros.length > 0) {
-                p.rubros.forEach(function(r) {
-                    contadorRubros++;
-                    let rNum = contadorRubros;
-                    let html = '<div class="card border rubro-block" data-rubro-id="' + rNum + '">' +
-                        '<div class="card-header bg-secondary bg-opacity-10 d-flex justify-content-between align-items-center py-1 px-2">' +
-                            '<div class="d-flex align-items-center gap-2 w-75">' +
-                                '<span class="fw-bold text-dark rubro-num">' + rNum + '.</span>' +
-                                '<input type="text" class="form-control form-control-sm fw-bold rubro-titulo-input" value="' + (r.titulo || '') + '" placeholder="Nombre del Rubro" required>' +
-                            '</div>' +
-                            '<div>' +
-                                '<button type="button" class="btn btn-xs btn-dark py-0" onclick="agregarItemARubro(' + rNum + ')">+ Tarea</button>' +
-                                '<button type="button" class="btn btn-xs btn-outline-danger py-0 ms-1" onclick="eliminarRubro(this)"><i class="bi bi-trash"></i></button>' +
-                            '</div>' +
-                        '</div>' +
-                        '<div class="card-body p-2">' +
-                            '<table class="table table-sm table-bordered align-middle mb-0">' +
-                                '<thead class="table-light small text-center">' +
-                                    '<tr>' +
-                                        '<th style="width: 50px;">ITEM</th>' +
-                                        '<th style="min-width: 320px;">DETALLE / DESCRIPCIÓN (APU)</th>' +
-                                        '<th style="width: 70px;">UNID</th>' +
-                                        '<th style="width: 80px;">CANT</th>' +
-                                        '<th style="width: 110px;">PRECIO BASE</th>' +
-                                        '<th style="width: 110px;">P x K BASE</th>' +
-                                        '<th style="width: 120px;">SUBTOTAL</th>' +
-                                        '<th style="width: 35px;"></th>' +
-                                    '</tr>' +
-                                '</thead>' +
-                                '<tbody class="body-items-rubro"></tbody>' +
-                            '</table>' +
-                        '</div>' +
-                    '</div>';
-                    $('#contenedorRubros').append(html);
-
-                    let card = $('.rubro-block[data-rubro-id="' + rNum + '"]');
-                    let tbody = card.find('.body-items-rubro');
-
-                    if (r.items && r.items.length > 0) {
-                        r.items.forEach(function(it, idx) {
-                            let itemCode = rNum + '.' + (idx + 1);
-                            
-                            let tr = `<tr class="item-row">
-                                <td class="text-center fw-bold small item-num">${itemCode}</td>
-                                <td>
-                                    <div class="d-flex align-items-center gap-1 apu-cell"><select class="form-select form-select-sm item-tarea-select"></select><button type="button" class="btn btn-sm btn-outline-info btn-ver-apu d-none text-nowrap" title="Ver detalle de la APU" onclick="verAPUDesdeFila(this)"><i class="bi bi-eye me-1"></i>Ver</button></div>
-                                    <input type="hidden" class="item-detalle-hidden" value="${it.detalle || ''}">
-                                </td>
-                                <td><input type="text" class="form-control form-control-sm text-center item-unidad" value="${it.unidad || 'UN'}"></td>
-                                <td><input type="number" step="0.01" class="form-control form-control-sm text-end item-cant" value="${it.cantidad || 0}" oninput="recalcularMatrizPresupuesto()"></td>
-                                <td><input type="number" step="0.01" class="form-control form-control-sm text-end item-precio" value="${it.precio_base || 0}" oninput="recalcularMatrizPresupuesto()"></td>
-                                <td><input type="text" class="form-control form-control-sm text-end item-punit bg-light" readonly value="$ 0,00"></td>
-                                <td><input type="text" class="form-control form-control-sm text-end item-subtotal bg-light fw-bold" readonly value="$ 0,00"></td>
-                                <td class="text-center">
-                                    <button type="button" class="btn btn-xs text-danger p-0" onclick="eliminarItemRow(this)"><i class="bi bi-x-circle-fill"></i></button>
-                                </td>
-                            </tr>`;
-                            tbody.append(tr);
-
-                            let selectElem = tbody.find('tr:last .item-tarea-select')[0];
-                            inicializarTomSelectFila(selectElem, it.tarea_id, it.detalle);
-                        });
-                    }
-                });
-            } else {
-                agregarRubro();
-            }
-
-            recalcularMatrizPresupuesto();
-            modalPresBS.show();
+            cargarVersionEnFormulario(id, res.detalle, 0);
         } else {
             Swal.fire('Error', 'No se pudieron recuperar los datos del presupuesto.', 'error');
         }
     }, 'json').fail(function() {
         Swal.fire('Error', 'No se pudo establecer conexión con el servidor.', 'error');
+    });
+}
+
+// Porcentajes del K por defecto (los mismos valores iniciales de la pestaña Coeficiente K)
+const K_PARAMETROS_DEFECTO = { beneficio: 25, financieros: 2, iibb: 2, otros: 0, iva: 21 };
+
+// Carga un snapshot (última versión o una versión recuperada) en el formulario.
+// Los precios de cada ítem se cargan tal como se guardaron y quedan fijos: no se
+// reemplazan por el costo actual de la APU hasta que el usuario cambie la APU o el
+// precio base de la fila, o use "Actualizar precios con APU actuales".
+function cargarVersionEnFormulario(id, p, recuperadaDe) {
+    recuperadaDeVersion = recuperadaDe || 0;
+
+    $('#presupuesto_id').val(id);
+    $('#pres_codigo').val(p.codigo || '');
+    $('#pres_fecha').val(p.fecha || '');
+
+    tsPresCliente.setValue(p.cliente_id || '');
+    actualizarObrasCombo(p.cliente_id || '');
+    tsPresObra.setValue(p.obra_id || '');
+
+    $('#pres_estado').val(p.estado || 'Borrador');
+    $('#pres_titulo').val(p.titulo || '');
+    $('#pres_k_base').val(p.coeficiente_k_base || '1.0000');
+    $('#pres_k_general').val(p.coeficiente_k_general || '1.0000');
+    setCondicionesEditor(editorCondiciones, p.condiciones || condicionesTextoGlobal);
+    $('#condiciones_base').val(''); // conserva el texto guardado; la base se elige solo si se quiere reemplazar
+
+    // Porcentajes del K: los guardados en la versión o, si es una versión vieja, los de por defecto
+    const kp = Object.assign({}, K_PARAMETROS_DEFECTO, p.k_parametros || {});
+    $('#k_mo_ben').val(kp.beneficio);
+    $('#k_mo_fin').val(kp.financieros);
+    $('#k_mo_iibb').val(kp.iibb);
+    $('#k_mo_otros').val(kp.otros);
+    $('#k_mo_iva').val(kp.iva);
+
+    // Parámetros e indirectos (los que no estaban en la versión se cargan desactivados)
+    $('#pres_ind_operarios').val(p.indirectos_operarios || 2);
+    $('#pres_ind_dias').val(p.indirectos_dias || 30);
+    renderizarIndirectosBase(p.indirectos_items || null);
+
+    $('#contenedorRubros').empty();
+    contadorRubros = 0;
+
+    if (p.rubros && p.rubros.length > 0) {
+        p.rubros.forEach(function(r) {
+            contadorRubros++;
+            let rNum = contadorRubros;
+            let html = '<div class="card border rubro-block" data-rubro-id="' + rNum + '">' +
+                '<div class="card-header bg-secondary bg-opacity-10 d-flex justify-content-between align-items-center py-1 px-2">' +
+                    '<div class="d-flex align-items-center gap-2 w-75">' +
+                        '<span class="fw-bold text-dark rubro-num">' + rNum + '.</span>' +
+                        '<input type="text" class="form-control form-control-sm fw-bold rubro-titulo-input" value="' + escapeHtml(r.titulo || '') + '" placeholder="Nombre del Rubro" required>' +
+                    '</div>' +
+                    '<div>' +
+                        '<button type="button" class="btn btn-xs btn-dark py-0" onclick="agregarItemARubro(' + rNum + ')">+ Tarea</button>' +
+                        '<button type="button" class="btn btn-xs btn-outline-danger py-0 ms-1" onclick="eliminarRubro(this)"><i class="bi bi-trash"></i></button>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="card-body p-2">' +
+                    '<table class="table table-sm table-bordered align-middle mb-0">' +
+                        '<thead class="table-light small text-center">' +
+                            '<tr>' +
+                                '<th style="width: 50px;">ITEM</th>' +
+                                '<th style="min-width: 320px;">DETALLE / DESCRIPCIÓN (APU)</th>' +
+                                '<th style="width: 70px;">UNID</th>' +
+                                '<th style="width: 80px;">CANT</th>' +
+                                '<th style="width: 110px;">PRECIO BASE</th>' +
+                                '<th style="width: 110px;">P x K BASE</th>' +
+                                '<th style="width: 120px;">SUBTOTAL</th>' +
+                                '<th style="width: 35px;"></th>' +
+                            '</tr>' +
+                        '</thead>' +
+                        '<tbody class="body-items-rubro"></tbody>' +
+                    '</table>' +
+                '</div>' +
+            '</div>';
+            $('#contenedorRubros').append(html);
+
+            let card = $('.rubro-block[data-rubro-id="' + rNum + '"]');
+            let tbody = card.find('.body-items-rubro');
+
+            (r.items || []).forEach(function(it, idx) {
+                let itemCode = rNum + '.' + (idx + 1);
+
+                // Precio con K guardado en la versión: se respeta hasta que el usuario cambie la fila
+                let precioGuardado = parseFloat(it.precio_unitario);
+                let attrFijo = isNaN(precioGuardado) ? '' : ' data-precio-fijo="' + precioGuardado + '"';
+
+                let tr = `<tr class="item-row"${attrFijo}>
+                    <td class="text-center fw-bold small item-num">${itemCode}</td>
+                    <td>
+                        <div class="d-flex align-items-center gap-1 apu-cell"><select class="form-select form-select-sm item-tarea-select"></select><button type="button" class="btn btn-sm btn-outline-info btn-ver-apu d-none text-nowrap" title="Ver detalle de la APU" onclick="verAPUDesdeFila(this)"><i class="bi bi-eye me-1"></i>Ver</button></div>
+                        <input type="hidden" class="item-detalle-hidden" value="${escapeHtml(it.detalle || '')}">
+                    </td>
+                    <td><input type="text" class="form-control form-control-sm text-center item-unidad" value="${escapeHtml(it.unidad || 'UN')}"></td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm text-end item-cant" value="${parseFloat(it.cantidad) || 0}" oninput="recalcularMatrizPresupuesto()"></td>
+                    <td><input type="number" step="0.01" class="form-control form-control-sm text-end item-precio" value="${parseFloat(it.precio_base) || 0}" oninput="liberarPrecioFila(this); recalcularMatrizPresupuesto()"></td>
+                    <td><input type="text" class="form-control form-control-sm text-end item-punit bg-light" readonly value="$ 0,00"></td>
+                    <td><input type="text" class="form-control form-control-sm text-end item-subtotal bg-light fw-bold" readonly value="$ 0,00"></td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-xs text-danger p-0" onclick="eliminarItemRow(this)"><i class="bi bi-x-circle-fill"></i></button>
+                    </td>
+                </tr>`;
+                tbody.append(tr);
+
+                let selectElem = tbody.find('tr:last .item-tarea-select')[0];
+                inicializarTomSelectFila(selectElem, it.tarea_id, it.detalle, true);
+            });
+        });
+    } else {
+        agregarRubro();
+    }
+
+    recalcularMatrizPresupuesto();
+    mostrarAvisosCarga(p, recuperadaDeVersion);
+    modalPresBS.show();
+}
+
+// Avisos arriba del formulario: versión recuperada y/o total que no coincide con el guardado
+function mostrarAvisosCarga(p, recuperadaDe) {
+    let html = '';
+    if (recuperadaDe > 0) {
+        html += '<div class="alert alert-info py-2 small mb-2"><i class="bi bi-arrow-counterclockwise me-1"></i>' +
+                'Recuperada de la <strong>versión ' + recuperadaDe + '</strong>. Al guardar se crea una versión nueva; la versión ' + recuperadaDe + ' queda intacta.</div>';
+    }
+
+    const totalGuardado = parseFloat(p.total_presupuestado) || 0;
+    const totalCalculado = parseMonedaFloat($('#lblTotalPresupuesto').text()) || 0;
+    if (totalGuardado > 0 && Math.abs(totalCalculado - totalGuardado) > 1) {
+        html += '<div class="alert alert-warning py-2 small mb-2"><i class="bi bi-exclamation-triangle me-1"></i>' +
+                'El total calculado (' + formatMoneda(totalCalculado) + ') no coincide con el guardado en la versión (' + formatMoneda(totalGuardado) + '). ' +
+                (p.k_parametros
+                    ? 'Revisá los indirectos y la pestaña Coeficiente K.'
+                    : 'Esta versión no guardó los porcentajes del K y se usaron los valores por defecto: revisá la pestaña Coeficiente K.') +
+                '</div>';
+    }
+    $('#avisosCargaPresupuesto').html(html);
+}
+
+// El usuario cambió el precio base o la APU de la fila: deja de usar el precio guardado
+function liberarPrecioFila(elem) {
+    $(elem).closest('tr.item-row').removeAttr('data-precio-fijo');
+}
+
+// Trae el costo actual de cada APU y recalcula todas las filas con el K base elegido
+function actualizarPreciosAPUActuales() {
+    Swal.fire({
+        icon: 'question',
+        title: '¿Actualizar precios?',
+        text: 'Los precios guardados de cada ítem se reemplazan por el costo actual de su APU y el K base elegido. Los ítems escritos a mano se recalculan con su precio base.',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, actualizar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+    }).then(function(r) {
+        if (!r.isConfirmed) return;
+        $('#contenedorRubros tr.item-row').each(function() {
+            const sel = $(this).find('.item-tarea-select')[0];
+            const ts = sel ? sel.tomselect : null;
+            const opt = ts ? ts.options[ts.getValue()] : null;
+            if (opt && opt.costo !== undefined) {
+                $(this).find('.item-unidad').val(opt.unidad || 'UN');
+                $(this).find('.item-precio').val(opt.costo || 0);
+            }
+            $(this).removeAttr('data-precio-fijo');
+        });
+        recalcularMatrizPresupuesto();
+        cambiosSinGuardar = true;
+        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Precios actualizados', timer: 1800, showConfirmButton: false });
     });
 }
 
@@ -838,7 +980,7 @@ function agregarItemARubro(rNum) {
         </td>
         <td><input type="text" class="form-control form-control-sm text-center item-unidad" value="UN"></td>
         <td><input type="number" step="0.01" class="form-control form-control-sm text-end item-cant" value="1.00" oninput="recalcularMatrizPresupuesto()"></td>
-        <td><input type="number" step="0.01" class="form-control form-control-sm text-end item-precio" value="0.00" oninput="recalcularMatrizPresupuesto()"></td>
+        <td><input type="number" step="0.01" class="form-control form-control-sm text-end item-precio" value="0.00" oninput="liberarPrecioFila(this); recalcularMatrizPresupuesto()"></td>
         <td><input type="text" class="form-control form-control-sm text-end item-punit bg-light" readonly value="$ 0,00"></td>
         <td><input type="text" class="form-control form-control-sm text-end item-subtotal bg-light fw-bold" readonly value="$ 0,00"></td>
         <td class="text-center">
@@ -854,7 +996,9 @@ function agregarItemARubro(rNum) {
     recalcularMatrizPresupuesto();
 }
 
-function inicializarTomSelectFila(selectElem, tareaIdVal, detalleVal) {
+// cargaGuardada = true cuando la fila viene de una versión guardada: se selecciona la APU
+// sin disparar onChange, para no pisar unidad ni precio con los valores actuales de la APU.
+function inicializarTomSelectFila(selectElem, tareaIdVal, detalleVal, cargaGuardada) {
     let ts = new TomSelect(selectElem, {
         create: true,
         persist: false,
@@ -866,6 +1010,9 @@ function inicializarTomSelectFila(selectElem, tareaIdVal, detalleVal) {
         onChange: function(value) {
             let row = selectElem.closest('tr');
             let option = this.options[value];
+
+            // Cambio hecho por el usuario: la fila deja de usar el precio guardado
+            $(row).removeAttr('data-precio-fijo');
 
             if (option && option.costo !== undefined) {
                 let unidad = option.unidad || 'UN';
@@ -897,7 +1044,18 @@ function inicializarTomSelectFila(selectElem, tareaIdVal, detalleVal) {
     });
 
     // Seleccionar la opción si ya existía
-    if (tareaIdVal && tareaIdVal > 0) {
+    if (cargaGuardada) {
+        if (tareaIdVal && tareaIdVal > 0) {
+            // Si la APU ya no existe en el catálogo, se muestra con el detalle guardado
+            if (!ts.options[tareaIdVal]) {
+                ts.addOption({ id: tareaIdVal, text: detalleVal || ('APU #' + tareaIdVal + ' (ya no está en el catálogo)') });
+            }
+            ts.setValue(tareaIdVal, true); // true = silencioso, sin onChange
+        } else if (detalleVal) {
+            ts.addOption({ id: detalleVal, text: detalleVal });
+            ts.setValue(detalleVal, true);
+        }
+    } else if (tareaIdVal && tareaIdVal > 0) {
         ts.setValue(tareaIdVal);
     } else if (detalleVal) {
         ts.addOption({ id: detalleVal, text: detalleVal });
@@ -973,8 +1131,12 @@ function recalcularMatrizPresupuesto() {
             }
 
             let pConK = 0;
+            const precioFijo = $(this).attr('data-precio-fijo');
 
-            if (costoMatNeto > 0 || costoMoNeto > 0) {
+            if (precioFijo !== undefined) {
+                // Precio guardado en la versión: no se recalcula con los costos actuales de la APU
+                pConK = parseFloat(precioFijo) || 0;
+            } else if (costoMatNeto > 0 || costoMoNeto > 0) {
                 pConK = (costoMatNeto * kMat) + (costoMoNeto * kMo);
             } else {
                 let precioBaseManual = parseFloat($(this).find('.item-precio').val()) || 0;
@@ -983,7 +1145,11 @@ function recalcularMatrizPresupuesto() {
 
             let subtotalItem = cant * pConK;
 
-            $(this).find('.item-punit').val(formatMoneda(pConK));
+            $(this).find('.item-punit').val(formatMoneda(pConK))
+                .toggleClass('precio-fijo', precioFijo !== undefined)
+                .attr('title', precioFijo !== undefined
+                    ? 'Precio guardado en la versión. Se recalcula si cambiás la APU o el precio base, o con "Actualizar precios con APU actuales".'
+                    : '');
             $(this).find('.item-subtotal').val(formatMoneda(subtotalItem));
 
             subtotalDirectoSum += subtotalItem;
@@ -1012,8 +1178,10 @@ function renderizarIndirectosBase(indirectosGuardados = null) {
         let catKey = (i.categoria_codigo || 'VARIOS') + ' - ' + (i.categoria_nombre || 'Sin Categoria');
         if (!agrupados[catKey]) agrupados[catKey] = [];
         
-        // Si hay una versión guardada en el presupuesto, restaurar esos valores
+        // Si hay una versión guardada en el presupuesto, restaurar esos valores.
+        // Un indirecto que no estaba en la versión (agregado después al catálogo) entra desactivado.
         let itemGuardado = indirectosGuardados ? indirectosGuardados.find(g => g.id == i.id) : null;
+        let faltaEnVersion = Array.isArray(indirectosGuardados) && indirectosGuardados.length > 0 && !itemGuardado;
         
         agrupados[catKey].push({
             id: i.id,
@@ -1024,7 +1192,7 @@ function renderizarIndirectosBase(indirectosGuardados = null) {
             cantidad: itemGuardado ? parseFloat(itemGuardado.cantidad) : parseFloat(i.cantidad_defecto || 1),
             afectacion: itemGuardado ? parseFloat(itemGuardado.afectacion) : parseFloat(i.afectacion_defecto || 1),
             unitario: itemGuardado ? parseFloat(itemGuardado.unitario) : parseFloat(i.unitario_defecto || 0),
-            activo: itemGuardado ? parseInt(itemGuardado.activo) : parseInt(i.activo ?? 1),
+            activo: itemGuardado ? parseInt(itemGuardado.activo) : (faltaEnVersion ? 0 : parseInt(i.activo ?? 1)),
             depende_operarios: parseInt(i.depende_operarios || 0),
             depende_tiempo: parseInt(i.depende_tiempo || 0)
         });
@@ -1378,6 +1546,17 @@ function initControlesPresupuesto() {
         if ($('#modalPresupuesto').hasClass('show')) $('body').addClass('modal-open');
     });
 
+    // Modal "Detalle de versión" apilado sobre el historial
+    const verVersionEl = document.getElementById('modalVerVersion');
+    // (por encima del historial: 1050/1055, y por debajo de SweetAlert: 1060)
+    verVersionEl.addEventListener('shown.bs.modal', function() {
+        $('.modal-backdrop').last().css('z-index', 1056);
+        $(verVersionEl).css('z-index', 1057);
+    });
+    verVersionEl.addEventListener('hidden.bs.modal', function() {
+        if ($('#modalHistorial').hasClass('show')) $('body').addClass('modal-open');
+    });
+
     // La pestaña Resumen se recalcula cada vez que se abre
     document.getElementById('tab-res-btn').addEventListener('shown.bs.tab', actualizarResumenPresupuesto);
 }
@@ -1399,6 +1578,216 @@ function confirmarCierrePresupuesto() {
             cierreConfirmado = true;
             modalPresBS.hide();
         }
+    });
+}
+
+// =====================================================================
+// HISTORIAL DE VERSIONES
+// Se consulta solo al abrir la ventana; el JSON completo de una versión se
+// pide recién al ver su detalle o al recuperarla.
+// =====================================================================
+let historialPresupuestoId = 0;
+
+function abrirHistorial(id) {
+    historialPresupuestoId = id;
+    const fila = tablaPresupuestos.rows().data().toArray().find(function(r) { return String(r.id) === String(id); });
+    $('#historialTitulo').text(fila ? '· ' + (fila.codigo || '') + (fila.titulo ? ' - ' + fila.titulo : '') : '');
+    $('#historialBody').html('<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Cargando versiones...</div>');
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalHistorial')).show();
+
+    $.get(URL_AJAX + '?accion=historial&id=' + id, function(res) {
+        if (!res.success) {
+            $('#historialBody').html('<div class="alert alert-danger m-2">No se pudo cargar el historial.</div>');
+            return;
+        }
+        if (!res.versiones.length) {
+            $('#historialBody').html('<div class="alert alert-light border m-2">Este presupuesto no tiene versiones guardadas.</div>');
+            return;
+        }
+
+        let filas = '';
+        res.versiones.forEach(function(v, i) {
+            const esUltima = (i === 0); // vienen de la más reciente a la más antigua
+            filas += '<tr' + (esUltima ? ' class="table-success"' : '') + '>' +
+                '<td class="text-center text-nowrap"><span class="fw-bold">v' + v.version_numero + '</span>' +
+                    (esUltima ? ' <span class="badge bg-success ms-1">Última</span>' : '') + '</td>' +
+                '<td class="text-nowrap small">' + escapeHtml(v.fecha) + '</td>' +
+                '<td class="small">' + escapeHtml(v.comentario || '-') + '</td>' +
+                '<td class="small text-nowrap">' + escapeHtml(v.usuario) + '</td>' +
+                '<td class="text-end text-nowrap">' + formatMoneda(v.total_presupuestado) + '</td>' +
+                '<td class="text-center text-nowrap">' +
+                    '<div class="d-inline-flex gap-1">' +
+                        '<a class="btn btn-sm btn-outline-danger" title="Ver PDF de esta versión" href="/contable/modules/presupuestos/pdf.php?id=' + id + '&version=' + v.id + '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf"></i></a>' +
+                        '<button class="btn btn-sm btn-outline-secondary" title="Ver detalle (solo lectura)" onclick="verDetalleVersion(' + id + ', ' + v.id + ')"><i class="bi bi-eye"></i></button>' +
+                        '<button class="btn btn-sm btn-outline-primary" title="Recuperar esta versión para seguir trabajando" onclick="recuperarVersion(' + id + ', ' + v.id + ', ' + v.version_numero + ', ' + (esUltima ? 'true' : 'false') + ')"><i class="bi bi-arrow-counterclockwise"></i></button>' +
+                    '</div>' +
+                '</td>' +
+            '</tr>';
+        });
+
+        $('#historialBody').html(
+            '<div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">' +
+                '<thead class="table-light small"><tr>' +
+                    '<th class="text-center" style="width: 110px;">Versión</th>' +
+                    '<th style="width: 125px;">Fecha</th>' +
+                    '<th>Comentario</th>' +
+                    '<th style="width: 100px;">Usuario</th>' +
+                    '<th class="text-end" style="width: 130px;">Total</th>' +
+                    '<th class="text-center" style="width: 120px;">Acciones</th>' +
+                '</tr></thead>' +
+                '<tbody>' + filas + '</tbody>' +
+            '</table></div>'
+        );
+    }, 'json').fail(function() {
+        $('#historialBody').html('<div class="alert alert-danger m-2">No se pudo establecer conexión con el servidor.</div>');
+    });
+}
+
+// Detalle de solo lectura: se muestra lo guardado en el snapshot, sin recalcular nada
+function verDetalleVersion(id, versionId) {
+    $('#verVersionTitulo').text('Cargando versión...');
+    $('#verVersionBody').html('<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Cargando...</div>');
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalVerVersion')).show();
+
+    $.get(URL_AJAX + '?accion=obtener_detalle&id=' + id + '&version_id=' + versionId, function(res) {
+        if (!res.success || !res.detalle) {
+            $('#verVersionBody').html('<div class="alert alert-danger">No se encontró la versión solicitada.</div>');
+            return;
+        }
+        const p = res.detalle;
+        const v = res.version;
+
+        $('#verVersionTitulo').text((p.codigo || 'Presupuesto') + ' · Versión ' + v.numero + (v.es_ultima ? ' (última)' : ''));
+        $('#verVersionPdf').attr('href', '/contable/modules/presupuestos/pdf.php?id=' + id + '&version=' + v.id);
+        $('#verVersionRecuperar').off('click').on('click', function() { recuperarVersion(id, v.id, v.numero, v.es_ultima); });
+        $('#verVersionBody').html(htmlDetalleVersion(p, v));
+    }, 'json').fail(function() {
+        $('#verVersionBody').html('<div class="alert alert-danger">No se pudo establecer conexión con el servidor.</div>');
+    });
+}
+
+function htmlDetalleVersion(p, v) {
+    const cliente = clientesGlobal.find(function(c) { return String(c.id) === String(p.cliente_id); });
+    const obra = obrasGlobal.find(function(o) { return String(o.id) === String(p.obra_id); });
+    const kBase = coeficientesGlobal.find(function(k) { return String(k.id) === String(p.coeficiente_k_base); });
+    const fecha = p.fecha ? p.fecha.split('-').reverse().join('/') : '-';
+    const dato = function(lbl, val) {
+        return '<div class="col-md-3 col-6"><div class="small text-muted">' + lbl + '</div><div class="fw-semibold">' + val + '</div></div>';
+    };
+
+    let html = '<div class="row g-2 mb-3 bg-light border rounded p-2 mx-0">' +
+        dato('Fecha', escapeHtml(fecha)) +
+        dato('Estado', escapeHtml(p.estado || '-')) +
+        dato('Cliente', escapeHtml(cliente ? cliente.nombre : '-')) +
+        dato('Obra', escapeHtml(obra ? obra.nombre : '-')) +
+        '<div class="col-12"><div class="small text-muted">Título</div><div class="fw-semibold">' + escapeHtml(p.titulo || '-') + '</div></div>' +
+        '<div class="col-12 small text-muted border-top pt-1 mt-1"><i class="bi bi-clock-history me-1"></i>Guardada el ' + escapeHtml(v.fecha) +
+            ' por ' + escapeHtml(v.usuario) + (v.comentario ? ' · ' + escapeHtml(v.comentario) : '') + '</div>' +
+    '</div>';
+
+    // Rubros e ítems con los valores guardados
+    let filas = '';
+    (p.rubros || []).forEach(function(r) {
+        filas += '<tr class="table-secondary fw-bold"><td class="text-center">' + escapeHtml(r.numero || '') + '</td><td colspan="6">' + escapeHtml(r.titulo || '') + '</td></tr>';
+        (r.items || []).forEach(function(it) {
+            filas += '<tr>' +
+                '<td class="text-center">' + escapeHtml(it.item_num || '') + '</td>' +
+                '<td>' + escapeHtml(it.detalle || '') + '</td>' +
+                '<td class="text-center">' + escapeHtml(it.unidad || '') + '</td>' +
+                '<td class="text-end">' + formatCantidad(it.cantidad) + '</td>' +
+                '<td class="text-end">' + formatMoneda(it.precio_base) + '</td>' +
+                '<td class="text-end">' + formatMoneda(it.precio_unitario) + '</td>' +
+                '<td class="text-end fw-semibold">' + formatMoneda(it.subtotal) + '</td>' +
+            '</tr>';
+        });
+    });
+    html += '<h6 class="fw-bold text-secondary mb-1"><i class="bi bi-list-task me-1"></i>Rubros e ítems</h6>' +
+        '<div class="table-responsive mb-3"><table class="table table-sm table-bordered align-middle small mb-0">' +
+            '<thead class="table-light"><tr>' +
+                '<th class="text-center" style="width: 60px;">Ítem</th><th>Descripción</th>' +
+                '<th class="text-center" style="width: 60px;">Unid.</th><th class="text-end" style="width: 80px;">Cant.</th>' +
+                '<th class="text-end" style="width: 120px;">Precio base</th><th class="text-end" style="width: 120px;">P x K base</th>' +
+                '<th class="text-end" style="width: 130px;">Subtotal</th>' +
+            '</tr></thead><tbody>' + (filas || '<tr><td colspan="7" class="text-center text-muted">Sin ítems</td></tr>') + '</tbody>' +
+        '</table></div>';
+
+    // Coeficientes
+    const kp = p.k_parametros;
+    html += '<div class="row g-3 mb-3">' +
+        '<div class="col-md-6"><h6 class="fw-bold text-secondary mb-1"><i class="bi bi-percent me-1"></i>Coeficientes</h6>' +
+            '<table class="table table-sm table-bordered small mb-0"><tbody>' +
+                '<tr><td>K base</td><td class="text-end">' + escapeHtml(kBase ? kBase.nombre : (p.coeficiente_k_base || '1.0000')) + '</td></tr>' +
+                '<tr><td>K general</td><td class="text-end fw-bold">' + escapeHtml(p.coeficiente_k_general || '-') + '</td></tr>' +
+                (kp
+                    ? '<tr><td>Beneficio / Financieros</td><td class="text-end">' + kp.beneficio + '% / ' + kp.financieros + '%</td></tr>' +
+                      '<tr><td>IIBB / Otros / IVA</td><td class="text-end">' + kp.iibb + '% / ' + kp.otros + '% / ' + kp.iva + '%</td></tr>'
+                    : '<tr><td colspan="2" class="text-muted">Esta versión no guardó los porcentajes del K.</td></tr>') +
+            '</tbody></table></div>' +
+        '<div class="col-md-6"><h6 class="fw-bold text-secondary mb-1"><i class="bi bi-cash-stack me-1"></i>Totales guardados</h6>' +
+            '<table class="table table-sm table-bordered small mb-0"><tbody>' +
+                '<tr><td>Costo directo + K base</td><td class="text-end">' + formatMoneda(p.total_neto) + '</td></tr>' +
+                '<tr class="table-dark"><td class="fw-bold">Total presupuestado</td><td class="text-end fw-bold">' + formatMoneda(p.total_presupuestado) + '</td></tr>' +
+            '</tbody></table></div>' +
+    '</div>';
+
+    // Indirectos activos (los valores son los guardados; el nombre sale del catálogo)
+    const activos = (p.indirectos_items || []).filter(function(i) { return parseInt(i.activo) === 1; });
+    html += '<h6 class="fw-bold text-secondary mb-1"><i class="bi bi-diagram-3 me-1"></i>Gastos indirectos activos ' +
+        '<span class="fw-normal small text-muted">(operarios: ' + escapeHtml(p.indirectos_operarios || '-') + ' · días: ' + escapeHtml(p.indirectos_dias || '-') + ')</span></h6>';
+    if (activos.length) {
+        let filasInd = '';
+        activos.forEach(function(i) {
+            const cat = indirectosGlobal.find(function(x) { return String(x.id) === String(i.id); });
+            filasInd += '<tr><td>' + escapeHtml(cat ? cat.descripcion : 'Indirecto #' + i.id) + '</td>' +
+                '<td class="text-center">' + escapeHtml(i.unidad || '') + '</td>' +
+                '<td class="text-end">' + formatCantidad(parseFloat(i.cantidad)) + '</td>' +
+                '<td class="text-end">' + formatMoneda(parseFloat(i.unitario)) + '</td>' +
+                '<td class="text-end">' + formatCantidad(parseFloat(i.afectacion)) + '</td></tr>';
+        });
+        html += '<div class="table-responsive mb-3"><table class="table table-sm table-bordered small mb-0">' +
+            '<thead class="table-light"><tr><th>Descripción</th><th class="text-center" style="width: 60px;">Unid.</th>' +
+            '<th class="text-end" style="width: 90px;">Cant.</th><th class="text-end" style="width: 120px;">Unitario</th><th class="text-end" style="width: 90px;">Afectación</th></tr></thead>' +
+            '<tbody>' + filasInd + '</tbody></table></div>';
+    } else {
+        html += '<p class="small text-muted mb-3">Sin indirectos activos.</p>';
+    }
+
+    // Condiciones (el servidor ya devuelve el HTML limpio)
+    html += '<h6 class="fw-bold text-secondary mb-1"><i class="bi bi-file-text me-1"></i>Condiciones generales</h6>' +
+        '<div class="border rounded p-2 small">' + (p.condiciones || '<span class="text-muted">Sin condiciones.</span>') + '</div>';
+
+    return html;
+}
+
+// Recuperar: carga la versión en el formulario, sin crear otro presupuesto
+function recuperarVersion(id, versionId, numero, esUltima) {
+    Swal.fire({
+        icon: 'question',
+        title: '¿Recuperar la versión ' + numero + '?',
+        html: 'Se abre el formulario con el contenido de la versión ' + numero + ' y sus precios guardados.<br>' +
+              '<small class="text-muted">Al guardar se crea una versión nueva; la versión ' + numero + ' no se modifica.' +
+              (esUltima ? ' Esta ya es la última versión.' : '') + '</small>',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, recuperar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+    }).then(function(r) {
+        if (!r.isConfirmed) return;
+        $.get(URL_AJAX + '?accion=obtener_detalle&id=' + id + '&version_id=' + versionId, function(res) {
+            if (!res.success || !res.detalle) {
+                Swal.fire('Error', 'No se encontró la versión solicitada.', 'error');
+                return;
+            }
+            // Cerrar historial y detalle antes de abrir el formulario
+            ['modalVerVersion', 'modalHistorial'].forEach(function(m) {
+                const inst = bootstrap.Modal.getInstance(document.getElementById(m));
+                if (inst) inst.hide();
+            });
+            // Si es la última versión no hace falta marcar el origen en el comentario
+            cargarVersionEnFormulario(id, res.detalle, esUltima ? 0 : res.version.numero);
+        }, 'json').fail(function() {
+            Swal.fire('Error', 'No se pudo establecer conexión con el servidor.', 'error');
+        });
     });
 }
 

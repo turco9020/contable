@@ -276,51 +276,133 @@ if ($accion === 'guardar') {
     $coeficiente_k_general = floatval($post_data['coeficiente_k_general'] ?? 1);
     $total_presupuestado = floatval($post_data['total_presupuestado'] ?? 0);
 
-    if ($id > 0) {
-        $sql = "UPDATE presupuestos SET 
-                codigo='$codigo', fecha='$fecha', cliente_id=$cliente_id, obra_id=$obra_id,
-                titulo='$titulo', estado='$estado', total_neto=$total_neto, 
-                coeficiente_k_general=$coeficiente_k_general, total_presupuestado=$total_presupuestado
-                WHERE id=$id";
-        $conn->query($sql);
-        $presupuesto_id = $id;
+    // Si se continúa desde una versión recuperada, se deja constancia en el comentario.
+    // El dato no se guarda dentro del snapshot.
+    $recuperada_de = intval($post_data['recuperada_de_version'] ?? 0);
+    unset($post_data['recuperada_de_version']);
 
-        $res_v = $conn->query("SELECT MAX(version_numero)+1 AS proxima FROM presupuesto_versiones WHERE presupuesto_id = $presupuesto_id");
-        $ver_num = ($res_v && $r_v = $res_v->fetch_assoc()) ? intval($r_v['proxima']) : 1;
-    } else {
-        $sql = "INSERT INTO presupuestos 
-                (codigo, fecha, cliente_id, obra_id, titulo, estado, total_neto, coeficiente_k_general, total_presupuestado, usuario_id)
-                VALUES ('$codigo', '$fecha', $cliente_id, $obra_id, '$titulo', '$estado', $total_neto, $coeficiente_k_general, $total_presupuestado, $usuario_logueado)";
-        $conn->query($sql);
-        $presupuesto_id = $conn->insert_id;
-        $ver_num = 1;
+    // Todo el guardado va en una transacción: el presupuesto y su nueva versión se
+    // graban juntos, y el número de versión se asigna con el presupuesto bloqueado
+    // (SELECT ... FOR UPDATE) para que dos guardados simultáneos no repitan número.
+    $conn->begin_transaction();
+    try {
+        if ($id > 0) {
+            $res_lock = $conn->query("SELECT id FROM presupuestos WHERE id = $id FOR UPDATE");
+            if (!$res_lock || $res_lock->num_rows === 0) {
+                throw new Exception('El presupuesto no existe o fue eliminado.');
+            }
+
+            $sql = "UPDATE presupuestos SET
+                    codigo='$codigo', fecha='$fecha', cliente_id=$cliente_id, obra_id=$obra_id,
+                    titulo='$titulo', estado='$estado', total_neto=$total_neto,
+                    coeficiente_k_general=$coeficiente_k_general, total_presupuestado=$total_presupuestado
+                    WHERE id=$id";
+            if (!$conn->query($sql)) throw new Exception($conn->error);
+            $presupuesto_id = $id;
+
+            // Siempre correlativo al último existente (no al número de la versión recuperada)
+            $res_v = $conn->query("SELECT COALESCE(MAX(version_numero), 0) + 1 AS proxima FROM presupuesto_versiones WHERE presupuesto_id = $presupuesto_id");
+            $ver_num = ($res_v && $r_v = $res_v->fetch_assoc()) ? intval($r_v['proxima']) : 1;
+        } else {
+            $sql = "INSERT INTO presupuestos
+                    (codigo, fecha, cliente_id, obra_id, titulo, estado, total_neto, coeficiente_k_general, total_presupuestado, usuario_id)
+                    VALUES ('$codigo', '$fecha', $cliente_id, $obra_id, '$titulo', '$estado', $total_neto, $coeficiente_k_general, $total_presupuestado, $usuario_logueado)";
+            if (!$conn->query($sql)) throw new Exception($conn->error);
+            $presupuesto_id = $conn->insert_id;
+            $ver_num = 1;
+        }
+
+        $post_data['id'] = (string)$presupuesto_id; // el snapshot queda con el ID real
+        $snapshot_json = $conn->real_escape_string(json_encode($post_data, JSON_UNESCAPED_UNICODE));
+
+        if ($recuperada_de > 0) {
+            $comentario_txt = "Recuperación de versión $recuperada_de - Se continúa trabajando desde esta versión";
+        } else {
+            $comentario_txt = $post_data['comentario_version'] ?? ($id > 0 ? "Actualización de versión $ver_num" : "Creación inicial versión 1");
+        }
+        $comentario = $conn->real_escape_string(mb_substr($comentario_txt, 0, 255));
+
+        $sql_version = "INSERT INTO presupuesto_versiones (presupuesto_id, version_numero, snapshot_json, comentario, usuario_id)
+                        VALUES ($presupuesto_id, $ver_num, '$snapshot_json', '$comentario', $usuario_logueado)";
+        if (!$conn->query($sql_version)) throw new Exception($conn->error);
+
+        $conn->commit();
+    } catch (Throwable $e) {
+        $conn->rollback();
+        echo json_encode(['success' => false, 'error' => 'No se pudo guardar: ' . $e->getMessage()]);
+        exit;
     }
 
-    $snapshot_json = $conn->real_escape_string(json_encode($post_data, JSON_UNESCAPED_UNICODE));
-    $comentario = $conn->real_escape_string($post_data['comentario_version'] ?? ($id > 0 ? "Actualización de versión $ver_num" : "Creación inicial versión 1"));
-
-    $sql_version = "INSERT INTO presupuesto_versiones (presupuesto_id, version_numero, snapshot_json, comentario, usuario_id)
-                    VALUES ($presupuesto_id, $ver_num, '$snapshot_json', '$comentario', $usuario_logueado)";
-    $conn->query($sql_version);
-
     echo json_encode(['success' => true, 'id' => $presupuesto_id, 'version' => $ver_num]);
+    exit;
+}
+
+// ================= HISTORIAL DE VERSIONES (bajo demanda) =================
+// Solo trae los datos para la lista; el JSON completo se pide al ver una versión.
+if ($accion === 'historial') {
+    $id = intval($_GET['id'] ?? 0);
+    $versiones = [];
+    if ($id > 0) {
+        $res = $conn->query("SELECT v.id, v.version_numero,
+                                    DATE_FORMAT(v.fecha_version, '%d/%m/%Y %H:%i') AS fecha,
+                                    v.comentario,
+                                    IFNULL(u.usuario, '-') AS usuario,
+                                    JSON_UNQUOTE(JSON_EXTRACT(v.snapshot_json, '$.total_presupuestado')) AS total_presupuestado
+                             FROM presupuesto_versiones v
+                             LEFT JOIN usuarios u ON u.id = v.usuario_id
+                             WHERE v.presupuesto_id = $id
+                             ORDER BY v.version_numero DESC");
+        if ($res) {
+            while ($r = $res->fetch_assoc()) {
+                $r['id'] = intval($r['id']);
+                $r['version_numero'] = intval($r['version_numero']);
+                $r['total_presupuestado'] = floatval($r['total_presupuestado']);
+                $versiones[] = $r;
+            }
+        }
+    }
+    echo json_encode(['success' => true, 'versiones' => $versiones]);
     exit;
 }
 
 // ================= OBTENER DETALLE =================
 if ($accion === 'obtener_detalle') {
     $id = intval($_GET['id'] ?? 0);
-    $version = intval($_GET['version'] ?? 0);
+    $version = intval($_GET['version'] ?? 0);        // número de versión
+    $version_id = intval($_GET['version_id'] ?? 0);  // ID del registro de la versión (historial)
 
-    if ($version > 0) {
-        $sql = "SELECT snapshot_json FROM presupuesto_versiones WHERE presupuesto_id = $id AND version_numero = $version";
+    $campos = "v.id, v.version_numero, DATE_FORMAT(v.fecha_version, '%d/%m/%Y %H:%i') AS fecha, v.comentario, IFNULL(u.usuario, '-') AS usuario, v.snapshot_json";
+    $desde = "FROM presupuesto_versiones v LEFT JOIN usuarios u ON u.id = v.usuario_id";
+    if ($version_id > 0) {
+        $sql = "SELECT $campos $desde WHERE v.presupuesto_id = $id AND v.id = $version_id";
+    } elseif ($version > 0) {
+        $sql = "SELECT $campos $desde WHERE v.presupuesto_id = $id AND v.version_numero = $version";
     } else {
-        $sql = "SELECT snapshot_json FROM presupuesto_versiones WHERE presupuesto_id = $id ORDER BY version_numero DESC LIMIT 1";
+        $sql = "SELECT $campos $desde WHERE v.presupuesto_id = $id ORDER BY v.version_numero DESC LIMIT 1";
     }
 
     $res = $conn->query($sql);
     if ($res && $row = $res->fetch_assoc()) {
-        echo json_encode(['success' => true, 'detalle' => json_decode($row['snapshot_json'], true)]);
+        $res_ult = $conn->query("SELECT MAX(version_numero) AS ultima FROM presupuesto_versiones WHERE presupuesto_id = $id");
+        $ultima = ($res_ult && $r_u = $res_ult->fetch_assoc()) ? intval($r_u['ultima']) : 0;
+
+        // Las condiciones se devuelven limpias (solo formato permitido): las versiones
+        // anteriores al editor pueden tener texto plano. No se modifica lo guardado.
+        $detalle = json_decode($row['snapshot_json'], true) ?: [];
+        $detalle['condiciones'] = limpiarCondicionesHtml($detalle['condiciones'] ?? '');
+
+        echo json_encode([
+            'success' => true,
+            'detalle' => $detalle,
+            'version' => [
+                'id' => intval($row['id']),
+                'numero' => intval($row['version_numero']),
+                'fecha' => $row['fecha'],
+                'comentario' => $row['comentario'],
+                'usuario' => $row['usuario'],
+                'es_ultima' => intval($row['version_numero']) === $ultima
+            ]
+        ]);
     } else {
         echo json_encode(['success' => false, 'error' => 'No se encontró la versión solicitada']);
     }

@@ -424,6 +424,10 @@ include '../../includes/sidebar.php';
 #condiciones_editor .ql-editor { min-height: 300px; font-size: 0.95rem; }
 /* P x K con el precio guardado en la versión (no se recalcula con la APU actual) */
 .item-punit.precio-fijo { box-shadow: inset 3px 0 0 var(--bs-info); }
+/* Precio base sin las flechitas de subir/bajar del campo numérico */
+.item-precio::-webkit-outer-spin-button,
+.item-precio::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.item-precio { -moz-appearance: textfield; appearance: textfield; }
 </style>
 
 <script>
@@ -1818,6 +1822,13 @@ function actualizarBotonVerAPU(selectElem, value) {
     const esApu = value !== '' && value !== null && value !== undefined &&
                   tareasGlobal.some(function(t) { return String(t.id) === String(value); });
     $(selectElem).closest('td').find('.btn-ver-apu').toggleClass('d-none', !esApu);
+
+    // Con APU, el precio base sale del análisis y no se edita a mano (perdería la relación
+    // con la APU). Solo los ítems escritos a mano tienen precio base editable.
+    $(selectElem).closest('tr').find('.item-precio')
+        .prop('readonly', esApu)
+        .toggleClass('bg-light', esApu)
+        .attr('title', esApu ? 'Precio de la APU: para cambiarlo, modificá la APU o usá "Actualizar precios con APU actuales"' : '');
 }
 
 function verAPUDesdeFila(btn) {

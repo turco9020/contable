@@ -37,29 +37,34 @@ if (!function_exists('esAdmin')) {
 // SEGURIDAD GLOBAL: CONTROL DE ACCESO
 // =====================================
 
-$uri_actual = $_SERVER['REQUEST_URI'];
+// Solo el path, sin query string: si no, "?x=/ajax/" en cualquier URL saltearía el control
+$uri_actual = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '';
 
-// 1. Excepciones: Rutas públicas que NUNCA deben bloquearse
-$rutas_publicas = ['/auth/login.php', '/auth/logout.php', '/ajax/'];
-$es_publico = false;
+// 1. Excepciones: Rutas públicas que NUNCA deben bloquearse (path exacto)
+$rutas_publicas = ['/contable/auth/login.php', '/contable/auth/logout.php'];
+$es_publico = in_array($uri_actual, $rutas_publicas, true);
 
-foreach ($rutas_publicas as $publica) {
-    if (strpos($uri_actual, $publica) !== false) {
-        $es_publico = true;
-        break;
-    }
-}
+// Endpoints AJAX: carpetas /ajax/ y archivos modules/*/ajax_*.php
+$es_carpeta_ajax = strpos($uri_actual, '/ajax/') !== false;
+$es_endpoint_ajax = $es_carpeta_ajax || strpos(basename($uri_actual), 'ajax_') === 0;
 
 if (!$es_publico) {
-    
+
     // VERIFICACIÓN 1: El usuario debe estar logueado
     if (!isset($_SESSION['id'])) {
+        if ($es_endpoint_ajax) {
+            http_response_code(401);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => false, 'message' => 'Sesión expirada. Volvé a iniciar sesión.']);
+            exit();
+        }
         header("Location: /contable/auth/login.php");
         exit();
     }
 
     // VERIFICACIÓN 2: Permisos de acceso según el sidebar
-    if (!esAdmin()) {
+    // (los AJAX de carpetas /ajax/ siguen sin chequeo de rol por módulo, como antes)
+    if (!esAdmin() && !$es_carpeta_ajax) {
         
         $rol_actual = strtolower($_SESSION['rol'] ?? '');
 

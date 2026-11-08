@@ -21,6 +21,7 @@ if (!isset($conn) || $conn->connect_error) {
 }
 
 require_once __DIR__ . '/../includes/condiciones_html.php';
+require_once __DIR__ . '/../includes/apu_snapshot.php';
 
 $accion = $_GET['accion'] ?? '';
 $usuario_logueado = $_SESSION['id'] ?? 0;
@@ -282,6 +283,11 @@ if ($accion === 'guardar') {
     // El dato no se guarda dentro del snapshot.
     $recuperada_de = intval($post_data['recuperada_de_version'] ?? 0);
     unset($post_data['recuperada_de_version']);
+
+    // Insumos de cada APU usada y K Base con que se calcularon (para el PDF de APU)
+    $apus_previas = is_array($post_data['apus_previas'] ?? null) ? $post_data['apus_previas'] : [];
+    unset($post_data['apus_previas']);
+    $post_data['apus'] = apuArmarSnapshot($conn, $post_data, $apus_previas);
 
     // Todo el guardado va en una transacción: el presupuesto y su nueva versión se
     // graban juntos, y el número de versión se asigna con el presupuesto bloqueado

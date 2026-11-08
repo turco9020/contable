@@ -15,75 +15,21 @@ error_reporting(E_ALL);
 require_once '../../config/database.php';
 require_once '../../includes/auth.php'; // solo usuarios con sesión iniciada
 require_once __DIR__ . '/includes/condiciones_html.php';
+require_once __DIR__ . '/includes/pdf_comun.php';
 
 const PDF_IVA_PORCENTAJE = 21.0; // IVA que se suma al final, sobre el total neto
 
 $id = intval($_GET['id'] ?? 0);
 $version_id = intval($_GET['version'] ?? 0);
-if ($id <= 0) {
-    die("ID de presupuesto inválido.");
-}
 
-// 1. Versión a imprimir: la pedida (y que sea de este presupuesto) o la última
-if ($version_id > 0) {
-    $stmt_v = $conn->prepare("SELECT snapshot_json, version_numero FROM presupuesto_versiones
-                              WHERE presupuesto_id = ? AND id = ?");
-    $stmt_v->bind_param("ii", $id, $version_id);
-} else {
-    $stmt_v = $conn->prepare("SELECT snapshot_json, version_numero FROM presupuesto_versiones
-                              WHERE presupuesto_id = ? ORDER BY version_numero DESC LIMIT 1");
-    $stmt_v->bind_param("i", $id);
-}
-$stmt_v->execute();
-$version = $stmt_v->get_result()->fetch_assoc();
-if (!$version) {
-    die($version_id > 0 ? "La versión solicitada no pertenece a este presupuesto." : "El presupuesto no tiene versiones guardadas.");
-}
-$snap = json_decode($version['snapshot_json'], true) ?: [];
+// 1. Versión a imprimir y 2. datos generales tal como quedaron en esa versión
+[$snap, $version_numero] = pdfCargarVersion($conn, $id, $version_id);
 $rubros = $snap['rubros'] ?? [];
 $condiciones_html = limpiarCondicionesHtml($snap['condiciones'] ?? '');
+$p = pdfDatosGenerales($conn, $snap, $version_numero);
 
-// 2. Datos generales tal como quedaron en esa versión
-$p = [
-    'codigo'                => $snap['codigo'] ?? '',
-    'fecha'                 => $snap['fecha'] ?? '',
-    'titulo'                => $snap['titulo'] ?? '',
-    'total_neto'            => floatval($snap['total_neto'] ?? 0),
-    'total_presupuestado'   => floatval($snap['total_presupuestado'] ?? 0),
-    'coeficiente_k_general' => floatval($snap['coeficiente_k_general'] ?? 1),
-    'version_numero'        => intval($version['version_numero']),
-    'cliente_nombre'        => '-',
-    'cliente_cuit'          => '',
-    'cliente_direccion'     => '',
-    'obra_nombre'           => '-',
-];
-
-$cliente_id = intval($snap['cliente_id'] ?? 0);
-if ($cliente_id > 0) {
-    $stmt_c = $conn->prepare("SELECT nombre, cuit, direccion FROM clientes WHERE id = ?");
-    $stmt_c->bind_param("i", $cliente_id);
-    $stmt_c->execute();
-    if ($c = $stmt_c->get_result()->fetch_assoc()) {
-        $p['cliente_nombre'] = $c['nombre'] ?? '-';
-        $p['cliente_cuit'] = $c['cuit'] ?? '';
-        $p['cliente_direccion'] = $c['direccion'] ?? '';
-    }
-}
-$obra_id = intval($snap['obra_id'] ?? 0);
-if ($obra_id > 0) {
-    $stmt_o = $conn->prepare("SELECT nombre FROM obras WHERE id = ?");
-    $stmt_o->bind_param("i", $obra_id);
-    $stmt_o->execute();
-    if ($o = $stmt_o->get_result()->fetch_assoc()) {
-        $p['obra_nombre'] = $o['nombre'] ?? '-';
-    }
-}
-
-// 3. Coeficiente que se aplica a los precios netos de cada ítem.
-//    Se usa Total presupuestado / Total neto (el K se guarda redondeado a 4 decimales).
-$total_neto_costo = $p['total_neto'];
-$total_presupuestado = $p['total_presupuestado'];
-$k = $total_neto_costo > 0 ? $total_presupuestado / $total_neto_costo : ($p['coeficiente_k_general'] ?: 1);
+// 3. Coeficiente que se aplica a los precios netos de cada ítem
+$k = pdfKFinal($p);
 
 // 4. Precios para el cliente, redondeados a centavos para que el PDF sume exacto:
 //    subtotal = cantidad x unitario, subtotal de rubro = suma de sus ítems,
@@ -107,38 +53,9 @@ unset($rubro);
 $iva = round($total_neto * PDF_IVA_PORCENTAJE / 100, 2);
 $total_final = $total_neto + $iva;
 
-function pdfMoneda($n) {
-    return '$ ' . number_format((float)$n, 2, ',', '.');
-}
-function pdfCantidad($n) {
-    $n = (float)$n;
-    return number_format($n, ($n == floor($n)) ? 0 : 2, ',', '.');
-}
-function pdfTexto($s) {
-    return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
-}
-
-// 4. Logo
-$logo_base64 = '';
-$ruta_logo = __DIR__ . '/../../assets/img/logo-pdf.jpg';
-if (file_exists($ruta_logo)) {
-    $logo_base64 = 'data:image/jpeg;base64,' . base64_encode(file_get_contents($ruta_logo));
-}
-
-// 5. Dompdf
-$dompdfPath = __DIR__ . '/../../vendor/dompdf/autoload.inc.php';
-if (!file_exists($dompdfPath)) {
-    die("Error: No se encontró Dompdf en " . $dompdfPath);
-}
-require_once $dompdfPath;
-
-use Dompdf\Dompdf;
-use Dompdf\Options;
-
-$options = new Options();
-$options->set('isRemoteEnabled', false);
-$options->set('isHtml5ParserEnabled', true);
-$dompdf = new Dompdf($options);
+// 5. Logo y Dompdf
+$logo_base64 = pdfLogoBase64();
+$dompdf = pdfCrearDompdf();
 
 ob_start();
 ?>
@@ -288,14 +205,4 @@ ob_start();
 </html>
 <?php
 $html = ob_get_clean();
-$dompdf->loadHtml($html, 'UTF-8');
-$dompdf->setPaper('A4', 'portrait');
-$dompdf->render();
-
-// Número de página al pie
-$canvas = $dompdf->getCanvas();
-$fuente = $dompdf->getFontMetrics()->getFont('Helvetica');
-$canvas->page_text($canvas->get_width() - 110, $canvas->get_height() - 28, 'Página {PAGE_NUM} de {PAGE_COUNT}', $fuente, 8, [0.4, 0.4, 0.4]);
-
-$nombre_archivo = preg_replace('/[^A-Za-z0-9_-]/', '_', $p['codigo'] ?: ('presupuesto_' . $id)) . '_v' . $p['version_numero'] . '.pdf';
-$dompdf->stream($nombre_archivo, ['Attachment' => false]);
+pdfEnviar($dompdf, $html, pdfNombreArchivo($p, $id)); // con número de página al pie

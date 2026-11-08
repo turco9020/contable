@@ -220,7 +220,7 @@ include '../../includes/sidebar.php';
                                     </div>
                                     <div class="col-md-3 text-end">
                                         <label class="form-label fw-bold small text-primary mb-0" for="pres_k_general">K General Final (Pie):</label>
-                                        <input type="number" step="0.0001" id="pres_k_general" class="form-control form-control-sm text-end fw-bold border-primary" value="1.0000" oninput="recalcularMatrizPresupuesto()">
+                                        <input type="number" step="0.01" id="pres_k_general" class="form-control form-control-sm text-end fw-bold border-primary" value="1.00" oninput="recalcularMatrizPresupuesto()">
                                     </div>
                                     <div class="col-md-4 text-end">
                                         <span class="fw-bold text-uppercase d-block small text-dark">TOTAL GENERAL PRESUPUESTADO:</span>
@@ -263,7 +263,7 @@ include '../../includes/sidebar.php';
                                     <div class="card border-secondary shadow-sm">
                                         <div class="card-header bg-secondary text-white fw-semibold d-flex justify-content-between align-items-center py-2">
                                             <span><i class="bi bi-tools me-2"></i> COEFICIENTE K - DETERMINACIÓN DE PRECIO</span>
-                                            <span class="fs-6 fw-bold" id="lbl_k_mo_title">K = 1.0000</span>
+                                            <span class="fs-6 fw-bold" id="lbl_k_mo_title">K = 1.00</span>
                                         </div>
                                         <div class="card-body p-3">
                                             <table class="table table-sm table-bordered align-middle mb-0 small">
@@ -289,7 +289,7 @@ include '../../includes/sidebar.php';
                                                     <!-- SUBTOTAL (D) -->
                                                     <tr class="table-secondary fw-bold">
                                                         <td>SUBTOTAL (D) [A + B + C]</td>
-                                                        <td class="text-end" id="lbl_mo_sub_d">1.4000</td>
+                                                        <td class="text-end" id="lbl_mo_sub_d">1.40</td>
                                                         <td><input type="text" id="k_monto_d" class="form-control form-control-sm text-end fw-bold bg-light" value="$ 0,00" readonly></td>
                                                     </tr>
                                                     <!-- FINANCIEROS (E) -->
@@ -301,7 +301,7 @@ include '../../includes/sidebar.php';
                                                     <!-- SUBTOTAL (F) -->
                                                     <tr class="table-secondary fw-bold">
                                                         <td>SUBTOTAL (F) [D + E]</td>
-                                                        <td class="text-end" id="lbl_mo_sub_f">1.4280</td>
+                                                        <td class="text-end" id="lbl_mo_sub_f">1.43</td>
                                                         <td><input type="text" id="k_monto_f" class="form-control form-control-sm text-end fw-bold bg-light" value="$ 0,00" readonly></td>
                                                     </tr>
                                                     <!-- IIBB (G) -->
@@ -322,10 +322,16 @@ include '../../includes/sidebar.php';
                                                         <td><input type="number" step="0.01" id="k_mo_iva" class="form-control form-control-sm text-end calc-k-mo" value="21.00" oninput="calcularKGeneralMatMo()"></td>
                                                         <td><input type="text" id="k_monto_i" class="form-control form-control-sm text-end bg-light" value="$ 0,00" readonly></td>
                                                     </tr>
+                                                    <!-- REDONDEO: el K final se usa con 2 decimales -->
+                                                    <tr class="text-muted">
+                                                        <td>Redondeo del K a 2 decimales</td>
+                                                        <td></td>
+                                                        <td><input type="text" id="k_monto_redondeo" class="form-control form-control-sm text-end bg-light text-muted" value="$ 0,00" readonly></td>
+                                                    </tr>
                                                     <!-- PRECIO TOTAL VENTA -->
                                                     <tr class="table-dark text-white fw-bold">
                                                         <td>PRECIO TOTAL / OFERTA FINAL</td>
-                                                        <td class="text-end fs-6" id="lbl_k_final_factor">1.0000</td>
+                                                        <td class="text-end fs-6" id="lbl_k_final_factor">1.00</td>
                                                         <td><input type="text" id="k_monto_total" class="form-control form-control-sm text-end fw-bold bg-dark text-white border-0" value="$ 0,00" readonly></td>
                                                     </tr>
                                                 </tbody>
@@ -464,6 +470,7 @@ let cambiosSinGuardar = false;   // hay ediciones sin guardar en el modal
 let cierreConfirmado = false;    // el usuario confirmó que quiere cerrar
 let recuperadaDeVersion = 0;     // N° de versión recuperada desde el historial (0 = edición normal)
 let vistaListado = 'activos';    // pestaña del listado: 'activos' | 'archivados'
+let apusVersionCargada = {};     // APU guardadas en la versión cargada (para el PDF de APU de ítems con precio fijo)
 
 const ESTADOS_PRESUPUESTO = ['Borrador', 'Enviado', 'Aprobado', 'Rechazado', 'Archivado'];
 const COLOR_ESTADO = { 'Borrador': 'bg-secondary', 'Enviado': 'bg-primary', 'Aprobado': 'bg-success', 'Rechazado': 'bg-danger', 'Archivado': 'bg-dark' };
@@ -551,6 +558,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     return '<div class="d-inline-flex gap-1">' +
                            '<button class="btn btn-sm btn-outline-primary" title="Editar" onclick="editarPresupuesto(' + d.id + ')"><i class="bi bi-pencil"></i></button>' +
                            '<a class="btn btn-sm btn-outline-danger" title="Ver PDF (última versión guardada)" href="/contable/modules/presupuestos/pdf.php?id=' + d.id + '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf"></i></a>' +
+                           '<a class="btn btn-sm btn-outline-dark" title="PDF de APU (una hoja por APU, última versión guardada)" href="/contable/modules/presupuestos/apu_pdf.php?id=' + d.id + '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-ruled"></i></a>' +
                            '<button class="btn btn-sm btn-outline-secondary" title="Historial de versiones" onclick="abrirHistorial(' + d.id + ')"><i class="bi bi-clock-history"></i></button>' +
                            '<button class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="eliminarPresupuesto(' + d.id + ')"><i class="bi bi-trash"></i></button>' +
                            '</div>';
@@ -655,6 +663,9 @@ document.addEventListener("DOMContentLoaded", function() {
             },
             // Solo en el primer guardado después de recuperar: el servidor arma el comentario
             recuperada_de_version: recuperadaDeVersion,
+            // APU de la versión cargada: el servidor las reutiliza en los ítems cuyo precio
+            // quedó fijo de esa versión (no se guardan tal cual; el servidor arma "apus")
+            apus_previas: apusVersionCargada,
             rubros: []
         };
 
@@ -781,6 +792,7 @@ function nuevoPresupuesto() {
     $('#formPresupuesto')[0].reset();
     $('#presupuesto_id').val('0');
     recuperadaDeVersion = 0;
+    apusVersionCargada = {};
     $('#avisosCargaPresupuesto').empty();
     $('#pres_codigo').val(codigoSugeridoGlobal);
     $('#pres_fecha').val(fechaHoyGlobal);
@@ -820,6 +832,7 @@ const K_PARAMETROS_DEFECTO = { beneficio: 25, financieros: 2, iibb: 2, otros: 0,
 // precio base de la fila, o use "Actualizar precios con APU actuales".
 function cargarVersionEnFormulario(id, p, recuperadaDe) {
     recuperadaDeVersion = recuperadaDe || 0;
+    apusVersionCargada = p.apus || {};
 
     $('#presupuesto_id').val(id);
     $('#pres_codigo').val(p.codigo || '');
@@ -832,7 +845,7 @@ function cargarVersionEnFormulario(id, p, recuperadaDe) {
     $('#pres_estado').val(p.estado || 'Borrador');
     $('#pres_titulo').val(p.titulo || '');
     $('#pres_k_base').val(p.coeficiente_k_base || '1.0000');
-    $('#pres_k_general').val(p.coeficiente_k_general || '1.0000');
+    $('#pres_k_general').val(p.coeficiente_k_general || '1.00');
     setCondicionesEditor(editorCondiciones, p.condiciones || condicionesTextoGlobal);
     $('#condiciones_base').val(''); // conserva el texto guardado; la base se elige solo si se quiere reemplazar
 
@@ -1152,7 +1165,7 @@ function actualizarKDesdePlantilla() {
     let kMat = parseFloat(opt.data('mat')) || 1;
     let kMo = parseFloat(opt.data('mo')) || 1;
     
-    let kGeneralPonderado = ((kMat + kMo) / 2).toFixed(4);
+    let kGeneralPonderado = ((kMat + kMo) / 2).toFixed(2);
     $('#pres_k_general').val(kGeneralPonderado);
     recalcularMatrizPresupuesto();
 }
@@ -1488,7 +1501,7 @@ function calcularKGeneralMatMo() {
     // Subtotal D
     let factorD = 1 + (pctB + pctC) / 100;
     let montoD = montoA + montoB + montoC;
-    $('#lbl_mo_sub_d').text(factorD.toFixed(4));
+    $('#lbl_mo_sub_d').text(factorD.toFixed(2));
     $('#k_monto_d').val(formatMoneda(montoD));
 
     // Financiero E
@@ -1499,7 +1512,7 @@ function calcularKGeneralMatMo() {
     // Subtotal F
     let factorF = factorD * (1 + pctE / 100);
     let montoF = montoD + montoE;
-    $('#lbl_mo_sub_f').text(factorF.toFixed(4));
+    $('#lbl_mo_sub_f').text(factorF.toFixed(2));
     $('#k_monto_f').val(formatMoneda(montoF));
 
     // Impuestos G, H, I calculados sobre F
@@ -1515,18 +1528,22 @@ function calcularKGeneralMatMo() {
     $('#k_monto_h').val(formatMoneda(montoH));
     $('#k_monto_i').val(formatMoneda(montoI));
 
-    // Factor K Final y Monto Total
-    let factorKFinal = factorF * (1 + (pctG + pctH + pctI) / 100);
-    let montoTotalFinal = montoF + montoG + montoH + montoI;
+    // Factor K Final, redondeado a 2 decimales: es el K que se muestra y con el que se
+    // calcula el total (Costo neto x K), para que la cuenta cierre exacta en la pantalla,
+    // en el PDF del presupuesto y en las hojas de APU.
+    let factorKFinal = Math.round(factorF * (1 + (pctG + pctH + pctI) / 100) * 100) / 100;
+    let montoTotalFinal = Math.round(montoA * factorKFinal * 100) / 100;
 
-    $('#lbl_k_mo_title').text('K = ' + factorKFinal.toFixed(4));
+    $('#lbl_k_mo_title').text('K = ' + factorKFinal.toFixed(2));
     if ($('#lbl_k_final_factor').length) {
-        $('#lbl_k_final_factor').text(factorKFinal.toFixed(4));
+        $('#lbl_k_final_factor').text(factorKFinal.toFixed(2));
     }
+    // Diferencia entre la suma de los montos (K sin redondear) y el total con el K de 2 decimales
+    $('#k_monto_redondeo').val(formatMoneda(montoTotalFinal - (montoF + montoG + montoH + montoI)));
     $('#k_monto_total').val(formatMoneda(montoTotalFinal));
 
     // Actualizar el K General Final del presupuesto
-    $('#pres_k_general').val(factorKFinal.toFixed(4));
+    $('#pres_k_general').val(factorKFinal.toFixed(2));
     $('#lblTotalPresupuesto').text(formatMoneda(montoTotalFinal));
 }
 

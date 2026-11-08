@@ -105,6 +105,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button class="btn btn-sm btn-outline-primary" title="Editar" onclick="editarTarea(${row.id})">
                                 <i class="bi bi-pencil"></i>
                             </button>
+                            <button class="btn btn-sm btn-outline-dark" title="Duplicar (abre una copia para editar)" onclick="duplicarTarea(${row.id})">
+                                <i class="bi bi-copy"></i>
+                            </button>
                             <button class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="eliminarTarea(${row.id})">
                                 <i class="bi bi-trash3"></i>
                             </button>
@@ -187,6 +190,7 @@ function nuevaTarea() {
 
     recalcularTotales();
     setEstadoFormularioReadOnly(false);
+    document.getElementById('btnDuplicarAPU').classList.add('d-none'); // una tarea nueva no se duplica
     modalBs.show();
 }
 
@@ -474,7 +478,86 @@ function editarTarea(id) {
     cargarDatosTarea(id, false);
 }
 
-function cargarDatosTarea(id, isReadOnly) {
+// =====================================================================
+// DUPLICAR TAREA
+// La copia se arma en el mismo formulario como una tarea nueva (id 0) y se
+// crea recién al tocar "Guardar APU". Cancelar no crea nada.
+// =====================================================================
+let estadoFormularioCargado = ''; // foto del formulario al abrir la tarea, para saber si se editó
+
+// Valores visibles del formulario (datos generales + filas de insumos)
+function serializarFormularioTarea() {
+    const filas = Array.from(document.querySelectorAll('.fila-item')).map(tr => [
+        tr.dataset.tipo,
+        tr.querySelector('.desc-recurso').value,
+        tr.querySelector('.unidad-recurso').value,
+        tr.querySelector('.precio-recurso').value,
+        tr.querySelector('.cantidad-recurso').value,
+        tr.querySelector('.obs-recurso').value
+    ]);
+    return JSON.stringify([
+        document.getElementById('tarea_codigo').value,
+        document.getElementById('tarea_nombre').value,
+        document.getElementById('tarea_unidad').value,
+        document.getElementById('tarea_observaciones').value,
+        filas
+    ]);
+}
+
+// Convierte la tarea abierta en una tarea nueva con los mismos datos
+function convertirEnCopia(modalAbriendose = false) {
+    const codigo = document.getElementById('tarea_codigo').value.trim();
+    const nombre = document.getElementById('tarea_nombre').value.trim();
+    const origen = (codigo ? '[' + codigo + '] ' : '') + nombre;
+
+    setEstadoFormularioReadOnly(false); // si se abrió con "Ver", la copia queda editable
+    document.getElementById('tarea_id').value = '0';
+    document.getElementById('tarea_codigo').value = '';
+    document.getElementById('tarea_nombre').value = nombre + ' (copia)';
+    document.getElementById('btnDuplicarAPU').classList.add('d-none');
+
+    const titulo = document.getElementById('modalTareaTitle');
+    titulo.innerHTML = '<i class="bi bi-copy me-2"></i>Nueva APU <span class="fw-normal small ms-1"></span>';
+    titulo.querySelector('span').textContent = '· copia de ' + origen;
+
+    // Cursor en el código (desde el listado, cuando el modal termina de abrirse)
+    const campoCodigo = document.getElementById('tarea_codigo');
+    if (modalAbriendose) {
+        document.getElementById('modalTarea').addEventListener('shown.bs.modal', () => campoCodigo.focus(), { once: true });
+    } else {
+        campoCodigo.focus();
+    }
+
+    Swal.fire({
+        toast: true, position: 'top-end', icon: 'info', timer: 3500, showConfirmButton: false,
+        title: 'Copia lista: poné el código y ajustá lo que necesites. Se crea al tocar Guardar APU.'
+    });
+}
+
+// Botón "Duplicar" dentro del modal
+function duplicarDesdeModal() {
+    const editado = !esModoVer && serializarFormularioTarea() !== estadoFormularioCargado;
+    if (!editado) {
+        convertirEnCopia();
+        return;
+    }
+    Swal.fire({
+        icon: 'warning',
+        title: '¿Duplicar con los cambios?',
+        text: 'Hiciste cambios sin guardar. La copia sale con esos cambios y la tarea original queda como estaba guardada.',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, duplicar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#212529'
+    }).then(r => { if (r.isConfirmed) convertirEnCopia(); });
+}
+
+// Botón "Duplicar" del listado: abre directamente la copia
+function duplicarTarea(id) {
+    cargarDatosTarea(id, false, () => convertirEnCopia(true));
+}
+
+function cargarDatosTarea(id, isReadOnly, alCargar) {
     fetch(`${AJAX_URL}?action=obtener_tarea&id=${id}`)
         .then(r => r.json())
         .then(res => {
@@ -496,7 +579,10 @@ function cargarDatosTarea(id, isReadOnly) {
                 }
                 recalcularTotales();
                 setEstadoFormularioReadOnly(isReadOnly);
+                document.getElementById('btnDuplicarAPU').classList.remove('d-none');
+                estadoFormularioCargado = serializarFormularioTarea();
                 modalBs.show();
+                if (alCargar) alCargar();
             }
         });
 }

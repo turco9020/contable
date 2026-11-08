@@ -145,6 +145,9 @@
             </div>
 
             <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-outline-dark me-auto d-none" id="btnDuplicarAPU" onclick="duplicarDesdeModal()" title="Crea una tarea nueva a partir de esta (no se guarda hasta tocar Guardar APU)">
+                    <i class="bi bi-copy me-1"></i> Duplicar
+                </button>
                 <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-dark" id="btnGuardarAPU" onclick="guardarTarea()"><i class="bi bi-save me-1"></i> Guardar APU</button>
             </div>

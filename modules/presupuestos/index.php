@@ -449,7 +449,7 @@ include '../../includes/sidebar.php';
             <div class="modal-body" id="verVersionBody"></div>
             <div class="modal-footer py-2">
                 <span class="small text-muted me-auto"><i class="bi bi-lock me-1"></i>Consulta de solo lectura: los valores son los guardados en la versión.</span>
-                <a class="btn btn-sm btn-outline-danger" id="verVersionPdf" href="#" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
+                <a class="btn btn-sm btn-outline-danger" id="verVersionPdf" href="#" target="_blank" rel="noopener" onclick="return pdfElegirOpciones(event, this.href)"><i class="bi bi-file-earmark-pdf me-1"></i>PDF</a>
                 <button type="button" class="btn btn-sm btn-outline-primary" id="verVersionRecuperar"><i class="bi bi-arrow-counterclockwise me-1"></i>Recuperar</button>
                 <button type="button" class="btn btn-sm btn-light border" data-bs-dismiss="modal">Cerrar</button>
             </div>
@@ -479,6 +479,7 @@ include '../../includes/sidebar.php';
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css">
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
 <script src="/contable/modules/presupuestos/assets/js/condiciones_editor.js"></script>
+<script src="/contable/modules/presupuestos/assets/js/pdf_opciones.js"></script>
 <style>
 #condiciones_editor .ql-editor { min-height: 300px; font-size: 0.95rem; }
 /* P x K con el precio guardado en la versión (no se recalcula con la APU actual) */
@@ -597,8 +598,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 render: function(d) {
                     return '<div class="d-inline-flex gap-1">' +
                            '<button class="btn btn-sm btn-outline-primary" title="Editar" onclick="editarPresupuesto(' + d.id + ')"><i class="bi bi-pencil"></i></button>' +
-                           '<a class="btn btn-sm btn-outline-danger" title="Ver PDF (última versión guardada)" href="/contable/modules/presupuestos/pdf.php?id=' + d.id + '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf"></i></a>' +
-                           '<a class="btn btn-sm btn-outline-dark" title="PDF de APU (una hoja por APU, última versión guardada)" href="/contable/modules/presupuestos/apu_pdf.php?id=' + d.id + '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-ruled"></i></a>' +
+                           '<a class="btn btn-sm btn-outline-danger" title="Ver PDF (última versión guardada)" href="/contable/modules/presupuestos/pdf.php?id=' + d.id + '" target="_blank" rel="noopener" onclick="return pdfElegirOpciones(event, this.href)"><i class="bi bi-file-earmark-pdf"></i></a>' +
+                           '<a class="btn btn-sm btn-outline-dark" title="PDF de APU (una hoja por APU, última versión guardada)" href="/contable/modules/presupuestos/apu_pdf.php?id=' + d.id + '" target="_blank" rel="noopener" onclick="return pdfElegirOpciones(event, this.href)"><i class="bi bi-file-earmark-ruled"></i></a>' +
                            '<button class="btn btn-sm btn-outline-secondary" title="Historial de versiones" onclick="abrirHistorial(' + d.id + ')"><i class="bi bi-clock-history"></i></button>' +
                            '<button class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="eliminarPresupuesto(' + d.id + ')"><i class="bi bi-trash"></i></button>' +
                            '</div>';
@@ -1783,7 +1784,7 @@ function abrirHistorial(id) {
                 '<td class="text-end text-nowrap">' + formatMoneda(v.total_presupuestado) + '</td>' +
                 '<td class="text-center text-nowrap">' +
                     '<div class="d-inline-flex gap-1">' +
-                        '<a class="btn btn-sm btn-outline-danger" title="Ver PDF de esta versión" href="/contable/modules/presupuestos/pdf.php?id=' + id + '&version=' + v.id + '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf"></i></a>' +
+                        '<a class="btn btn-sm btn-outline-danger" title="Ver PDF de esta versión" href="/contable/modules/presupuestos/pdf.php?id=' + id + '&version=' + v.id + '" target="_blank" rel="noopener" onclick="return pdfElegirOpciones(event, this.href)"><i class="bi bi-file-earmark-pdf"></i></a>' +
                         '<button class="btn btn-sm btn-outline-secondary" title="Ver detalle (solo lectura)" onclick="verDetalleVersion(' + id + ', ' + v.id + ')"><i class="bi bi-eye"></i></button>' +
                         '<button class="btn btn-sm btn-outline-primary" title="Recuperar esta versión para seguir trabajando" onclick="recuperarVersion(' + id + ', ' + v.id + ', ' + v.version_numero + ', ' + (esUltima ? 'true' : 'false') + ')"><i class="bi bi-arrow-counterclockwise"></i></button>' +
                         (puedeBorrar

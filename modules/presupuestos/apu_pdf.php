@@ -3,13 +3,17 @@
 // PDF DE APU DEL PRESUPUESTO (para el cliente): una hoja por APU usada
 // apu_pdf.php?id=X             -> última versión guardada
 // apu_pdf.php?id=X&version=Y   -> la versión Y (ID del registro en presupuesto_versiones)
+// &k=0                         -> sin mostrar el K: los insumos llevan el K final incluido
+//                                 y la hoja termina en el precio unitario
+//                                 (sin k, o k=1: con el K, como se describe abajo)
+// &logo=0                      -> sin el logo en el encabezado
+// &ver=1                       -> muestra el N° de versión (por defecto no se muestra)
 //
 // - El precio de cada insumo ya tiene el K Base aplicado (K Mat en materiales,
 //   K MO en mano de obra, equipos y subcontratos). El K Base no se muestra.
 // - Al pie: costo unitario x K final = precio unitario. El K final sí se muestra.
 // - Los insumos salen de las APU guardadas en la versión ("apus" del snapshot).
-//   Las versiones anteriores a ese guardado usan las APU vigentes del catálogo
-//   y la hoja lo aclara.
+//   Las versiones anteriores a ese guardado usan las APU vigentes del catálogo.
 // =====================================================================
 
 // Sin errores en pantalla para no romper el PDF
@@ -30,6 +34,9 @@ const APU_TIPOS = [
 
 $id = intval($_GET['id'] ?? 0);
 $version_id = intval($_GET['version'] ?? 0);
+$mostrar_k = ($_GET['k'] ?? '1') !== '0';
+$mostrar_logo = ($_GET['logo'] ?? '1') !== '0';
+$mostrar_version = ($_GET['ver'] ?? '0') === '1'; // por defecto el cliente no ve el N° de versión
 
 [$snap, $version_numero] = pdfCargarVersion($conn, $id, $version_id);
 $p = pdfDatosGenerales($conn, $snap, $version_numero);
@@ -85,7 +92,8 @@ foreach ($usos as $tid => $items) {
         $tipo = strtoupper($d['tipo'] ?? 'MATERIAL');
         if (!isset(APU_TIPOS[$tipo])) $tipo = 'MATERIAL';
         $cant = floatval($d['cantidad'] ?? 0);
-        $unit = round(floatval($d['precio_unitario'] ?? 0) * ($tipo === 'MATERIAL' ? $k_mat : $k_mo), 2);
+        // Con K: solo el K Base. Sin K: el K Base y el K final ya incluidos.
+        $unit = round(floatval($d['precio_unitario'] ?? 0) * ($tipo === 'MATERIAL' ? $k_mat : $k_mo) * ($mostrar_k ? 1 : $k_final), 2);
         $sub  = round($cant * $unit, 2);
         $grupos[$tipo]['filas'][] = [
             'descripcion' => $d['descripcion'] ?? '',
@@ -111,11 +119,11 @@ foreach ($usos as $tid => $items) {
         'items' => array_values(array_unique(array_filter($items))),
         'grupos' => $grupos_ordenados,
         'costo_unitario' => $costo_unitario,
-        'precio_unitario' => round($costo_unitario * $k_final, 2),
+        'precio_unitario' => $mostrar_k ? round($costo_unitario * $k_final, 2) : $costo_unitario,
     ];
 }
 
-$logo_base64 = pdfLogoBase64();
+$logo_base64 = $mostrar_logo ? pdfLogoBase64() : '';
 $dompdf = pdfCrearDompdf();
 
 ob_start();
@@ -165,7 +173,7 @@ ob_start();
 <body>
 
 <?php if (empty($hojas)): ?>
-    <div class="info-box">Este presupuesto no tiene ítems con APU disponibles en la versión <?= $p['version_numero'] ?>.</div>
+    <div class="info-box">Este presupuesto no tiene ítems con APU disponibles.</div>
     <?php if (!empty($sin_detalle)): ?>
     <p class="nota">Sin análisis disponible para el/los ítem(s): <?= pdfTexto(implode(', ', $sin_detalle)) ?>.</p>
     <?php endif; ?>
@@ -178,7 +186,7 @@ ob_start();
         <tr>
             <td style="vertical-align: middle;">
                 <h2>Análisis de Precio Unitario</h2>
-                <p class="sub">Presupuesto <?= pdfTexto($p['codigo']) ?> &nbsp;·&nbsp; Fecha: <?= $p['fecha'] ? date('d/m/Y', strtotime($p['fecha'])) : '-' ?> &nbsp;·&nbsp; Versión <?= $p['version_numero'] ?></p>
+                <p class="sub">Presupuesto <?= pdfTexto($p['codigo']) ?> &nbsp;·&nbsp; Fecha: <?= $p['fecha'] ? date('d/m/Y', strtotime($p['fecha'])) : '-' ?><?php if ($mostrar_version): ?> &nbsp;·&nbsp; Versión <?= $p['version_numero'] ?><?php endif; ?></p>
             </td>
             <?php if ($logo_base64): ?>
             <td style="vertical-align: middle; text-align: right; width: 150px;">
@@ -247,6 +255,7 @@ ob_start();
     </table>
 
     <table class="totales">
+        <?php if ($mostrar_k): ?>
         <tr>
             <td>Costo unitario (por <?= pdfTexto($h['unidad'] ?: 'unidad') ?>)</td>
             <td class="text-end"><?= pdfMoneda($h['costo_unitario']) ?></td>
@@ -255,15 +264,13 @@ ob_start();
             <td>Coeficiente K</td>
             <td class="text-end"><?= number_format($k_final, 2, ',', '.') ?></td>
         </tr>
+        <?php endif; ?>
         <tr class="final">
             <td>PRECIO UNITARIO</td>
             <td class="text-end"><?= pdfMoneda($h['precio_unitario']) ?></td>
         </tr>
     </table>
 
-    <?php if ($desde_catalogo): ?>
-    <p class="nota">Valores de la APU vigente al <?= date('d/m/Y') ?>.</p>
-    <?php endif; ?>
     <?php if ($n === count($hojas) - 1 && !empty($sin_detalle)): ?>
     <p class="nota">Sin análisis disponible para el/los ítem(s): <?= pdfTexto(implode(', ', $sin_detalle)) ?>.</p>
     <?php endif; ?>
@@ -274,4 +281,4 @@ ob_start();
 </html>
 <?php
 $html = ob_get_clean();
-pdfEnviar($dompdf, $html, pdfNombreArchivo($p, $id, '_APU'));
+pdfEnviar($dompdf, $html, pdfNombreArchivo($p, $id, '_APU', $mostrar_version));

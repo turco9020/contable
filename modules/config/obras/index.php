@@ -326,6 +326,7 @@ include '../../../includes/sidebar.php';
     </div>
 </div>
 
+<script src="/contable/modules/presupuestos/assets/js/pdf_opciones.js"></script>
 <script>
 let modalObraBS;
 let tabla;
@@ -570,7 +571,7 @@ window.cargarPresupuestosObra = function(obraId) {
             const version = p.ultima_version ? `<small class="text-muted ms-1">v${p.ultima_version}</small>` : '';
 
             const botonPdf = p.ultima_version
-                ? `<a href="/contable/modules/presupuestos/pdf.php?id=${p.id}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-danger py-0 px-2" title="Ver PDF (última versión)"><i class="bi bi-file-earmark-pdf"></i></a>`
+                ? `<a href="/contable/modules/presupuestos/pdf.php?id=${p.id}" target="_blank" rel="noopener" onclick="return pdfElegirOpciones(event, this.href)" class="btn btn-sm btn-outline-danger py-0 px-2" title="Ver PDF (última versión)"><i class="bi bi-file-earmark-pdf"></i></a>`
                 : `<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" disabled title="Sin versiones guardadas"><i class="bi bi-file-earmark-pdf"></i></button>`;
 
             lista.append(`

@@ -3,6 +3,12 @@
 // PDF DEL PRESUPUESTO (para el cliente)
 // pdf.php?id=X             -> última versión guardada
 // pdf.php?id=X&version=Y   -> la versión Y (ID del registro en presupuesto_versiones)
+// &k=1                     -> muestra el coeficiente K: precios de los ítems sin el K
+//                             final y abajo Subtotal costo directo x K = Total neto.
+//                             Sin k (o k=0): precios con el K ya incluido, sin mostrarlo.
+// &iva=0                   -> sin IVA: termina en el Total neto (por defecto suma IVA 21%)
+// &logo=0                  -> sin el logo en el encabezado
+// &ver=1                   -> muestra el N° de versión (por defecto no se muestra)
 // Todo sale del snapshot_json de esa versión; no se usan los datos actuales
 // del presupuesto (salvo el nombre/CUIT/dirección del cliente y el nombre
 // de la obra, que el snapshot guarda solo por ID).
@@ -21,6 +27,10 @@ const PDF_IVA_PORCENTAJE = 21.0; // IVA que se suma al final, sobre el total net
 
 $id = intval($_GET['id'] ?? 0);
 $version_id = intval($_GET['version'] ?? 0);
+$mostrar_k = ($_GET['k'] ?? '0') === '1';
+$mostrar_iva = ($_GET['iva'] ?? '1') !== '0';
+$mostrar_logo = ($_GET['logo'] ?? '1') !== '0';
+$mostrar_version = ($_GET['ver'] ?? '0') === '1'; // por defecto el cliente no ve el N° de versión
 
 // 1. Versión a imprimir y 2. datos generales tal como quedaron en esa versión
 [$snap, $version_numero] = pdfCargarVersion($conn, $id, $version_id);
@@ -32,29 +42,35 @@ $p = pdfDatosGenerales($conn, $snap, $version_numero);
 $k = pdfKFinal($p);
 
 // 4. Precios para el cliente, redondeados a centavos para que el PDF sume exacto:
-//    subtotal = cantidad x unitario, subtotal de rubro = suma de sus ítems,
-//    total neto = suma de los rubros (puede diferir en centavos del total del sistema).
-$total_neto = 0;
+//    subtotal = cantidad x unitario, subtotal de rubro = suma de sus ítems.
+//    - Sin K: el unitario ya lleva el K; total neto = suma de los rubros
+//      (puede diferir en centavos del total del sistema).
+//    - Con K: el unitario es el costo directo (solo K Base); total neto =
+//      subtotal costo directo x K.
+$factor_items = $mostrar_k ? 1 : $k;
+$subtotal_costo = 0;
 foreach ($rubros as &$rubro) {
     $rubro['subtotal'] = 0;
     foreach (($rubro['items'] ?? []) as $i => $it) {
         $cant = floatval($it['cantidad'] ?? 0);
-        $unit = round(floatval($it['precio_unitario'] ?? 0) * $k, 2);
+        $unit = round(floatval($it['precio_unitario'] ?? 0) * $factor_items, 2);
         $sub  = round($cant * $unit, 2);
         $rubro['items'][$i]['pdf_cantidad'] = $cant;
         $rubro['items'][$i]['pdf_unitario'] = $unit;
         $rubro['items'][$i]['pdf_subtotal'] = $sub;
         $rubro['subtotal'] += $sub;
     }
-    $total_neto += $rubro['subtotal'];
+    $subtotal_costo += $rubro['subtotal'];
 }
 unset($rubro);
+
+$total_neto = $mostrar_k ? round($subtotal_costo * $k, 2) : $subtotal_costo;
 
 $iva = round($total_neto * PDF_IVA_PORCENTAJE / 100, 2);
 $total_final = $total_neto + $iva;
 
 // 5. Logo y Dompdf
-$logo_base64 = pdfLogoBase64();
+$logo_base64 = $mostrar_logo ? pdfLogoBase64() : '';
 $dompdf = pdfCrearDompdf();
 
 ob_start();
@@ -102,7 +118,7 @@ ob_start();
     <tr>
         <td style="vertical-align: middle;">
             <h2>Presupuesto <?= pdfTexto($p['codigo']) ?></h2>
-            <p class="sub">Fecha: <?= $p['fecha'] ? date('d/m/Y', strtotime($p['fecha'])) : '-' ?> &nbsp;·&nbsp; Versión <?= $p['version_numero'] ?></p>
+            <p class="sub">Fecha: <?= $p['fecha'] ? date('d/m/Y', strtotime($p['fecha'])) : '-' ?><?php if ($mostrar_version): ?> &nbsp;·&nbsp; Versión <?= $p['version_numero'] ?><?php endif; ?></p>
         </td>
         <?php if ($logo_base64): ?>
         <td style="vertical-align: middle; text-align: right; width: 150px;">
@@ -180,6 +196,17 @@ ob_start();
 </table>
 
 <table class="totales">
+    <?php if ($mostrar_k): ?>
+    <tr>
+        <td>Subtotal costo directo</td>
+        <td class="text-end"><?= pdfMoneda($subtotal_costo) ?></td>
+    </tr>
+    <tr>
+        <td>Coeficiente K</td>
+        <td class="text-end"><?= number_format($k, 2, ',', '.') ?></td>
+    </tr>
+    <?php endif; ?>
+    <?php if ($mostrar_iva): ?>
     <tr>
         <td>Total neto</td>
         <td class="text-end"><?= pdfMoneda($total_neto) ?></td>
@@ -192,6 +219,12 @@ ob_start();
         <td>TOTAL FINAL</td>
         <td class="text-end"><?= pdfMoneda($total_final) ?></td>
     </tr>
+    <?php else: ?>
+    <tr class="final">
+        <td>TOTAL NETO</td>
+        <td class="text-end"><?= pdfMoneda($total_neto) ?></td>
+    </tr>
+    <?php endif; ?>
 </table>
 
 <?php if ($condiciones_html !== ''): ?>
@@ -205,4 +238,4 @@ ob_start();
 </html>
 <?php
 $html = ob_get_clean();
-pdfEnviar($dompdf, $html, pdfNombreArchivo($p, $id)); // con número de página al pie
+pdfEnviar($dompdf, $html, pdfNombreArchivo($p, $id, '', $mostrar_version)); // con número de página al pie

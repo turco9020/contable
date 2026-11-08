@@ -110,8 +110,8 @@ function pdfEnviar($dompdf, $html, $nombre_archivo) {
     $dompdf->stream($nombre_archivo, ['Attachment' => false]);
 }
 
-function pdfNombreArchivo(array $p, $id, $sufijo = '') {
-    return preg_replace('/[^A-Za-z0-9_-]/', '_', $p['codigo'] ?: ('presupuesto_' . $id)) . $sufijo . '_v' . $p['version_numero'] . '.pdf';
+function pdfNombreArchivo(array $p, $id, $sufijo = '', $con_version = false) {
+    return preg_replace('/[^A-Za-z0-9_-]/', '_', $p['codigo'] ?: ('presupuesto_' . $id)) . $sufijo . ($con_version ? '_v' . $p['version_numero'] : '') . '.pdf';
 }
 
 function pdfMoneda($n) {

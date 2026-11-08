@@ -1,6 +1,7 @@
 // =====================================================================
 // PDF del presupuesto y de APU: antes de abrirlo muestra una ventana con las
-// opciones de impresión (Imprimir K / IVA / logo / versión).
+// opciones de impresión (Imprimir K / IVA / logo / versión; en el resumen de
+// recursos, Imprimir costos en lugar de K e IVA).
 // Uso en un link: onclick="return pdfElegirOpciones(event, this.href)"
 // El href queda como respaldo (clic con la rueda / abrir en otra pestaña),
 // con el formato por defecto de cada PDF.
@@ -10,7 +11,8 @@
     // Valores por defecto = cómo sale cada PDF sin parámetros
     const DEFECTO = {
         presupuesto: { k: false, iva: true, logo: true, ver: false },
-        apu:         { k: true,              logo: true, ver: false }
+        apu:         { k: true,              logo: true, ver: false },
+        resumen:     { costos: false,        logo: true, ver: false }
     };
     const CLAVE_GUARDADO = 'presupuestos.pdfOpciones.';
 
@@ -29,7 +31,13 @@
             </div>
             <div class="modal-body">
                 <label class="form-label fw-bold small">Opciones de impresión:</label>
-                <div class="form-check">
+                <div class="form-check" id="opcPdfCostosFila">
+                    <input class="form-check-input" type="checkbox" id="opcPdfCostos">
+                    <label class="form-check-label small" for="opcPdfCostos">
+                        <strong>Imprimir costos</strong> <span class="text-muted">(costo neto por insumo y totales, para el arquitecto; sin costos solo salen las cantidades, para el capataz)</span>
+                    </label>
+                </div>
+                <div class="form-check" id="opcPdfKFila">
                     <input class="form-check-input" type="checkbox" id="opcPdfK">
                     <label class="form-check-label small" for="opcPdfK">
                         <strong>Imprimir K</strong> <span class="text-muted" id="opcPdfKAyuda"></span>
@@ -96,10 +104,14 @@
 
     function generar() {
         const opciones = {
-            k: document.getElementById('opcPdfK').checked,
             logo: document.getElementById('opcPdfLogo').checked,
             ver: document.getElementById('opcPdfVer').checked
         };
+        if (tipoPendiente === 'resumen') {
+            opciones.costos = document.getElementById('opcPdfCostos').checked;
+        } else {
+            opciones.k = document.getElementById('opcPdfK').checked;
+        }
         if (tipoPendiente === 'presupuesto') {
             opciones.iva = document.getElementById('opcPdfIva').checked;
         }
@@ -119,19 +131,25 @@
 
         if (!modal) modal = crearModal();
         urlPendiente = url;
-        tipoPendiente = /apu_pdf\.php/.test(url) ? 'apu' : 'presupuesto';
+        tipoPendiente = /apu_pdf\.php/.test(url) ? 'apu' : (/resumen_pdf\.php/.test(url) ? 'resumen' : 'presupuesto');
         const opciones = leerGuardadas(tipoPendiente);
         const esApu = tipoPendiente === 'apu';
+        const esResumen = tipoPendiente === 'resumen';
 
-        document.getElementById('opcPdfTitulo').textContent = esApu ? 'Imprimir APU (una hoja por APU)' : 'Imprimir Presupuesto';
+        document.getElementById('opcPdfTitulo').textContent = esResumen ? 'Imprimir Resumen de recursos'
+            : (esApu ? 'Imprimir APU (una hoja por APU)' : 'Imprimir Presupuesto');
+        // El resumen no lleva K ni IVA: solo la opción de costos
+        document.getElementById('opcPdfCostosFila').classList.toggle('d-none', !esResumen);
+        document.getElementById('opcPdfKFila').classList.toggle('d-none', esResumen);
+        document.getElementById('opcPdfCostos').checked = !!opciones.costos;
         document.getElementById('opcPdfKAyuda').textContent = esApu
             ? '(insumos con costo directo y abajo Costo unitario × K = Precio unitario)'
             : '(precios de costo directo y abajo Subtotal × K = Total neto)';
         document.getElementById('opcPdfK').checked = !!opciones.k;
         document.getElementById('opcPdfLogo').checked = !!opciones.logo;
         document.getElementById('opcPdfVer').checked = !!opciones.ver;
-        // Las hojas de APU no llevan IVA
-        document.getElementById('opcPdfIvaFila').classList.toggle('d-none', esApu);
+        // Las hojas de APU y el resumen no llevan IVA
+        document.getElementById('opcPdfIvaFila').classList.toggle('d-none', esApu || esResumen);
         document.getElementById('opcPdfIva').checked = !!opciones.iva;
 
         modal.show();

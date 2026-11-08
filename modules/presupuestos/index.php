@@ -366,7 +366,12 @@ include '../../includes/sidebar.php';
                         <div class="tab-pane fade" id="tab-res" role="tabpanel">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <h6 class="fw-bold text-secondary mb-0"><i class="bi bi-clipboard-data me-2"></i> Resumen de recursos del presupuesto</h6>
-                                <span class="small text-muted">Suma de los insumos de todas las APU × cantidades del presupuesto (costos netos, sin K)</span>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="small text-muted">Suma de los insumos de todas las APU × cantidades del presupuesto (costos netos, sin K)</span>
+                                    <button type="button" class="btn btn-sm btn-outline-success text-nowrap" id="btnResumenPdf" onclick="imprimirResumenPdf(event)" title="PDF del resumen (última versión guardada)">
+                                        <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+                                    </button>
+                                </div>
                             </div>
                             <div id="resumenContenido"></div>
                         </div>
@@ -597,9 +602,11 @@ document.addEventListener("DOMContentLoaded", function() {
                 className: 'text-end',
                 render: function(d) {
                     return '<div class="d-inline-flex gap-1">' +
+                           '<button class="btn btn-sm btn-outline-info" title="Ver (solo lectura, última versión guardada)" onclick="verDetalleVersion(' + d.id + ', 0)"><i class="bi bi-eye"></i></button>' +
                            '<button class="btn btn-sm btn-outline-primary" title="Editar" onclick="editarPresupuesto(' + d.id + ')"><i class="bi bi-pencil"></i></button>' +
                            '<a class="btn btn-sm btn-outline-danger" title="Ver PDF (última versión guardada)" href="/contable/modules/presupuestos/pdf.php?id=' + d.id + '" target="_blank" rel="noopener" onclick="return pdfElegirOpciones(event, this.href)"><i class="bi bi-file-earmark-pdf"></i></a>' +
                            '<a class="btn btn-sm btn-outline-dark" title="PDF de APU (una hoja por APU, última versión guardada)" href="/contable/modules/presupuestos/apu_pdf.php?id=' + d.id + '" target="_blank" rel="noopener" onclick="return pdfElegirOpciones(event, this.href)"><i class="bi bi-file-earmark-ruled"></i></a>' +
+                           '<a class="btn btn-sm btn-outline-success" title="PDF del resumen de recursos (mano de obra, materiales y equipos para ejecutar la obra, última versión guardada)" href="/contable/modules/presupuestos/resumen_pdf.php?id=' + d.id + '" target="_blank" rel="noopener" onclick="return pdfElegirOpciones(event, this.href)"><i class="bi bi-clipboard-data"></i></a>' +
                            '<button class="btn btn-sm btn-outline-secondary" title="Historial de versiones" onclick="abrirHistorial(' + d.id + ')"><i class="bi bi-clock-history"></i></button>' +
                            '<button class="btn btn-sm btn-outline-danger" title="Eliminar" onclick="eliminarPresupuesto(' + d.id + ')"><i class="bi bi-trash"></i></button>' +
                            '</div>';
@@ -1819,7 +1826,8 @@ function verDetalleVersion(id, versionId) {
     $('#verVersionBody').html('<div class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2"></span>Cargando...</div>');
     bootstrap.Modal.getOrCreateInstance(document.getElementById('modalVerVersion')).show();
 
-    $.get(URL_AJAX + '?accion=obtener_detalle&id=' + id + '&version_id=' + versionId, function(res) {
+    // versionId 0 = última versión guardada (botón Ver del listado)
+    $.get(URL_AJAX + '?accion=obtener_detalle&id=' + id + (versionId ? '&version_id=' + versionId : ''), function(res) {
         if (!res.success || !res.detalle) {
             $('#verVersionBody').html('<div class="alert alert-danger">No se encontró la versión solicitada.</div>');
             return;
@@ -2210,5 +2218,29 @@ function actualizarResumenPresupuesto() {
         '<span class="fw-bold fs-5">' + formatMoneda(costoTotal) + '</span></div>';
 
     $('#resumenContenido').html(html);
+}
+
+// PDF del resumen desde la pestaña: sale de la última versión guardada, no de lo que hay en pantalla
+function imprimirResumenPdf(e) {
+    const id = parseInt($('#presupuesto_id').val(), 10) || 0;
+    if (!id) {
+        Swal.fire('Presupuesto sin guardar', 'Guardá el presupuesto para poder imprimir el resumen.', 'info');
+        return;
+    }
+    const url = '/contable/modules/presupuestos/resumen_pdf.php?id=' + id;
+    if (!cambiosSinGuardar) {
+        pdfElegirOpciones(e, url);
+        return;
+    }
+    Swal.fire({
+        title: 'Hay cambios sin guardar',
+        text: 'El PDF se arma con la última versión guardada, sin los cambios que tenés en pantalla. ¿Imprimir igual?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Imprimir igual',
+        cancelButtonText: 'Cancelar'
+    }).then(function(r) {
+        if (r.isConfirmed) pdfElegirOpciones({ preventDefault: function() {} }, url);
+    });
 }
 </script>

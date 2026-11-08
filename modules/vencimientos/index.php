@@ -80,7 +80,7 @@ require_once __DIR__ . '/../../includes/sidebar.php';
                             ORDER BY v.fecha_vencimiento ASC";
 
                     $res = mysqli_query($conexion, $query);
-                    $hoy = new DateTime();
+                    $hoy = new DateTime('today'); // a las 00:00: lo que vence hoy todavía no está vencido
 
                     if ($res && mysqli_num_rows($res) > 0) {
                         while ($r = mysqli_fetch_assoc($res)) {
@@ -350,11 +350,15 @@ function aplicarBuscadoresGasto() {
 document.addEventListener("DOMContentLoaded", function(){
 
     tablaVencimientos = $('#tablaVencimientos').DataTable({
-        responsive: true,
+        // Las columnas que no entran se ven con la flecha de la columna ID; el botón "+"
+        // de la primera columna queda solo para el desglose de cuotas (fila propia, ver más abajo)
+        responsive: { details: { type: 'column', target: 1 } },
         autoWidth: false,
         dom: 'Bfrtip',
         columnDefs: [
-            { orderable: false, targets: [0, 9] } // Desactiva el ordenamiento en la columna del "+" y en "Acciones"
+            { orderable: false, targets: [0, 9] }, // Desactiva el ordenamiento en la columna del "+" y en "Acciones"
+            { className: 'dtr-control', targets: 1 },
+            { responsivePriority: 1, targets: [0, 1, 2] } // el "+", el ID y el concepto siempre visibles
         ],
         buttons: [
             { 
@@ -387,17 +391,37 @@ document.addEventListener("DOMContentLoaded", function(){
         }
     });
 
+    // --- DESGLOSE DE CUOTAS ---
+    // Va en una fila propia debajo de la del vencimiento (no en row.child, que usa la
+    // tabla para las columnas que no entran en pantallas angostas). Al reordenar o
+    // paginar, DataTables redibuja y estas filas se quitan.
+    function filaCuotasDe(idPadre) {
+        return $('#tablaVencimientos tbody tr.fila-cuotas[data-padre="' + idPadre + '"]');
+    }
+    function cerrarCuotas(idPadre) {
+        filaCuotasDe(idPadre).remove();
+        $('#tablaVencimientos tbody tr[data-id="' + idPadre + '"] .btn-expandir-cuotas i')
+            .removeClass('bi-dash-circle-fill bi-arrow-repeat spin').addClass('bi-plus-circle-fill');
+    }
+    function columnasVisibles() {
+        return tablaVencimientos.columns().responsiveHidden().toArray().filter(Boolean).length;
+    }
+    tablaVencimientos.on('draw', function() {
+        $('#tablaVencimientos tbody tr.fila-cuotas').remove();
+        $('#tablaVencimientos .btn-expandir-cuotas i').removeClass('bi-dash-circle-fill bi-arrow-repeat spin').addClass('bi-plus-circle-fill');
+    });
+    tablaVencimientos.on('responsive-resize', function() {
+        $('#tablaVencimientos tbody tr.fila-cuotas > td').attr('colspan', columnasVisibles());
+    });
+
     // --- ACCIÓN: EXPANDIR / COLAPSAR CUOTAS HIJAS ---
     $(document).on('click', '.btn-expandir-cuotas', function () {
         let tr = $(this).closest('tr');
-        let row = tablaVencimientos.row(tr);
         let idPadre = tr.data('id');
         let icon = $(this).find('i');
 
-        if (row.child.isShown()) {
-            row.child.hide();
-            tr.removeClass('shown');
-            icon.removeClass('bi-dash-circle-fill').addClass('bi-plus-circle-fill');
+        if (filaCuotasDe(idPadre).length) {
+            cerrarCuotas(idPadre);
         } else {
             icon.removeClass('bi-plus-circle-fill').addClass('bi-arrow-repeat spin');
 
@@ -420,16 +444,25 @@ document.addEventListener("DOMContentLoaded", function(){
                             <tbody>`;
 
                 if (res.data && res.data.length > 0) {
+                    const hoyIso = new Date().toLocaleDateString('sv-SE'); // AAAA-MM-DD en hora local
                     res.data.forEach(c => {
-                        let badgeEstado = c.estado === 'PAGADO' 
-                            ? '<span class="badge bg-success">PAGADO</span>' 
-                            : '<span class="badge bg-warning text-dark">PENDIENTE</span>';
+                        // Mismos estados que el listado: PAGADO, ANULADO, VENCIDO (pendiente con fecha pasada) o PENDIENTE
+                        let badgeEstado;
+                        if (c.estado === 'PAGADO') {
+                            badgeEstado = '<span class="badge bg-success">PAGADO</span>';
+                        } else if (c.estado === 'ANULADO') {
+                            badgeEstado = '<span class="badge bg-secondary">ANULADO</span>';
+                        } else if (c.fecha_vencimiento && c.fecha_vencimiento < hoyIso) {
+                            badgeEstado = '<span class="badge bg-danger">VENCIDO</span>';
+                        } else {
+                            badgeEstado = '<span class="badge bg-warning text-dark">PENDIENTE</span>';
+                        }
 
                         let btnPagar = c.estado === 'PENDIENTE' ? `
                             <button type="button" 
                                     class="btn btn-sm btn-outline-success btn-pagar-vencimiento py-0 px-2" 
                                     data-id="${c.id}" 
-                                    data-titulo="${c.titulo} (Cuota ${c.nro_cuota}/${c.total_cuotas})" 
+                                    data-titulo="${c.titulo}"
                                     data-monto="${c.monto}"
                                     data-categoria="${c.categoria_id}"
                                     data-subcategoria="${c.subcategoria_id}"
@@ -454,8 +487,12 @@ document.addEventListener("DOMContentLoaded", function(){
 
                 htmlCuotas += `</tbody></table></div>`;
 
-                row.child(htmlCuotas).show();
-                tr.addClass('shown');
+                // Debajo de la fila, o debajo de sus columnas escondidas si están abiertas
+                const fila = $('<tr class="fila-cuotas"></tr>').attr('data-padre', idPadre)
+                    .append($('<td class="p-0"></td>').attr('colspan', columnasVisibles()).html(htmlCuotas));
+                const ancla = tr.next('tr.child').length ? tr.next('tr.child') : tr;
+                filaCuotasDe(idPadre).remove();
+                ancla.after(fila);
                 icon.removeClass('bi-arrow-repeat spin').addClass('bi-dash-circle-fill');
             }, 'json');
         }
@@ -581,6 +618,11 @@ document.addEventListener("DOMContentLoaded", function(){
             processData: false,
             dataType: 'json',
             success: function(resp) {
+                if (!resp || resp.status !== 'OK') {
+                    // No se guardó (ej: la caja no permite saldo negativo): el vencimiento sigue pendiente
+                    Swal.fire({ title: 'No se registró el pago', text: (resp && resp.message) || 'No se pudo guardar el gasto.', icon: 'error', confirmButtonColor: '#212529' });
+                    return;
+                }
                 const modalGasto = bootstrap.Modal.getInstance(document.getElementById('modalGasto'));
                 if (modalGasto) modalGasto.hide();
 
@@ -593,6 +635,9 @@ document.addEventListener("DOMContentLoaded", function(){
                 }).then(() => {
                     location.reload();
                 });
+            },
+            error: function() {
+                Swal.fire({ title: 'No se registró el pago', text: 'Error de conexión con el servidor.', icon: 'error', confirmButtonColor: '#212529' });
             }
         });
     });

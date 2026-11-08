@@ -11,7 +11,7 @@ $accion = $_GET['accion'] ?? '';
 if ($accion === 'guardar' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     // Si viene un ID oculto en el formulario, se trata de una EDICIÓN
     $id              = !empty($_POST['id']) ? intval($_POST['id']) : null;
-    $usuario_id      = $_SESSION['usuario_id'] ?? NULL;
+    $usuario_id      = $_SESSION['id'] ?? NULL; // el sistema guarda el usuario logueado en $_SESSION['id']
     $titulo          = mysqli_real_escape_string($conexion, trim($_POST['titulo']));
     
     $categoria_id    = !empty($_POST['categoria_id']) ? intval($_POST['categoria_id']) : "NULL";
@@ -77,13 +77,22 @@ if ($accion === 'guardar' && $_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $padre_id_real = "NULL";
+            $fecha_base = new DateTime($fecha_venc);
+            $dia_base = (int)$fecha_base->format('j');
 
             for ($i = 1; $i <= $total_cuotas; $i++) {
-                $fecha_obj = new DateTime($fecha_venc);
-                if ($i > 1) {
-                    $fecha_obj->modify('+' . ($i - 1) . ' month');
-                }
+                // Mismo día cada mes; si el mes no tiene ese día (29, 30, 31), el último día del mes.
+                // (modify('+1 month') desde un 31/01 da 03/03 y febrero queda sin cuota)
+                $fecha_obj = (clone $fecha_base)->modify('first day of +' . ($i - 1) . ' month');
+                $fecha_obj->setDate((int)$fecha_obj->format('Y'), (int)$fecha_obj->format('n'), min($dia_base, (int)$fecha_obj->format('t')));
                 $fecha_cuota = $fecha_obj->format('Y-m-d');
+
+                // Con "monto total", la última cuota absorbe los centavos para que sumen exacto
+                // (ej: $ 1.000 en 3 cuotas = 333,33 + 333,33 + 333,34)
+                $monto_esta_cuota = $monto_cuota;
+                if ($es_cuotas && $modo_calculo === 'total' && $i === $total_cuotas) {
+                    $monto_esta_cuota = round($monto_ingresado - $monto_cuota * ($total_cuotas - 1), 2);
+                }
 
                 $titulo_final = $es_cuotas ? "$titulo (Cuota $i/$total_cuotas)" : $titulo;
                 $usr_sql = $usuario_id ? $usuario_id : "NULL";
@@ -94,7 +103,7 @@ if ($accion === 'guardar' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 $sql = "INSERT INTO vencimientos 
                         (vencimiento_padre_id, titulo, descripcion, monto, nro_cuota, total_cuotas, fecha_vencimiento, categoria_id, subcategoria_id, proveedor_id, dias_aviso, archivo, usuario_id) 
                         VALUES 
-                        ($venc_padre_val, '$titulo_final', '$descripcion', $monto_cuota, $i, $total_cuotas, '$fecha_cuota', $categoria_id, $subcategoria_id, $proveedor_id, $dias_aviso, $nombre_archivo_insert, $usr_sql)";
+                        ($venc_padre_val, '$titulo_final', '$descripcion', $monto_esta_cuota, $i, $total_cuotas, '$fecha_cuota', $categoria_id, $subcategoria_id, $proveedor_id, $dias_aviso, $nombre_archivo_insert, $usr_sql)";
 
                 mysqli_query($conexion, $sql);
 

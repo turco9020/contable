@@ -298,20 +298,16 @@ if ($rCheques) {
 }
 
 // =========================
-// AGENDA DE VENCIMIENTOS PARA EL DASHBOARD (MES CORRIENTE + VENCIDOS ANTERIORES)
+// AGENDA DE VENCIMIENTOS PARA EL DASHBOARD
+// Pendientes ya vencidos + los que entran en su período de aviso: cada vencimiento
+// aparece desde "fecha de vencimiento - días de aviso" (7 si no tiene).
 // =========================
 $sqlVencimientos = "
 SELECT id, titulo AS servicio, monto AS importe, fecha_vencimiento, estado
-FROM vencimientos 
+FROM vencimientos
 WHERE estado = 'PENDIENTE'
-  AND (
-    fecha_vencimiento < CURRENT_DATE() 
-    OR (
-      MONTH(fecha_vencimiento) = MONTH(CURRENT_DATE()) 
-      AND YEAR(fecha_vencimiento) = YEAR(CURRENT_DATE())
-    )
-  )
-ORDER BY fecha_vencimiento ASC 
+  AND fecha_vencimiento <= DATE_ADD(CURRENT_DATE(), INTERVAL IFNULL(dias_aviso, 7) DAY)
+ORDER BY fecha_vencimiento ASC
 LIMIT 15
 ";
 

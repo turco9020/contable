@@ -552,7 +552,7 @@ if (typeof window.dashboardInicializado !== 'undefined') {
         if (tbody.length === 0) return;
 
         if (!vencimientos || vencimientos.length === 0) {
-            tbody.html('<tr><td colspan="3" class="text-center text-muted small py-2">Sin vencimientos pendientes o vencidos este mes.</td></tr>');
+            tbody.html('<tr><td colspan="3" class="text-center text-muted small py-2">Sin vencimientos vencidos ni dentro del período de aviso.</td></tr>');
             return;
         }
         let html = '';

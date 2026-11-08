@@ -28,6 +28,7 @@ if($res_users){
                 <th>Descripción</th>
                 <th>Asignada a</th>
                 <th>Activa</th>
+                <th>Saldo negativo</th>
                 <th>Acciones</th>
             </tr>
         </thead>
@@ -83,6 +84,17 @@ if($res_users){
 
     </select>
 
+    <label>Permite saldo negativo</label>
+    <select class="form-control mb-1"
+            id="permite_negativo"
+            name="permite_negativo">
+
+        <option value="1">SI</option>
+        <option value="0">NO</option>
+
+    </select>
+    <small class="text-muted d-block mb-2">Si está en NO, no se puede registrar un egreso, transferencia o gasto que deje la caja por debajo de $ 0.</small>
+
     <button type="submit" id="btnGuardar" class="btn btn-dark w-100">
         Guardar
     </button>
@@ -132,6 +144,13 @@ document.addEventListener("DOMContentLoaded", function(){
                 data:'activa',
                 render:function(d){
                     return d == 1 ? 'SI' : 'NO';
+                }
+            },
+            {
+                data:'permite_negativo',
+                render:function(d){
+                    // Sin la columna (antes del ALTER) se comporta como "permite"
+                    return d === undefined || d == 1 ? 'Permite' : '<span class="badge bg-dark">No permite</span>';
                 }
             },
             {
@@ -193,6 +212,7 @@ window.verCaja = function(d){
     $('#descripcion').val(d.descripcion);
     $('#usuario_id').val(d.usuario_id ? d.usuario_id : '');
     $('#activa').val(d.activa);
+    $('#permite_negativo').val(d.permite_negativo == 0 ? '0' : '1');
 
     modalCaja.show();
 }
@@ -210,6 +230,7 @@ window.editar = function(d){
     $('#descripcion').val(d.descripcion);
     $('#usuario_id').val(d.usuario_id ? d.usuario_id : '');
     $('#activa').val(d.activa);
+    $('#permite_negativo').val(d.permite_negativo == 0 ? '0' : '1');
 
     modalCaja.show();
 }
@@ -221,7 +242,11 @@ $('#formCaja').submit(function(e){
     $.post(
         '/contable/ajax/cajas.php?accion=guardar',
         $(this).serialize(),
-        function(){
+        function(resp){
+            if (String(resp).trim() !== 'OK') {
+                Swal.fire('Error', String(resp).replace(/^ERROR:\s*/, ''), 'error');
+                return;
+            }
             tabla.ajax.reload();
             modalCaja.hide();
         }

@@ -3,6 +3,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 include '../config/database.php';
+require_once __DIR__ . '/../includes/caja_saldo.php';
 
 if (ob_get_length()) ob_clean();
 
@@ -131,6 +132,7 @@ if($_GET['accion']=='guardar'){
 
     // --- PROCESAR ARCHIVO ---
     $archivo_nombre = null;
+    $archivo_viejo = null; // ruta del archivo anterior que reemplaza el nuevo; se borra después de guardar
     if(isset($_FILES['archivo']) && $_FILES['archivo']['error'] == 0){
         $ext = strtolower(pathinfo($_FILES['archivo']['name'], PATHINFO_EXTENSION));
         $permitidos = ['jpg','jpeg','png','pdf'];
@@ -141,11 +143,11 @@ if($_GET['accion']=='guardar'){
             $ruta_final = $ruta_folder . $nombre;
 
             if(!empty($id)){
-                $res_old = $conn->query("SELECT archivo FROM gastos WHERE id=$id");
-                $row_old = $res_old->fetch_assoc();
+                // El archivo anterior se borra recién después de guardar (más abajo)
+                $res_old = $conn->query("SELECT archivo FROM gastos WHERE id=" . (int)$id);
+                $row_old = $res_old ? $res_old->fetch_assoc() : null;
                 if($row_old && !empty($row_old['archivo'])){
-                    $old_file = $ruta_folder . $row_old['archivo'];
-                    if(file_exists($old_file)) unlink($old_file);
+                    $archivo_viejo = $ruta_folder . $row_old['archivo'];
                 }
             }
 
@@ -181,31 +183,43 @@ if($_GET['accion']=='guardar'){
                 ".($archivo_nombre ? "'$archivo_nombre'" : "NULL").", $usuario, '$estado_val')";
     }
 
-    $ok = $conn->query($sql);
+    // El gasto y su movimiento de caja se graban juntos: si algo falla, o la caja
+    // no permite saldo negativo y quedaría por debajo de $ 0, no se graba nada.
+    $conn->begin_transaction();
+    try {
+        $cajas_afectadas = [];
+        if($caja_id != "NULL") $cajas_afectadas[] = (int)$caja_id;
+        if($id){
+            // Si el gasto se cambia de caja, también se controla la anterior
+            $res_mov = $conn->query("SELECT caja_id FROM movimientos_caja WHERE origen='GASTO' AND referencia_id=" . (int)$id);
+            if($res_mov && ($mov = $res_mov->fetch_assoc())) $cajas_afectadas[] = (int)$mov['caja_id'];
+        }
+        $saldos_antes = cajaSaldos($conn, $cajas_afectadas);
 
-    if($ok){
+        if(!$conn->query($sql)) throw new Exception($conn->error);
+
         if($id){
             if($caja_id != "NULL"){
                 $concepto = "GASTO #".$id;
-                $conn->query("UPDATE movimientos_caja SET
+                if(!$conn->query("UPDATE movimientos_caja SET
                                 fecha='$fecha',
                                 caja_id=$caja_id,
                                 concepto='$concepto',
                                 comprobante='$numero_comprobante',
                                 importe='$total'
-                              WHERE origen='GASTO' AND referencia_id=$id");
+                              WHERE origen='GASTO' AND referencia_id=$id")) throw new Exception($conn->error);
             }
         }else{
             $gasto_id = $conn->insert_id;
-            
+
             if($caja_id != "NULL"){
                 $concepto = "GASTO #".$gasto_id;
 
-                $conn->query("INSERT INTO movimientos_caja(
+                if(!$conn->query("INSERT INTO movimientos_caja(
                                 fecha, caja_id, tipo, concepto, comprobante, importe, origen, referencia_id, usuario_id
                               ) VALUES(
                                 '$fecha', $caja_id, 'EGRESO', '$concepto', '$numero_comprobante', '$total', 'GASTO', $gasto_id, $usuario
-                              )");
+                              )")) throw new Exception($conn->error);
             }
 
             // --- VÍNCULO AUTOMÁTICO CON VENCIMIENTOS ---
@@ -213,17 +227,31 @@ if($_GET['accion']=='guardar'){
                 $venc_id = (int)$_POST['vencimiento_id'];
                 $fecha_pago = date('Y-m-d H:i:s');
 
-                $conn->query("UPDATE vencimientos 
-                              SET estado = 'PAGADO', 
-                                  fecha_pago = '$fecha_pago', 
-                                  caja_id = $caja_id 
-                              WHERE id = $venc_id");
+                if(!$conn->query("UPDATE vencimientos
+                              SET estado = 'PAGADO',
+                                  fecha_pago = '$fecha_pago',
+                                  caja_id = $caja_id
+                              WHERE id = $venc_id")) throw new Exception($conn->error);
             }
         }
-        echo json_encode(["status" => "OK", "estado_validacion" => $estado_val]);
-    }else{
-        echo json_encode(["status" => "ERROR", "message" => $conn->error]);
+
+        $error_saldo = cajaControlarNegativo($conn, $saldos_antes);
+        if($error_saldo) throw new Exception($error_saldo);
+
+        $conn->commit();
+    } catch (Exception $e) {
+        $conn->rollback();
+        if($archivo_nombre){
+            @unlink($_SERVER['DOCUMENT_ROOT'].'/contable/uploads/gastos/'.$archivo_nombre); // no quedó ningún gasto que lo use
+        }
+        echo json_encode(["status" => "ERROR", "message" => $e->getMessage()]);
+        exit;
     }
+
+    if($archivo_nombre && $archivo_viejo && file_exists($archivo_viejo)){
+        unlink($archivo_viejo);
+    }
+    echo json_encode(["status" => "OK", "estado_validacion" => $estado_val]);
     exit;
 }
 

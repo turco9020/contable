@@ -57,30 +57,34 @@ if($accion == 'guardar'){
     $id = $_POST['id'] ?? '';
     $nombre = $conn->real_escape_string(strtoupper(trim($_POST['nombre'])));
     $descripcion = $conn->real_escape_string(trim($_POST['descripcion']));
-    $activa = $_POST['activa'] ?? 1;
-    
+    $activa = ($_POST['activa'] ?? '1') === '0' ? 0 : 1;
+    // Si está en 0, Caja y Gastos no aceptan movimientos que la dejen por debajo de $ 0
+    $permite_negativo = ($_POST['permite_negativo'] ?? '1') === '0' ? 0 : 1;
+
     // Si viene un usuario_id del formulario se asigna, sino se guarda como NULL (Caja Central)
     $usuario_id = !empty($_POST['usuario_id']) ? (int)$_POST['usuario_id'] : "NULL";
 
     if($id){
         // EDITAR
-        $conn->query("
+        $id = (int)$id;
+        $ok = $conn->query("
             UPDATE cajas
             SET nombre='$nombre',
                 descripcion='$descripcion',
-                activa='$activa',
+                activa=$activa,
+                permite_negativo=$permite_negativo,
                 usuario_id=$usuario_id
             WHERE id=$id
         ");
     }else{
         // NUEVO
-        $conn->query("
-            INSERT INTO cajas(nombre, descripcion, activa, usuario_id)
-            VALUES('$nombre', '$descripcion', '$activa', $usuario_id)
+        $ok = $conn->query("
+            INSERT INTO cajas(nombre, descripcion, activa, permite_negativo, usuario_id)
+            VALUES('$nombre', '$descripcion', $activa, $permite_negativo, $usuario_id)
         ");
     }
 
-    echo "OK";
+    echo $ok ? "OK" : "ERROR: No se pudo guardar la caja. " . $conn->error;
     exit;
 }
 

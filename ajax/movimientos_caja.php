@@ -4,6 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 include $_SERVER['DOCUMENT_ROOT'].'/contable/config/database.php';
+require_once $_SERVER['DOCUMENT_ROOT'].'/contable/includes/caja_saldo.php';
 
 $accion = $_GET['accion'] ?? '';
 
@@ -145,6 +146,8 @@ if($accion == 'guardar'){
         $conn->begin_transaction();
 
         try {
+            $saldos_antes = cajaSaldos($conn, [$caja_origen_id]);
+
             // 1. Asiento de EGRESO
             $conceptoEgreso = "Transferencia enviada a $nombreDestino - " . $concepto_base;
             $sqlEgreso = "
@@ -177,10 +180,18 @@ if($accion == 'guardar'){
                 throw new Exception($conn->error);
             }
 
+            $error_saldo = cajaControlarNegativo($conn, $saldos_antes);
+            if($error_saldo){
+                throw new Exception($error_saldo);
+            }
+
             $conn->commit();
             echo "OK";
         } catch (Exception $e) {
             $conn->rollback();
+            if($archivo_nombre){
+                @unlink($_SERVER['DOCUMENT_ROOT'].'/contable/uploads/caja/'.$archivo_nombre); // no quedó ningún movimiento que lo use
+            }
             echo "ERROR: " . $e->getMessage();
         }
         exit;
@@ -213,6 +224,7 @@ if($accion == 'guardar'){
     
     $referencia_id = !empty($_POST['referencia_id']) ? (int)$_POST['referencia_id'] : "NULL";
     $archivo_nombre = null;
+    $archivo_viejo = null; // archivo anterior que reemplaza el nuevo; se borra después de guardar
 
     // Subida / Reemplazo de archivo para guardado individual
     if(isset($_FILES['archivo']) && $_FILES['archivo']['error'] == 0){
@@ -224,13 +236,11 @@ if($accion == 'guardar'){
             $ruta = $_SERVER['DOCUMENT_ROOT'].'/contable/uploads/caja/'.$nombre;
 
             if($id){
-                $res = $conn->query("SELECT archivo FROM movimientos_caja WHERE id = $id");
-                $old = $res->fetch_assoc();
+                // El archivo anterior se borra recién después de guardar (más abajo)
+                $res = $conn->query("SELECT archivo FROM movimientos_caja WHERE id = " . (int)$id);
+                $old = $res ? $res->fetch_assoc() : null;
                 if($old && !empty($old['archivo'])){
-                    $rutaVieja = $_SERVER['DOCUMENT_ROOT'].'/contable/uploads/caja/'.$old['archivo'];
-                    if(file_exists($rutaVieja)){
-                        unlink($rutaVieja);
-                    }
+                    $archivo_viejo = $old['archivo'];
                 }
             }
 
@@ -293,10 +303,31 @@ if($accion == 'guardar'){
         ";
     }
 
+    // Control de saldo negativo: la caja nueva y, si se cambió de caja, la anterior
+    $conn->begin_transaction();
+    $cajas_afectadas = [$caja_id];
+    if($id){
+        $res_ant = $conn->query("SELECT caja_id FROM movimientos_caja WHERE id = " . (int)$id);
+        if($res_ant && ($ant = $res_ant->fetch_assoc())) $cajas_afectadas[] = (int)$ant['caja_id'];
+    }
+    $saldos_antes = cajaSaldos($conn, $cajas_afectadas);
+
     $ok = $conn->query($sql);
-    if(!$ok){
-        echo "ERROR: ".$conn->error;
+    $error = $ok ? cajaControlarNegativo($conn, $saldos_antes) : $conn->error;
+    if($error){
+        $conn->rollback();
+        if($archivo_nombre){
+            @unlink($_SERVER['DOCUMENT_ROOT'].'/contable/uploads/caja/'.$archivo_nombre);
+        }
+        echo "ERROR: ".$error;
     }else{
+        $conn->commit();
+        if($archivo_nombre && $archivo_viejo){
+            $rutaVieja = $_SERVER['DOCUMENT_ROOT'].'/contable/uploads/caja/'.$archivo_viejo;
+            if(file_exists($rutaVieja)){
+                unlink($rutaVieja);
+            }
+        }
         echo "OK";
     }
     exit;
@@ -321,9 +352,22 @@ if($accion == 'eliminar'){
         }
     }
 
-    $res = $conn->query("SELECT archivo FROM movimientos_caja WHERE id = $id");
+    $res = $conn->query("SELECT archivo, caja_id FROM movimientos_caja WHERE id = $id");
     $row = $res->fetch_assoc();
 
+    // Control de saldo negativo: borrar un ingreso baja el saldo de la caja
+    $conn->begin_transaction();
+    $saldos_antes = $row ? cajaSaldos($conn, [(int)$row['caja_id']]) : [];
+    $conn->query("DELETE FROM movimientos_caja WHERE id = $id");
+    $error = cajaControlarNegativo($conn, $saldos_antes);
+    if($error){
+        $conn->rollback();
+        echo "ERROR: No se puede eliminar. ".$error;
+        exit;
+    }
+    $conn->commit();
+
+    // El archivo se borra recién cuando el movimiento ya no existe
     if($row && !empty($row['archivo'])){
         $ruta = $_SERVER['DOCUMENT_ROOT'].'/contable/uploads/caja/'.$row['archivo'];
         if(file_exists($ruta)){
@@ -331,7 +375,6 @@ if($accion == 'eliminar'){
         }
     }
 
-    $conn->query("DELETE FROM movimientos_caja WHERE id = $id");
     echo "OK";
     exit;
 }

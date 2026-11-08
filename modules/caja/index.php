@@ -440,9 +440,17 @@ $('#formMovimiento').submit(function(e){
         contentType: false,
         processData: false,
         success: function(resp){
+            if (String(resp).trim() !== 'OK') {
+                // El modal queda abierto para corregir (ej: caja que no permite saldo negativo)
+                Swal.fire({ title: 'No se guardó', text: String(resp).replace(/^\s*ERROR:\s*/, ''), icon: 'error', confirmButtonColor: '#212529' });
+                return;
+            }
             tabla.ajax.reload();
             cargarSaldos();
             modalMovimiento.hide();
+        },
+        error: function(xhr){
+            Swal.fire({ title: 'No se guardó', text: (xhr.responseText || 'Error de conexión con el servidor.').replace(/^\s*ERROR:\s*/, ''), icon: 'error', confirmButtonColor: '#212529' });
         }
     });
 });
@@ -471,6 +479,10 @@ window.eliminar = function(id){
     }).then((result) => {
         if (result.isConfirmed) {
             $.post('/contable/ajax/movimientos_caja.php?accion=eliminar', {id}, function(resp){
+                if (String(resp).trim() !== 'OK') {
+                    Swal.fire({ title: 'No se eliminó', text: String(resp).replace(/^\s*ERROR:\s*/, ''), icon: 'error', confirmButtonColor: '#212529' });
+                    return;
+                }
                 tabla.ajax.reload();
                 cargarSaldos();
                 Swal.fire({

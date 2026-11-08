@@ -466,6 +466,11 @@ document.addEventListener("DOMContentLoaded", function() {
             processData: false,
             dataType: 'json',
             success: function(resp) {
+                if (!resp || resp.status !== 'OK') {
+                    // El modal queda abierto para corregir (ej: caja que no permite saldo negativo)
+                    Swal.fire({ title: 'No se guardó', text: (resp && resp.message) || 'No se pudo guardar el gasto.', icon: 'error', confirmButtonColor: '#212529' });
+                    return;
+                }
                 tabla.ajax.reload();
                 modalGasto.hide();
 
@@ -485,6 +490,9 @@ document.addEventListener("DOMContentLoaded", function() {
                         showConfirmButton: false
                     });
                 }
+            },
+            error: function() {
+                Swal.fire({ title: 'No se guardó', text: 'Error de conexión con el servidor.', icon: 'error', confirmButtonColor: '#212529' });
             }
         });
     });

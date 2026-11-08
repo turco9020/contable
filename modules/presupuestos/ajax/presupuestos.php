@@ -31,8 +31,10 @@ if ($accion === 'listar') {
     $hasta = $_GET['hasta'] ?? '';
     $cliente_id = intval($_GET['cliente_id'] ?? 0);
     $estado = $_GET['estado'] ?? '';
+    $vista = $_GET['vista'] ?? 'activos'; // 'activos' = todo menos archivados | 'archivados'
 
     $where = [];
+    $where[] = $vista === 'archivados' ? "p.estado = 'Archivado'" : "p.estado <> 'Archivado'";
     if ($desde) $where[] = "p.fecha >= '" . $conn->real_escape_string($desde) . "'";
     if ($hasta) $where[] = "p.fecha <= '" . $conn->real_escape_string($hasta) . "'";
     if ($cliente_id > 0) $where[] = "p.cliente_id = $cliente_id";
@@ -479,7 +481,11 @@ if ($accion === 'borrar_version') {
 if ($accion === 'historial') {
     $id = intval($_GET['id'] ?? 0);
     $versiones = [];
+    $cabecera = null; // código y título, por si el presupuesto no está en la pestaña visible del listado
     if ($id > 0) {
+        $res_c = $conn->query("SELECT codigo, titulo FROM presupuestos WHERE id = $id");
+        $cabecera = $res_c ? $res_c->fetch_assoc() : null;
+
         $res = $conn->query("SELECT v.id, v.version_numero,
                                     DATE_FORMAT(v.fecha_version, '%d/%m/%Y %H:%i') AS fecha,
                                     v.comentario,
@@ -498,7 +504,7 @@ if ($accion === 'historial') {
             }
         }
     }
-    echo json_encode(['success' => true, 'versiones' => $versiones]);
+    echo json_encode(['success' => true, 'versiones' => $versiones, 'presupuesto' => $cabecera]);
     exit;
 }
 

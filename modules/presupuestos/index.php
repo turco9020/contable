@@ -51,7 +51,7 @@ include '../../includes/sidebar.php';
                         <option value="">-- Todos los Clientes --</option>
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-3" id="col_filtro_estado">
                     <label class="form-label fw-semibold small mb-1" for="filtro_estado">Estado</label>
                     <select id="filtro_estado" class="form-select form-select-sm">
                         <option value="">-- Todos los Estados --</option>
@@ -59,7 +59,6 @@ include '../../includes/sidebar.php';
                         <option value="Enviado">Enviado</option>
                         <option value="Aprobado">Aprobado</option>
                         <option value="Rechazado">Rechazado</option>
-                        <option value="Archivado">Archivado</option>
                     </select>
                 </div>
                 <div class="col-md-2 d-flex gap-1">
@@ -73,6 +72,20 @@ include '../../includes/sidebar.php';
             </form>
         </div>
     </div>
+
+    <!-- PESTAÑAS DEL LISTADO: los archivados van aparte para no llenar la principal -->
+    <ul class="nav nav-tabs mb-3" id="tabListadoPresupuestos" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-semibold text-dark" type="button" role="tab" onclick="cambiarVistaListado(this, 'activos')">
+                <i class="bi bi-file-earmark-text me-1 text-secondary"></i> Presupuestos
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-semibold text-dark" type="button" role="tab" onclick="cambiarVistaListado(this, 'archivados')">
+                <i class="bi bi-archive me-1 text-secondary"></i> Archivados
+            </button>
+        </li>
+    </ul>
 
     <!-- TABLA DE PRESUPUESTOS (DATATABLES) -->
     <div class="card shadow-sm border-0 p-3">
@@ -450,6 +463,7 @@ let apuDetallesGlobal = {};      // insumos de cada APU, indexado por id de tare
 let cambiosSinGuardar = false;   // hay ediciones sin guardar en el modal
 let cierreConfirmado = false;    // el usuario confirmó que quiere cerrar
 let recuperadaDeVersion = 0;     // N° de versión recuperada desde el historial (0 = edición normal)
+let vistaListado = 'activos';    // pestaña del listado: 'activos' | 'archivados'
 
 const ESTADOS_PRESUPUESTO = ['Borrador', 'Enviado', 'Aprobado', 'Rechazado', 'Archivado'];
 const COLOR_ESTADO = { 'Borrador': 'bg-secondary', 'Enviado': 'bg-primary', 'Aprobado': 'bg-success', 'Rechazado': 'bg-danger', 'Archivado': 'bg-dark' };
@@ -487,7 +501,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 d.desde = $('#filtro_desde').val();
                 d.hasta = $('#filtro_hasta').val();
                 d.cliente_id = $('#filtro_cliente').val();
-                d.estado = $('#filtro_estado').val();
+                d.vista = vistaListado;
+                d.estado = vistaListado === 'archivados' ? '' : $('#filtro_estado').val();
             }
         },
         order: [[0, 'desc']],
@@ -1621,6 +1636,17 @@ function confirmarCierrePresupuesto() {
 // =====================================================================
 // CAMBIO DE ESTADO DESDE EL LISTADO (crea una versión nueva)
 // =====================================================================
+// Pestañas del listado: Presupuestos (todo menos archivados) / Archivados
+function cambiarVistaListado(btn, vista) {
+    if (vistaListado === vista) return;
+    vistaListado = vista;
+    $('#tabListadoPresupuestos .nav-link').removeClass('active');
+    $(btn).addClass('active');
+    // En Archivados el filtro de estado no aplica
+    $('#col_filtro_estado').toggleClass('d-none', vista === 'archivados');
+    tablaPresupuestos.ajax.reload();
+}
+
 function cambiarEstadoPresupuesto(e, id, estadoNuevo) {
     e.preventDefault();
     const fila = tablaPresupuestos.rows().data().toArray().find(function(r) { return String(r.id) === String(id); });
@@ -1644,8 +1670,12 @@ function cambiarEstadoPresupuesto(e, id, estadoNuevo) {
         $.post(URL_AJAX + '?accion=cambiar_estado', { id: id, estado: estadoNuevo }, function(res) {
             if (res.success) {
                 tablaPresupuestos.ajax.reload(null, false);
+                let titulo = 'Estado cambiado a ' + estadoNuevo + ' (versión ' + res.version + ')';
+                if (res.sin_cambios) titulo = 'El estado ya era ' + estadoNuevo;
+                else if (estadoNuevo === 'Archivado') titulo = 'Movido a Archivados (versión ' + res.version + ')';
+                else if (estadoActual === 'Archivado') titulo = 'Desarchivado: ' + estadoNuevo + ' (versión ' + res.version + ')';
                 Swal.fire({ toast: true, position: 'top-end', icon: 'success',
-                            title: res.sin_cambios ? 'El estado ya era ' + estadoNuevo : 'Estado cambiado a ' + estadoNuevo + ' (versión ' + res.version + ')',
+                            title: titulo,
                             timer: 2200, showConfirmButton: false });
             } else {
                 Swal.fire('Error', res.error || 'No se pudo cambiar el estado.', 'error');
@@ -1674,6 +1704,9 @@ function abrirHistorial(id) {
         if (!res.success) {
             $('#historialBody').html('<div class="alert alert-danger m-2">No se pudo cargar el historial.</div>');
             return;
+        }
+        if (res.presupuesto) {
+            $('#historialTitulo').text('· ' + (res.presupuesto.codigo || '') + (res.presupuesto.titulo ? ' - ' + res.presupuesto.titulo : ''));
         }
         if (!res.versiones.length) {
             $('#historialBody').html('<div class="alert alert-light border m-2">Este presupuesto no tiene versiones guardadas.</div>');

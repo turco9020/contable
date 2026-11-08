@@ -14,6 +14,43 @@ include '../../includes/sidebar.php';
     height: 100%;
 }
 
+/* Encabezado, barra de totales y botones fijos; solo se desplaza el contenido del medio */
+#formPresupuesto {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+#formPresupuesto > .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+/* Barra de totales: Costo directo x K final = Total */
+.barra-totales {
+    border-top: 1px solid var(--bs-border-color);
+    background-color: #fff;
+}
+.barra-totales .tot-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--bs-secondary-color);
+}
+.barra-totales .tot-op {
+    font-size: 1.25rem;
+    color: var(--bs-secondary-color);
+    align-self: flex-end;
+    line-height: 1.6;
+}
+.barra-totales #pres_k_general {
+    width: 4.5rem;
+    padding: 0;
+    font-size: 1.1rem;
+}
+
 /* Modal "Ver APU" apilado encima del modal del presupuesto */
 #modalVerAPU { z-index: 1065; }
 
@@ -210,24 +247,7 @@ include '../../includes/sidebar.php';
                                 </div>
                             </div>
 
-                            <div id="contenedorRubros" class="d-flex flex-column gap-3 mb-3"></div>
-
-                            <div class="card bg-light border p-3">
-                                <div class="row align-items-center g-2">
-                                    <div class="col-md-4 text-end ms-auto">
-                                        <span class="fw-semibold text-muted d-block small">Subtotal Costo directo + K Base:</span>
-                                        <span class="fw-bold fs-6 text-dark" id="lblSubtotalDirecto">$ 0,00</span>
-                                    </div>
-                                    <div class="col-md-3 text-end">
-                                        <label class="form-label fw-bold small text-primary mb-0" for="pres_k_general">K General Final (Pie):</label>
-                                        <input type="number" step="0.01" id="pres_k_general" class="form-control form-control-sm text-end fw-bold border-primary" value="1.00" oninput="recalcularMatrizPresupuesto()">
-                                    </div>
-                                    <div class="col-md-4 text-end">
-                                        <span class="fw-bold text-uppercase d-block small text-dark">TOTAL GENERAL PRESUPUESTADO:</span>
-                                        <span class="fw-bold fs-4 text-success" id="lblTotalPresupuesto">$ 0,00</span>
-                                    </div>
-                                </div>
-                            </div>
+                            <div id="contenedorRubros" class="d-flex flex-column gap-3"></div>
                         </div>
 
                         <!-- PESTAÑA 2: INDIRECTOS -->
@@ -367,6 +387,26 @@ include '../../includes/sidebar.php';
                             <div id="condiciones_editor"></div>
                         </div>
 
+                    </div>
+                </div>
+
+                <!-- BARRA DE TOTALES (fija, visible en todas las pestañas): Costo directo x K final = Total -->
+                <div class="barra-totales px-3 py-2">
+                    <div class="d-flex justify-content-end align-items-end gap-3 flex-wrap">
+                        <div class="text-end">
+                            <div class="tot-label">Costo directo + K Base</div>
+                            <div class="fw-bold fs-5 text-dark" id="lblSubtotalDirecto">$ 0,00</div>
+                        </div>
+                        <div class="tot-op">&times;</div>
+                        <div class="text-end" title="Se calcula en la pestaña Coeficiente K">
+                            <label class="tot-label d-block" for="pres_k_general">K final</label>
+                            <input type="text" id="pres_k_general" class="form-control-plaintext text-end fw-bold text-primary" value="1.00" readonly tabindex="-1">
+                        </div>
+                        <div class="tot-op">=</div>
+                        <div class="text-end ps-2">
+                            <div class="tot-label">Total presupuestado</div>
+                            <div class="fw-bold fs-4 text-success lh-sm" id="lblTotalPresupuesto">$ 0,00</div>
+                        </div>
                     </div>
                 </div>
 

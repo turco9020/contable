@@ -34,6 +34,9 @@ include '../../includes/sidebar.php';
                         <th>CP</th>
                         <th>Whatsapp</th>
                         <th>Contacto</th>
+                        <th>Email</th>
+                        <th>Red Social</th>
+                        <th>Sitio Web</th>
                         <th>CBU</th>
                         <th>Alias</th>
                         <th>Observaciones</th>
@@ -124,6 +127,18 @@ include '../../includes/sidebar.php';
                         <div class="col-md-6">
                             <label class="form-label small fw-bold">WhatsApp</label>
                             <input type="text" name="whatsapp" id="whatsapp" class="form-control" placeholder="Número de celular con código de área">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Email</label>
+                            <input type="email" name="email" id="email" class="form-control no-upper" placeholder="correo@ejemplo.com" maxlength="150">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Instagram / Red Social</label>
+                            <input type="text" name="red_social" id="red_social" class="form-control no-upper" placeholder="@usuario o link" maxlength="150">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Sitio Web</label>
+                            <input type="text" name="sitio_web" id="sitio_web" class="form-control no-upper" placeholder="www.ejemplo.com.ar" maxlength="150">
                         </div>
                     </div>
 
@@ -226,6 +241,9 @@ document.addEventListener("DOMContentLoaded", function(){
             {data:'cp', visible:false, defaultContent:''},
             {data:'whatsapp', visible:false, defaultContent:''},
             {data:'contacto', visible:false, defaultContent:''},
+            {data:'email', visible:false, defaultContent:''},
+            {data:'red_social', visible:false, defaultContent:''},
+            {data:'sitio_web', visible:false, defaultContent:''},
             {data:'cbu', visible:false, defaultContent:''},
             {data:'alias', visible:false, defaultContent:''},
             {data:'observaciones', visible:false, defaultContent:''},
@@ -392,7 +410,7 @@ document.addEventListener("DOMContentLoaded", function(){
     }
 
     // MAYÚSCULAS AUTOMÁTICAS
-    $(document).on('input', 'input:not([type="file"]), textarea', function(){
+    $(document).on('input', 'input:not([type="file"]):not(.no-upper), textarea', function(){
         this.value = this.value.toUpperCase();
     });
 

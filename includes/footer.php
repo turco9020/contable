@@ -66,6 +66,9 @@ body.dark .footer-lite a:hover {
 input, textarea {
     text-transform: uppercase;
 }
+input.no-upper {
+    text-transform: none;
+}
 
 /* link activo */
 .menu-link.active {
@@ -112,7 +115,7 @@ document.addEventListener('input', function(e){
     let tag = e.target.tagName;
 
     if(tag === 'INPUT' || tag === 'TEXTAREA'){
-        if(e.target.type !== 'password' && e.target.type !== 'email'){
+        if(e.target.type !== 'password' && e.target.type !== 'email' && !e.target.classList.contains('no-upper')){
             e.target.value = e.target.value.toUpperCase();
         }
     }

@@ -35,7 +35,10 @@ if($_GET['accion'] == 'guardar'){
     $whatsapp  = $conn->real_escape_string($_POST['whatsapp'] ?? '');
     $telefono  = $conn->real_escape_string($_POST['telefono'] ?? '');
     $contacto  = $conn->real_escape_string($_POST['contacto'] ?? '');
-    $cbu       = $conn->real_escape_string($_POST['cbu'] ?? '');
+    $email     = $conn->real_escape_string(trim($_POST['email'] ?? ''));
+    $red_social = $conn->real_escape_string(trim($_POST['red_social'] ?? ''));
+    $sitio_web = $conn->real_escape_string(trim($_POST['sitio_web'] ?? ''));
+    $cbu      = $conn->real_escape_string($_POST['cbu'] ?? '');
     $alias     = $conn->real_escape_string($_POST['alias'] ?? '');
     $producto  = $conn->real_escape_string($_POST['producto_servicio'] ?? '');
     $obs       = $conn->real_escape_string($_POST['observaciones'] ?? '');
@@ -68,6 +71,9 @@ if($_GET['accion'] == 'guardar'){
         whatsapp='$whatsapp',
         telefono='$telefono',
         contacto='$contacto',
+        email='$email',
+        red_social='$red_social',
+        sitio_web='$sitio_web',
         cbu='$cbu',
         alias='$alias',
         producto_servicio='$producto',
@@ -79,9 +85,9 @@ if($_GET['accion'] == 'guardar'){
         $archivo_val = !empty($nombre_archivo) ? "'$nombre_archivo'" : "NULL";
         
         $sql = "INSERT INTO proveedores 
-        (nombre,cuit,condicion_fiscal,direccion,localidad,provincia,cp,whatsapp,telefono,contacto,cbu,alias,producto_servicio,observaciones,archivo,usuario_id)
-        VALUES 
-        ('$nombre','$cuit','$condicion','$direccion','$localidad','$provincia','$cp','$whatsapp','$telefono','$contacto','$cbu','$alias','$producto','$obs',$archivo_val,$usuario)";
+        (nombre,cuit,condicion_fiscal,direccion,localidad,provincia,cp,whatsapp,telefono,contacto,email,red_social,sitio_web,cbu,alias,producto_servicio,observaciones,archivo,usuario_id)
+        VALUES
+        ('$nombre','$cuit','$condicion','$direccion','$localidad','$provincia','$cp','$whatsapp','$telefono','$contacto','$email','$red_social','$sitio_web','$cbu','$alias','$producto','$obs',$archivo_val,$usuario)";
     }
 
     $conn->query($sql);

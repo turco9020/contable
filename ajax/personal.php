@@ -33,6 +33,51 @@ if($accion == 'listar'){
     exit;
 }
 
+// LISTA SIMPLE PARA DESPLEGABLES (gastos)
+if($accion == 'select_opt'){
+    header('Content-Type: application/json');
+    $data = [];
+    $res = $conn->query("SELECT id, apellido, nombre, cuil, banco, cbu, estado
+                         FROM personal ORDER BY apellido, nombre");
+    if($res) while($row = $res->fetch_assoc()) $data[] = $row;
+    echo json_encode(["data" => $data]);
+    exit;
+}
+
+// SUELDOS Y PAGOS: gastos cargados a un empleado
+if($accion == 'listar_pagos'){
+    header('Content-Type: application/json');
+    $personal_id = intval($_GET['personal_id'] ?? 0);
+    $anio = intval($_GET['anio'] ?? 0);
+    $rol = $_SESSION['rol'] ?? '';
+
+    $where = "g.personal_id = $personal_id";
+    if($anio > 0) $where .= " AND YEAR(g.fecha) = $anio";
+    // Mismo criterio que el listado de gastos: admin y contador ven todo
+    if(strcasecmp($rol, 'admin') !== 0 && strcasecmp($rol, 'contador') !== 0){
+        $where .= " AND g.usuario_id = ".intval($usuario_logueado);
+    }
+
+    $data = [];
+    $total = 0;
+    if($personal_id > 0){
+        $res = $conn->query("SELECT g.id, g.fecha, g.detalle, g.total, g.estado_validacion,
+                                    sub.nombre AS concepto, m.nombre AS medio_pago, c.nombre AS caja
+                             FROM gastos g
+                             LEFT JOIN subcategorias sub ON sub.id = g.subcategoria_id
+                             LEFT JOIN medios_pago m ON m.id = g.medio_pago_id
+                             LEFT JOIN cajas c ON c.id = g.caja_id
+                             WHERE $where
+                             ORDER BY g.fecha DESC, g.id DESC");
+        if($res) while($row = $res->fetch_assoc()){
+            $data[] = $row;
+            $total += (float)$row['total'];
+        }
+    }
+    echo json_encode(["data" => $data, "total" => $total]);
+    exit;
+}
+
 // GUARDAR / EDITAR PERSONAL
 if($accion == 'guardar'){
     $id = $_POST['id'] ?? '';

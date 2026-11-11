@@ -49,7 +49,11 @@ $esAdmin = isset($_SESSION['rol']) && strcasecmp($_SESSION['rol'], 'admin') === 
                 <label class="small fw-bold text-muted">Vehículo / Máquina</label>
                 <select id="f_vehiculo" class="form-select form-select-sm"></select>
             </div>
-            <div class="col-md-12 d-flex justify-content-end align-items-center mt-2">
+            <div class="col-md-2">
+                <label class="small fw-bold text-muted">Empleado</label>
+                <select id="f_empleado" class="form-select form-select-sm"></select>
+            </div>
+            <div class="col-md-10 d-flex justify-content-end align-items-end mt-2">
                 <button class="btn btn-sm btn-dark me-2 px-3" onclick="aplicarFiltros()">Filtrar</button>
                 <button class="btn btn-sm btn-outline-secondary px-3" onclick="limpiarFiltros()" title="Limpiar Filtros">Limpiar</button>
             </div>
@@ -106,7 +110,7 @@ window.aplicarFiltros = function() {
 
 window.limpiarFiltros = function() {
     $('#f_desde, #f_hasta').val('');
-    $('#f_centro, #f_categoria, #f_obra, #f_vehiculo').val('');
+    $('#f_centro, #f_categoria, #f_obra, #f_vehiculo, #f_empleado').val('');
     tabla.ajax.reload();
 }
 
@@ -161,6 +165,17 @@ function cargarVehiculos(){
         if (r.data) {
             r.data.forEach(x=>{ s.append(`<option value="${x.id}">${x.nombre}</option>`); });
         }
+    },'json');
+}
+
+function cargarEmpleadosFiltro(){
+    return $.get('/contable/ajax/personal.php?accion=select_opt', r=>{
+        let s = $('#f_empleado');
+        s.empty().append('<option value="">-- Todos --</option>');
+        (r.data || []).forEach(x=>{
+            let extra = x.estado === 'INACTIVO' ? ' (INACTIVO)' : '';
+            s.append($('<option>').val(x.id).text(`${x.apellido}, ${x.nombre}${extra}`));
+        });
     },'json');
 }
 
@@ -272,9 +287,10 @@ window.abrirModal = function(){
     $('#id').val('');
     $('#archivo_actual').html('');
     $('#btnEliminarArchivo').hide();
+    $('#formGasto').removeAttr('data-personal');
     $('#formGasto input, select, textarea').prop('disabled', false);
     $('#formGasto button[type="submit"], #formGasto .btn-dark').show();
-    
+
     $.when(
         cargarCentros(), cargarCajas(), cargarTipos(), 
         cargarMedios(), cargarObras(), cargarVehiculos(), 
@@ -327,6 +343,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 d.f_categoria = $('#f_categoria').val();
                 d.f_obra = $('#f_obra').val();
                 d.f_vehiculo = $('#f_vehiculo').val();
+                d.f_empleado = $('#f_empleado').val();
             }
         },
         columns: [
@@ -338,7 +355,13 @@ document.addEventListener("DOMContentLoaded", function() {
             { data: 'tipo_comprobante', className: 'none' },
             { data: 'numero_comprobante', className: 'none' },
             { data: 'medio_pago', className: 'none' },
-            { data: 'proveedor', defaultContent: '' },
+            { data: 'proveedor', defaultContent: '', render: function(d, type, row) {
+                if (row.empleado) {
+                    let nom = $('<span>').text(row.empleado).html();
+                    return type === 'display' ? `<i class="bi bi-person text-secondary me-1" title="Empleado"></i>${nom}` : 'EMPLEADO: ' + row.empleado;
+                }
+                return d || '';
+            }},
             { data: 'detalle', className: 'none' },
             { data: 'neto', className: 'none', render: d => renderMoneda(d) },
             { data: 'iva', className: 'text-end', render: d => renderMoneda(d) },
@@ -539,7 +562,8 @@ document.addEventListener("DOMContentLoaded", function() {
 
     window.editar = function(data) {
         $('#formGasto')[0].reset();
-        $('#formGasto input, select, textarea').prop('disabled', false); 
+        $('#formGasto').attr('data-personal', data.personal_id || '');
+        $('#formGasto input, select, textarea').prop('disabled', false);
         $('#formGasto button').show();
 
         $.when(
@@ -642,6 +666,7 @@ document.addEventListener("DOMContentLoaded", function() {
         cargarObras();
         cargarVehiculos();
         cargarCategorias();
+        cargarEmpleadosFiltro();
     });
 });
 

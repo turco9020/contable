@@ -312,6 +312,9 @@ window.editarGasto = function(data){
 
     form[0].reset();
 
+    // Si el gasto fue pagado a un empleado, el modal abre en modo "Empleado"
+    form.attr('data-personal', data.personal_id || '');
+
     form.find('input,select,textarea')
         .prop('disabled',false);
 

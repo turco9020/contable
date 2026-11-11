@@ -160,6 +160,11 @@ include '../../../includes/sidebar.php';
                                 <i class="bi bi-journal-text me-1"></i> Histórico de Movimientos
                             </button>
                         </li>
+                        <li class="nav-item">
+                            <button class="nav-link" id="tab-pagos-btn" data-bs-toggle="tab" data-bs-target="#tab-pagos" type="button">
+                                <i class="bi bi-cash-stack me-1"></i> Sueldos y Pagos
+                            </button>
+                        </li>
                     </ul>
 
                     <div class="tab-content border p-3 rounded bg-white">
@@ -466,6 +471,47 @@ include '../../../includes/sidebar.php';
                             </div>
                         </div>
 
+                        <!-- TAB 4: SUELDOS Y PAGOS (gastos cargados a este empleado) -->
+                        <div class="tab-pane fade" id="tab-pagos">
+                            <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+                                <div>
+                                    <div class="seccion-titulo mb-1"><i class="bi bi-cash-stack me-1"></i> Pagos registrados en Gastos</div>
+                                    <div class="small text-muted">Se cargan desde Gastos eligiendo "Pagado a: Empleado". Esta vista es de solo lectura.</div>
+                                </div>
+                                <div class="d-flex align-items-end gap-3">
+                                    <div>
+                                        <label class="form-label small mb-1">Año</label>
+                                        <select id="pagos_anio" class="form-select form-select-sm" style="width: 110px;">
+                                            <option value="0">Todos</option>
+                                            <?php for($a = (int)date('Y'); $a >= (int)date('Y') - 5; $a--): ?>
+                                                <option value="<?= $a ?>" <?= $a == (int)date('Y') ? 'selected' : '' ?>><?= $a ?></option>
+                                            <?php endfor; ?>
+                                        </select>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="small text-muted">Total del período</div>
+                                        <div class="fw-bold fs-5" id="pagos_total">$ 0,00</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover table-sm align-middle w-100">
+                                    <thead class="table-secondary">
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>Concepto</th>
+                                            <th>Detalle</th>
+                                            <th>Medio de Pago</th>
+                                            <th>Caja</th>
+                                            <th class="text-end">Importe</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="bodyPagos"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
@@ -594,6 +640,7 @@ window.editar = function(id, soloVer = false) {
         $('#btnGuardar').hide();
         $('#contenedor-nuevo-movimiento').hide();
         $('#formPersonal input, #formPersonal select, #formPersonal textarea').prop('disabled', true);
+        $('#pagos_anio').prop('disabled', false); // filtro de la pestaña Sueldos y Pagos
     } else {
         $('#modalPersonalLabel').html('<i class="bi bi-pencil me-2"></i> Editar Legajo');
         $('#btnGuardar').show();
@@ -604,6 +651,44 @@ window.editar = function(id, soloVer = false) {
     $('#tab-basica-btn').tab('show');
     modalBS.show();
 }
+
+function cargarPagos() {
+    const pId = $('#id').val();
+    const body = $('#bodyPagos').empty();
+    const fmt = n => '$ ' + (parseFloat(n) || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    $('#pagos_total').text(fmt(0));
+
+    if(!pId) {
+        body.html('<tr><td colspan="6" class="text-center text-muted small py-3">Guardá el legajo para ver sus pagos.</td></tr>');
+        return;
+    }
+
+    $.get('/contable/ajax/personal.php?accion=listar_pagos', { personal_id: pId, anio: $('#pagos_anio').val() }, function(r) {
+        if(!r.data || r.data.length === 0) {
+            body.html('<tr><td colspan="6" class="text-center text-muted small py-3">No hay pagos registrados en el período.</td></tr>');
+            return;
+        }
+        r.data.forEach(g => {
+            const f = g.fecha ? g.fecha.split('-').reverse().join('/') : '-';
+            const pend = g.estado_validacion === 'PENDIENTE' ? ' <span class="badge bg-warning text-dark">Pendiente</span>' : '';
+            const tr = $('<tr>');
+            tr.append($('<td class="text-nowrap">').text(f));
+            tr.append($('<td>').text(g.concepto || '-'));
+            tr.append($('<td class="small">').text(g.detalle || ''));
+            tr.append($('<td>').text(g.medio_pago || '-'));
+            tr.append($('<td>').text(g.caja || '-'));
+            tr.append($('<td class="text-end fw-semibold text-nowrap">').html($('<span>').text(fmt(g.total)).prop('outerHTML') + pend));
+            body.append(tr);
+        });
+        $('#pagos_total').text(fmt(r.total));
+    }, 'json');
+}
+
+// jQuery se carga en el footer, después de este script
+document.addEventListener('DOMContentLoaded', function() {
+    $(document).on('shown.bs.tab', '#tab-pagos-btn', cargarPagos);
+    $(document).on('change', '#pagos_anio', cargarPagos);
+});
 
 function cargarMovimientos(pId) {
     $.get('/contable/ajax/personal.php?accion=listar_movimientos', { personal_id: pId }, function(r) {

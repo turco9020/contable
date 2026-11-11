@@ -50,8 +50,22 @@
                             <h6 class="text-uppercase text-secondary fw-bold small border-bottom pb-1 mb-2">2. Datos del Comprobante y Origen del Pago</h6>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label small fw-bold">Proveedor</label>
-                            <select name="proveedor_id" id="proveedor_id" class="form-select" required></select>
+                            <label class="form-label small fw-bold">Pagado a</label>
+                            <div class="btn-group btn-group-sm w-100 mb-2" role="group">
+                                <input type="radio" class="btn-check" name="pagado_a" id="pagado_proveedor" value="proveedor" checked>
+                                <label class="btn btn-outline-dark py-0 text-truncate" for="pagado_proveedor"><i class="bi bi-truck me-1"></i>Proveedor</label>
+                                <input type="radio" class="btn-check" name="pagado_a" id="pagado_empleado" value="empleado">
+                                <label class="btn btn-outline-dark py-0 text-truncate" for="pagado_empleado"><i class="bi bi-person me-1"></i>Empleado</label>
+                            </div>
+                            <div id="wrap_proveedor">
+                                <select name="proveedor_id" id="proveedor_id" class="form-select" required></select>
+                            </div>
+                            <div id="wrap_empleado" class="d-none">
+                                <select name="personal_id" id="personal_id" class="form-select">
+                                    <option value="">-- Seleccionar empleado --</option>
+                                </select>
+                                <div id="empleado_info" class="form-text small"></div>
+                            </div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-bold">Tipo Comprobante</label>
@@ -122,3 +136,74 @@
         </div>
     </div>
 </div>
+
+<script>
+// PAGADO A: PROVEEDOR / EMPLEADO
+// Para abrir un gasto ya pagado a un empleado, la pantalla deja su id en
+// data-personal del formulario antes de mostrar el modal.
+document.addEventListener('DOMContentLoaded', function () {
+    const modal   = document.getElementById('modalGasto');
+    const form    = document.getElementById('formGasto');
+    if (!modal || !form) return;
+
+    const selProv = form.querySelector('#proveedor_id');
+    const selEmp  = form.querySelector('#personal_id');
+    const info    = form.querySelector('#empleado_info');
+    let empleados = null;
+
+    function esc(t) {
+        return String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function cargarEmpleados() {
+        if (empleados) return $.Deferred().resolve(empleados).promise();
+        return $.getJSON('/contable/ajax/personal.php?accion=select_opt').then(r => {
+            empleados = (r && r.data) || [];
+            return empleados;
+        });
+    }
+
+    // Los inactivos solo aparecen si son el empleado ya asignado al gasto
+    function poblarEmpleados(seleccionado) {
+        selEmp.innerHTML = '<option value="">-- Seleccionar empleado --</option>';
+        empleados.forEach(e => {
+            if (e.estado === 'INACTIVO' && String(e.id) !== String(seleccionado)) return;
+            const extra = e.estado === 'INACTIVO' ? ' (INACTIVO)' : '';
+            selEmp.insertAdjacentHTML('beforeend',
+                `<option value="${e.id}">${esc(e.apellido)}, ${esc(e.nombre)}${extra}</option>`);
+        });
+        selEmp.value = seleccionado || '';
+        mostrarInfo();
+    }
+
+    function mostrarInfo() {
+        const e = (empleados || []).find(x => String(x.id) === String(selEmp.value));
+        if (!e) { info.innerHTML = ''; return; }
+        const partes = [];
+        if (e.cuil)  partes.push('CUIL ' + esc(e.cuil));
+        if (e.banco) partes.push(esc(e.banco));
+        if (e.cbu)   partes.push('CBU ' + esc(e.cbu));
+        info.innerHTML = partes.length ? '<i class="bi bi-bank me-1"></i>' + partes.join(' · ') : '';
+    }
+
+    function setModo(modo) {
+        const emp = modo === 'empleado';
+        form.querySelector(emp ? '#pagado_empleado' : '#pagado_proveedor').checked = true;
+        form.querySelector('#wrap_proveedor').classList.toggle('d-none', emp);
+        form.querySelector('#wrap_empleado').classList.toggle('d-none', !emp);
+        selProv.required = !emp;
+        selEmp.required  = emp;
+    }
+
+    form.querySelectorAll('input[name="pagado_a"]').forEach(r =>
+        r.addEventListener('change', () => setModo(r.id === 'pagado_empleado' ? 'empleado' : 'proveedor')));
+    selEmp.addEventListener('change', mostrarInfo);
+
+    modal.addEventListener('show.bs.modal', function () {
+        const pendiente = form.getAttribute('data-personal') || '';
+        form.removeAttribute('data-personal');
+        setModo(pendiente ? 'empleado' : 'proveedor');
+        cargarEmpleados().then(() => poblarEmpleados(pendiente));
+    });
+});
+</script>

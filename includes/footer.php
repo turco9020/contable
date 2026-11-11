@@ -112,7 +112,7 @@ input.no-upper {
 <script>
 // MAYÚSCULAS GLOBAL (inputs y textarea)
 // No se aplica a numeros/fechas: reescribir su valor borra la coma o el punto a medio escribir
-const tiposSinMayus = ['password','email','number','date','time','datetime-local','month','week','file','color','range'];
+const tiposSinMayus = ['password','email','number','date','time','datetime-local','month','week','file','color','range','radio','checkbox','hidden'];
 
 document.addEventListener('input', function(e){
     let tag = e.target.tagName;

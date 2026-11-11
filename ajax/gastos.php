@@ -35,12 +35,15 @@ if($_GET['accion']=='listar'){
     if (!empty($_GET['f_categoria'])) $where .= " AND g.categoria_id = '".$_GET['f_categoria']."'";
     if (!empty($_GET['f_obra']))      $where .= " AND g.obra_id = '".$_GET['f_obra']."'";
     if (!empty($_GET['f_vehiculo']))  $where .= " AND g.vehiculo_id = '".$_GET['f_vehiculo']."'";
+    if (!empty($_GET['f_empleado']))  $where .= " AND g.personal_id = ".(int)$_GET['f_empleado'];
 
-    $sql = "SELECT g.*, t.nombre AS tipo_comprobante, m.nombre AS medio_pago, o.nombre AS obra, 
+    $sql = "SELECT g.*, t.nombre AS tipo_comprobante, m.nombre AS medio_pago, o.nombre AS obra,
         c.nombre AS centro, cat.nombre AS categoria, sub.nombre AS subcategoria, p.nombre AS proveedor,
+        CONCAT(pe.apellido, ', ', pe.nombre) AS empleado,
         IFNULL(u.usuario, 'Sistema') AS usuario_nombre,
         CONCAT(v.marca, ' ', v.modelo, ' (', v.dominio_patente, ')') AS vehiculo
         FROM gastos g
+        LEFT JOIN personal pe ON pe.id = g.personal_id
         LEFT JOIN tipos_comprobante t ON t.id = g.tipo_comprobante_id
         LEFT JOIN medios_pago m ON m.id = g.medio_pago_id
         LEFT JOIN obras o ON o.id = g.obra_id
@@ -70,9 +73,11 @@ if($_GET['accion']=='obtener'){
     $sql = "SELECT g.*, mc.caja_id, t.nombre AS tipo_comprobante, m.nombre AS medio_pago,
                    o.nombre AS obra, c.nombre AS centro, cat.nombre AS categoria, 
                    sub.nombre AS subcategoria, p.nombre AS proveedor,
+                   CONCAT(pe.apellido, ', ', pe.nombre) AS empleado,
                    CONCAT(v.marca, ' ', v.modelo, ' (', v.dominio_patente, ')') AS vehiculo,
                    IFNULL(u.usuario, 'Sistema') AS usuario_nombre
             FROM gastos g
+            LEFT JOIN personal pe ON pe.id = g.personal_id
             LEFT JOIN movimientos_caja mc ON mc.origen='GASTO' AND mc.referencia_id=g.id
             LEFT JOIN tipos_comprobante t ON t.id = g.tipo_comprobante_id
             LEFT JOIN medios_pago m ON m.id = g.medio_pago_id
@@ -121,7 +126,14 @@ if($_GET['accion']=='guardar'){
     $categoria_id        = !empty($_POST['categoria_id']) ? $_POST['categoria_id'] : "NULL";
     $subcategoria_id     = !empty($_POST['subcategoria_id']) ? $_POST['subcategoria_id'] : "NULL";
     $proveedor_id        = !empty($_POST['proveedor_id']) ? $_POST['proveedor_id'] : "NULL";
-    
+
+    // Pagado a un proveedor o a un empleado: nunca a los dos
+    $personal_id = "NULL";
+    if (strtolower($_POST['pagado_a'] ?? '') === 'empleado' && !empty($_POST['personal_id'])) {
+        $personal_id  = (int)$_POST['personal_id'];
+        $proveedor_id = "NULL";
+    }
+
     $numero_comprobante = $_POST['numero_comprobante'] ?? '';
 
     // Lógica de Validación > $800.000
@@ -164,7 +176,7 @@ if($_GET['accion']=='guardar'){
                 tipo_comprobante_id=$tipo_comprobante_id, numero_comprobante='$numero_comprobante',
                 neto='$neto', iva='$iva', ret_iibb='$ret_iibb', otros_tributos='$otros_tributos',
                 caja_id=$caja_id, centro_costo_id=$centro_costo_id, categoria_id=$categoria_id, 
-                subcategoria_id=$subcategoria_id, proveedor_id=$proveedor_id,
+                subcategoria_id=$subcategoria_id, proveedor_id=$proveedor_id, personal_id=$personal_id,
                 medio_pago_id=$medio_pago_id, obra_id=$obra_id, vehiculo_id=$vehiculo_id";
         
         if (strcasecmp($rol, 'admin') !== 0 && $total >= 800000) {
@@ -176,10 +188,10 @@ if($_GET['accion']=='guardar'){
         // INSERT
         $sql = "INSERT INTO gastos (fecha, detalle, total, tipo_comprobante_id, numero_comprobante, 
                 neto, iva, ret_iibb, otros_tributos, caja_id, centro_costo_id, categoria_id, subcategoria_id, 
-                proveedor_id, medio_pago_id, obra_id, vehiculo_id, archivo, usuario_id, estado_validacion) 
-                VALUES ('$fecha', '$detalle', '$total', $tipo_comprobante_id, '$numero_comprobante', 
-                '$neto', '$iva', '$ret_iibb', '$otros_tributos', $caja_id, $centro_costo_id, $categoria_id, 
-                $subcategoria_id, $proveedor_id, $medio_pago_id, $obra_id, $vehiculo_id, 
+                proveedor_id, personal_id, medio_pago_id, obra_id, vehiculo_id, archivo, usuario_id, estado_validacion)
+                VALUES ('$fecha', '$detalle', '$total', $tipo_comprobante_id, '$numero_comprobante',
+                '$neto', '$iva', '$ret_iibb', '$otros_tributos', $caja_id, $centro_costo_id, $categoria_id,
+                $subcategoria_id, $proveedor_id, $personal_id, $medio_pago_id, $obra_id, $vehiculo_id, 
                 ".($archivo_nombre ? "'$archivo_nombre'" : "NULL").", $usuario, '$estado_val')";
     }
 

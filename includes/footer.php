@@ -111,12 +111,17 @@ input.no-upper {
 
 <script>
 // MAYÚSCULAS GLOBAL (inputs y textarea)
+// No se aplica a numeros/fechas: reescribir su valor borra la coma o el punto a medio escribir
+const tiposSinMayus = ['password','email','number','date','time','datetime-local','month','week','file','color','range'];
+
 document.addEventListener('input', function(e){
     let tag = e.target.tagName;
 
-    if(tag === 'INPUT' || tag === 'TEXTAREA'){
-        if(e.target.type !== 'password' && e.target.type !== 'email' && !e.target.classList.contains('no-upper')){
-            e.target.value = e.target.value.toUpperCase();
+    if((tag === 'INPUT' && !tiposSinMayus.includes(e.target.type)) || tag === 'TEXTAREA'){
+        if(!e.target.classList.contains('no-upper')){
+            const up = e.target.value.toUpperCase();
+            // Solo reescribir si cambio, para no mover el cursor
+            if(up !== e.target.value) e.target.value = up;
         }
     }
 });

@@ -29,6 +29,9 @@ include '../../../includes/sidebar.php';
     font-weight: 600;
 }
 /* Subtítulos de sección discretos y limpios */
+/* REVISAR SITUACIÓN: texto en rojo cuando está marcado */
+#revisar_situacion:checked + label { color: #dc3545; }
+
 .seccion-titulo {
     font-size: 0.85rem;
     font-weight: 700;
@@ -289,6 +292,14 @@ include '../../../includes/sidebar.php';
                                 <div class="col-md-2">
                                     <label class="form-label small mb-1">Alta IERIC</label>
                                     <input type="date" name="fecha_alta_ieric" id="fecha_alta_ieric" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-3 d-flex align-items-end">
+                                    <div class="form-check mb-1">
+                                        <input class="form-check-input" type="checkbox" name="revisar_situacion" id="revisar_situacion" value="1">
+                                        <label class="form-check-label small fw-bold" for="revisar_situacion" id="lbl_revisar_situacion">
+                                            <i class="bi bi-exclamation-triangle me-1"></i>REVISAR SITUACIÓN
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
 
@@ -622,6 +633,7 @@ window.editar = function(id, soloVer = false) {
     $('#estado').val(d.estado);
 
     $('#situacion_laboral').val(d.situacion_laboral);
+    $('#revisar_situacion').prop('checked', d.revisar_situacion == 1).trigger('change');
     $('#procedencia').val(d.procedencia);
     $('#fecha_alta_ieric').val(d.fecha_alta_ieric);
     $('#fecha_alta_arca').val(d.fecha_alta_arca);
@@ -922,16 +934,27 @@ document.addEventListener("DOMContentLoaded", function() {
                 return json.data;
             }
         },
+        // Fila en rojo clarito si el legajo está marcado para revisar
+        createdRow: function(row, data) {
+            if (data.revisar_situacion == 1) $(row).addClass('table-danger');
+        },
         dom: '<"d-flex justify-content-between align-items-center mb-3"Bf>rt<"d-flex justify-content-between align-items-center mt-3"ip>',
         buttons: [
-            { extend: 'excelHtml5', text: '<i class="bi bi-file-earmark-excel me-1"></i> Excel', className: 'btn btn-success btn-sm', exportOptions: { columns: ':visible:not(:last-child)' } },
-            { extend: 'print', text: '<i class="bi bi-printer me-1"></i> Imprimir', className: 'btn btn-secondary btn-sm', exportOptions: { columns: ':visible:not(:last-child)' } },
+            { extend: 'excelHtml5', text: '<i class="bi bi-file-earmark-excel me-1"></i> Excel', className: 'btn btn-success btn-sm', exportOptions: { columns: ':visible:not(:last-child)', orthogonal: 'export' } },
+            { extend: 'print', text: '<i class="bi bi-printer me-1"></i> Imprimir', className: 'btn btn-secondary btn-sm', exportOptions: { columns: ':visible:not(:last-child)', orthogonal: 'export' } },
             { extend: 'colvis', text: 'Columnas', className: 'btn btn-sm btn-secondary' }
         ],
         columns: [
             { data: 'id' },
             { data: 'cuil', render: d => d ? `<strong>${d}</strong>` : '-' },
-            { data: null, render: d => `${d.apellido}, ${d.nombre}` },
+            { data: null, render: (d, type) => {
+                const nombre = `${d.apellido}, ${d.nombre}`;
+                if (d.revisar_situacion != 1) return nombre;
+                // En pantalla: ícono de alerta; en Excel/Impresión: texto, porque el color no siempre sale
+                return type === 'display'
+                    ? `${nombre} <i class="bi bi-exclamation-triangle-fill text-danger ms-1" title="Revisar situación"></i>`
+                    : `${nombre} (REVISAR SITUACIÓN)`;
+            }},
             { data: 'clasificacion', visible: false, render: d => ({ 'OPERATIVO': 'OPERARIO', 'MAQUINISTA': 'MAQUINISTA / CHOFER' }[d] || d || '-') },
             { data: 'puesto', render: d => d || '-' },
             { data: 'telefono', render: d => d || '-' },

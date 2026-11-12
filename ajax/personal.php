@@ -104,6 +104,7 @@ if($accion == 'guardar'){
     
     // Campos Registrales y Pago
     $situacion_laboral = $conn->real_escape_string($_POST['situacion_laboral'] ?? '');
+    $revisar_situacion = !empty($_POST['revisar_situacion']) ? 1 : 0; // checkbox: si no viene, está desmarcado
     $procedencia = $conn->real_escape_string($_POST['procedencia'] ?? '');
     $fecha_alta_ieric = !empty($_POST['fecha_alta_ieric']) ? "'".$conn->real_escape_string($_POST['fecha_alta_ieric'])."'" : 'NULL';
     $fecha_alta_arca = !empty($_POST['fecha_alta_arca']) ? "'".$conn->real_escape_string($_POST['fecha_alta_arca'])."'" : 'NULL';
@@ -139,7 +140,7 @@ if($accion == 'guardar'){
             puesto='$puesto', tipo_licencia='$tipo_licencia', fecha_nacimiento=$fecha_nacimiento, 
             fecha_ingreso=$fecha_ingreso, fecha_baja=$fecha_baja, telefono='$telefono', email='$email', 
             domicilio='$domicilio', contacto_emergencia='$contacto_emergencia', estado='$estado', 
-            situacion_laboral='$situacion_laboral', procedencia='$procedencia', fecha_alta_ieric=$fecha_alta_ieric, 
+            situacion_laboral='$situacion_laboral', revisar_situacion=$revisar_situacion, procedencia='$procedencia', fecha_alta_ieric=$fecha_alta_ieric, 
             fecha_alta_arca=$fecha_alta_arca, convenio_aplicable='$convenio_aplicable', puesto_arca='$puesto_arca', 
             seguro_acc='$seguro_acc', seguro_acc_desc='$seguro_acc_desc', svo='$svo', cond_pago='$cond_pago', 
             banco='$banco', cbu='$cbu', cta_cese='$cta_cese', calzado_talle='$calzado_talle', 
@@ -153,13 +154,13 @@ if($accion == 'guardar'){
     } else {
         $sql = "INSERT INTO personal (
             clasificacion, cuil, apellido, nombre, puesto, tipo_licencia, fecha_nacimiento, fecha_ingreso, fecha_baja, 
-            telefono, email, domicilio, contacto_emergencia, estado, situacion_laboral, procedencia, fecha_alta_ieric, 
+            telefono, email, domicilio, contacto_emergencia, estado, situacion_laboral, revisar_situacion, procedencia, fecha_alta_ieric,
             fecha_alta_arca, convenio_aplicable, puesto_arca, seguro_acc, seguro_acc_desc, svo, cond_pago, banco, cbu, 
             cta_cese, calzado_talle, pantalon_talle, camisa_talle, vencimiento_preocupacional, vencimiento_carnet_conducir, 
             vencimiento_art, obra_social, art_compañia, productores_seguro, observaciones, usuario_id
         ) VALUES (
             '$clasificacion', '$cuil', '$apellido', '$nombre', '$puesto', '$tipo_licencia', $fecha_nacimiento, $fecha_ingreso, $fecha_baja, 
-            '$telefono', '$email', '$domicilio', '$contacto_emergencia', '$estado', '$situacion_laboral', '$procedencia', $fecha_alta_ieric, 
+            '$telefono', '$email', '$domicilio', '$contacto_emergencia', '$estado', '$situacion_laboral', $revisar_situacion, '$procedencia', $fecha_alta_ieric,
             $fecha_alta_arca, '$convenio_aplicable', '$puesto_arca', '$seguro_acc', '$seguro_acc_desc', '$svo', '$cond_pago', '$banco', '$cbu', 
             '$cta_cese', '$calzado_talle', '$pantalon_talle', '$camisa_talle', $vencimiento_preocupacional, $vencimiento_carnet_conducir, 
             $vencimiento_art, '$obra_social', '$art_compañia', '$productores_seguro', '$observaciones', $usuario_id_db

@@ -478,17 +478,21 @@ include '../../../includes/sidebar.php';
                                     <div class="seccion-titulo mb-1"><i class="bi bi-cash-stack me-1"></i> Pagos registrados en Gastos</div>
                                     <div class="small text-muted">Se cargan desde Gastos eligiendo "Pagado a: Empleado". Esta vista es de solo lectura.</div>
                                 </div>
-                                <div class="d-flex align-items-end gap-3">
+                                <div class="d-flex flex-wrap align-items-end gap-2">
                                     <div>
-                                        <label class="form-label small mb-1">Año</label>
-                                        <select id="pagos_anio" class="form-select form-select-sm" style="width: 110px;">
-                                            <option value="0">Todos</option>
-                                            <?php for($a = (int)date('Y'); $a >= (int)date('Y') - 5; $a--): ?>
-                                                <option value="<?= $a ?>" <?= $a == (int)date('Y') ? 'selected' : '' ?>><?= $a ?></option>
-                                            <?php endfor; ?>
-                                        </select>
+                                        <label class="form-label small mb-1">Desde</label>
+                                        <input type="date" id="pagos_desde" class="form-control form-control-sm filtro-pagos">
                                     </div>
-                                    <div class="text-end">
+                                    <div>
+                                        <label class="form-label small mb-1">Hasta</label>
+                                        <input type="date" id="pagos_hasta" class="form-control form-control-sm filtro-pagos">
+                                    </div>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" onclick="setRangoPagos('mes'); cargarPagos();">Este mes</button>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="setRangoPagos('anio'); cargarPagos();">Este año</button>
+                                        <button type="button" class="btn btn-outline-secondary" onclick="setRangoPagos('todo'); cargarPagos();">Todo</button>
+                                    </div>
+                                    <div class="text-end ms-2">
                                         <div class="small text-muted">Total del período</div>
                                         <div class="fw-bold fs-5" id="pagos_total">$ 0,00</div>
                                     </div>
@@ -505,6 +509,7 @@ include '../../../includes/sidebar.php';
                                             <th>Medio de Pago</th>
                                             <th>Caja</th>
                                             <th class="text-end">Importe</th>
+                                            <th class="text-center" style="width: 50px;">Ver</th>
                                         </tr>
                                     </thead>
                                     <tbody id="bodyPagos"></tbody>
@@ -634,13 +639,14 @@ window.editar = function(id, soloVer = false) {
 
     cargarArchivos(d.id);
     cargarMovimientos(d.id);
+    setRangoPagos('anio');
 
     if(soloVer) {
         $('#modalPersonalLabel').html('<i class="bi bi-eye me-2"></i> Legajo de Personal (Solo Lectura)');
         $('#btnGuardar').hide();
         $('#contenedor-nuevo-movimiento').hide();
         $('#formPersonal input, #formPersonal select, #formPersonal textarea').prop('disabled', true);
-        $('#pagos_anio').prop('disabled', false); // filtro de la pestaña Sueldos y Pagos
+        $('.filtro-pagos').prop('disabled', false); // filtros de la pestaña Sueldos y Pagos
     } else {
         $('#modalPersonalLabel').html('<i class="bi bi-pencil me-2"></i> Editar Legajo');
         $('#btnGuardar').show();
@@ -652,23 +658,45 @@ window.editar = function(id, soloVer = false) {
     modalBS.show();
 }
 
+const fmtPesos = n => '$ ' + (parseFloat(n) || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const escHtml = t => $('<div>').text(t ?? '').html();
+let pagosCargados = {};
+
+// Rango del filtro calculado con la fecha del día (no queda desactualizado)
+function setRangoPagos(rango) {
+    const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    const hoy = new Date();
+    let desde = '', hasta = '';
+    if (rango === 'mes') {
+        desde = ymd(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
+        hasta = ymd(new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0));
+    } else if (rango === 'anio') {
+        desde = hoy.getFullYear() + '-01-01';
+    }
+    $('#pagos_desde').val(desde);
+    $('#pagos_hasta').val(hasta);
+}
+
 function cargarPagos() {
     const pId = $('#id').val();
     const body = $('#bodyPagos').empty();
-    const fmt = n => '$ ' + (parseFloat(n) || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    $('#pagos_total').text(fmt(0));
+    $('#pagos_total').text(fmtPesos(0));
+    pagosCargados = {};
 
     if(!pId) {
-        body.html('<tr><td colspan="6" class="text-center text-muted small py-3">Guardá el legajo para ver sus pagos.</td></tr>');
+        body.html('<tr><td colspan="7" class="text-center text-muted small py-3">Guardá el legajo para ver sus pagos.</td></tr>');
         return;
     }
 
-    $.get('/contable/ajax/personal.php?accion=listar_pagos', { personal_id: pId, anio: $('#pagos_anio').val() }, function(r) {
+    $.get('/contable/ajax/personal.php?accion=listar_pagos', {
+        personal_id: pId, desde: $('#pagos_desde').val(), hasta: $('#pagos_hasta').val()
+    }, function(r) {
         if(!r.data || r.data.length === 0) {
-            body.html('<tr><td colspan="6" class="text-center text-muted small py-3">No hay pagos registrados en el período.</td></tr>');
+            body.html('<tr><td colspan="7" class="text-center text-muted small py-3">No hay pagos registrados en el período.</td></tr>');
             return;
         }
         r.data.forEach(g => {
+            pagosCargados[g.id] = g;
             const f = g.fecha ? g.fecha.split('-').reverse().join('/') : '-';
             const pend = g.estado_validacion === 'PENDIENTE' ? ' <span class="badge bg-warning text-dark">Pendiente</span>' : '';
             const tr = $('<tr>');
@@ -677,17 +705,64 @@ function cargarPagos() {
             tr.append($('<td class="small">').text(g.detalle || ''));
             tr.append($('<td>').text(g.medio_pago || '-'));
             tr.append($('<td>').text(g.caja || '-'));
-            tr.append($('<td class="text-end fw-semibold text-nowrap">').html($('<span>').text(fmt(g.total)).prop('outerHTML') + pend));
+            tr.append($('<td class="text-end fw-semibold text-nowrap">').html(escHtml(fmtPesos(g.total)) + pend));
+            tr.append($('<td class="text-center">').html(
+                `<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Ver gasto #${parseInt(g.id)}" onclick="verGastoPago(${parseInt(g.id)})"><i class="bi bi-eye"></i></button>`));
             body.append(tr);
         });
-        $('#pagos_total').text(fmt(r.total));
+        $('#pagos_total').text(fmtPesos(r.total));
     }, 'json');
+}
+
+// Vista resumida del gasto, en una ventana sobre el legajo
+function verGastoPago(id) {
+    $.getJSON('/contable/ajax/gastos.php', { accion: 'obtener', id: id }, function(g) {
+        if (!g || !g.id) {
+            Swal.fire({ title: 'No disponible', text: 'No se encontró el gasto o no tenés permiso para verlo.', icon: 'warning', confirmButtonColor: '#212529' });
+            return;
+        }
+        const fila = (etiqueta, valor) => valor ? `<tr><th class="text-muted fw-semibold pe-3 text-nowrap">${etiqueta}</th><td>${escHtml(valor)}</td></tr>` : '';
+        const fecha = g.fecha ? g.fecha.substring(0, 10).split('-').reverse().join('/') : '';
+        const concepto = [g.categoria, g.subcategoria].filter(Boolean).join(' / ');
+        const comprobante = [g.tipo_comprobante, g.numero_comprobante].filter(Boolean).join(' N° ');
+        const caja = (pagosCargados[id] && pagosCargados[id].caja) || '';
+        const estado = g.estado_validacion === 'PENDIENTE'
+            ? '<span class="badge bg-warning text-dark">Pendiente de validación</span>'
+            : '<span class="badge bg-success">Aprobado</span>';
+        const adjunto = g.archivo
+            ? `<a href="/contable/uploads/gastos/${encodeURIComponent(g.archivo)}" target="_blank" class="btn btn-sm btn-dark mt-3"><i class="bi bi-paperclip me-1"></i>Ver comprobante adjunto</a>`
+            : '<div class="small text-muted mt-3">Sin comprobante adjunto.</div>';
+
+        Swal.fire({
+            title: `Gasto #${parseInt(g.id)}`,
+            html: `
+                <table class="table table-sm text-start small mb-0">
+                    ${fila('Fecha', fecha)}
+                    ${fila('Empleado', g.empleado)}
+                    ${fila('Concepto', concepto)}
+                    ${fila('Detalle', g.detalle)}
+                    ${fila('Comprobante', comprobante)}
+                    ${fila('Medio de pago', g.medio_pago)}
+                    ${fila('Caja', caja)}
+                    ${fila('Obra', g.obra)}
+                    ${fila('Centro de costo', g.centro)}
+                    ${fila('Cargado por', g.usuario_nombre)}
+                    <tr><th class="text-muted fw-semibold pe-3">Total</th><td class="fw-bold fs-6">${escHtml(fmtPesos(g.total))}</td></tr>
+                    <tr><th class="text-muted fw-semibold pe-3">Estado</th><td>${estado}</td></tr>
+                </table>
+                ${adjunto}`,
+            width: 560,
+            showCloseButton: true,
+            confirmButtonText: 'Cerrar',
+            confirmButtonColor: '#212529'
+        });
+    });
 }
 
 // jQuery se carga en el footer, después de este script
 document.addEventListener('DOMContentLoaded', function() {
     $(document).on('shown.bs.tab', '#tab-pagos-btn', cargarPagos);
-    $(document).on('change', '#pagos_anio', cargarPagos);
+    $(document).on('change', '.filtro-pagos', cargarPagos);
 });
 
 function cargarMovimientos(pId) {

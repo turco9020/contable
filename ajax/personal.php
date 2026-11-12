@@ -48,11 +48,13 @@ if($accion == 'select_opt'){
 if($accion == 'listar_pagos'){
     header('Content-Type: application/json');
     $personal_id = intval($_GET['personal_id'] ?? 0);
-    $anio = intval($_GET['anio'] ?? 0);
+    $desde = $_GET['desde'] ?? '';
+    $hasta = $_GET['hasta'] ?? '';
     $rol = $_SESSION['rol'] ?? '';
 
     $where = "g.personal_id = $personal_id";
-    if($anio > 0) $where .= " AND YEAR(g.fecha) = $anio";
+    if(preg_match('/^\d{4}-\d{2}-\d{2}$/', $desde)) $where .= " AND g.fecha >= '$desde'";
+    if(preg_match('/^\d{4}-\d{2}-\d{2}$/', $hasta)) $where .= " AND g.fecha <= '$hasta'";
     // Mismo criterio que el listado de gastos: admin y contador ven todo
     if(strcasecmp($rol, 'admin') !== 0 && strcasecmp($rol, 'contador') !== 0){
         $where .= " AND g.usuario_id = ".intval($usuario_logueado);

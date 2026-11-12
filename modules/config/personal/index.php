@@ -104,6 +104,13 @@ include '../../../includes/sidebar.php';
                 <span class="badge bg-light text-muted border ms-1" id="cant-inactivos">0</span>
             </button>
         </li>
+        <!-- Pestaña Todos (personal activo de todas las clasificaciones) -->
+        <li class="nav-item">
+            <button class="nav-link fw-semibold text-dark" id="todos-tab" data-bs-toggle="tab" data-bs-target="#personal-content" type="button" onclick="filtrarClasificacion('TODOS', this)">
+                <i class="bi bi-people me-1 text-secondary"></i> TODOS
+                <span class="badge bg-dark ms-1" id="cant-todos">0</span>
+            </button>
+        </li>
     </ul>
 
     <!-- Tabla -->
@@ -115,6 +122,7 @@ include '../../../includes/sidebar.php';
                         <th>ID</th>
                         <th>CUIL / DNI</th>
                         <th>Apellido y Nombre</th>
+                        <th>Clasificación</th>
                         <th>Puesto</th>
                         <th>Teléfono</th>
                         <th>Ingreso</th>
@@ -571,6 +579,7 @@ function renderAntiguedad(row) {
 
 function filtrarClasificacion(tipo, btn) {
     clasificacionActual = tipo;
+    tabla.column(3).visible(tipo === 'TODOS'); // Clasificación: solo tiene sentido en TODOS
     tabla.ajax.url('/contable/ajax/personal.php?accion=listar&clasificacion=' + clasificacionActual).load();
 }
 
@@ -584,7 +593,7 @@ window.abrirModal = function(modo) {
 
     if(modo === 'NUEVO') {
         $('#modalPersonalLabel').html('<i class="bi bi-person-plus me-2"></i> Nuevo Legajo');
-        if(clasificacionActual !== 'INACTIVO') {
+        if(clasificacionActual !== 'INACTIVO' && clasificacionActual !== 'TODOS') {
             $('#clasificacion').val(clasificacionActual);
         }
     }
@@ -909,19 +918,21 @@ document.addEventListener("DOMContentLoaded", function() {
                 else if(clasificacionActual === 'MAQUINISTA') $('#cant-maquinistas').text(json.data.length);
                 else if(clasificacionActual === 'OBRAS / CAMPO') $('#cant-obras').text(json.data.length);
                 else if(clasificacionActual === 'INACTIVO') $('#cant-inactivos').text(json.data.length);
+                else if(clasificacionActual === 'TODOS') $('#cant-todos').text(json.data.length);
                 return json.data;
             }
         },
         dom: '<"d-flex justify-content-between align-items-center mb-3"Bf>rt<"d-flex justify-content-between align-items-center mt-3"ip>',
         buttons: [
-            { extend: 'excelHtml5', text: '<i class="bi bi-file-earmark-excel me-1"></i> Excel', className: 'btn btn-success btn-sm', exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7, 8] } },
-            { extend: 'print', text: '<i class="bi bi-printer me-1"></i> Imprimir', className: 'btn btn-secondary btn-sm', exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7, 8] } },
+            { extend: 'excelHtml5', text: '<i class="bi bi-file-earmark-excel me-1"></i> Excel', className: 'btn btn-success btn-sm', exportOptions: { columns: ':visible:not(:last-child)' } },
+            { extend: 'print', text: '<i class="bi bi-printer me-1"></i> Imprimir', className: 'btn btn-secondary btn-sm', exportOptions: { columns: ':visible:not(:last-child)' } },
             { extend: 'colvis', text: 'Columnas', className: 'btn btn-sm btn-secondary' }
         ],
         columns: [
             { data: 'id' },
             { data: 'cuil', render: d => d ? `<strong>${d}</strong>` : '-' },
             { data: null, render: d => `${d.apellido}, ${d.nombre}` },
+            { data: 'clasificacion', visible: false, render: d => ({ 'OPERATIVO': 'OPERARIO', 'MAQUINISTA': 'MAQUINISTA / CHOFER' }[d] || d || '-') },
             { data: 'puesto', render: d => d || '-' },
             { data: 'telefono', render: d => d || '-' },
             { data: 'fecha_ingreso', render: d => d ? d.split('-').reverse().join('/') : '-' },

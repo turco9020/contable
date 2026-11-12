@@ -10,10 +10,13 @@ $usuario_logueado = $_SESSION['id'] ?? 0;
 
 // LISTAR PERSONAL
 if($accion == 'listar'){
-    $clasificacion = $_GET['clasificacion'] ?? 'OPERATIVO';
-    
+    $clasificacion = $conn->real_escape_string($_GET['clasificacion'] ?? 'OPERATIVO');
+
     if($clasificacion == 'INACTIVO') {
         $where = "p.estado = 'INACTIVO'";
+    } elseif($clasificacion == 'TODOS') {
+        // Todo el personal activo (o en licencia) de todas las clasificaciones
+        $where = "p.estado != 'INACTIVO'";
     } else {
         $where = "p.clasificacion = '$clasificacion' AND p.estado != 'INACTIVO'";
     }

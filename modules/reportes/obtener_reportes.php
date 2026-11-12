@@ -23,6 +23,7 @@ $usuario_id            = $_GET['usuario_id'] ?? '';
 $tipo_mov              = $_GET['tipo_movimiento'] ?? '';
 $vehiculo_id           = $_GET['vehiculo_id'] ?? '';
 $clasificacion_vehiculo = $_GET['clasificacion_vehiculo'] ?? '';
+$empleado_id           = $_GET['personal_id'] ?? '';
 
 $response = [
     'status' => true,
@@ -144,6 +145,9 @@ switch ($tipo) {
         if (!empty($vehiculo_id)) {
             $w[] = "g.vehiculo_id = " . intval($vehiculo_id);
         }
+        if (!empty($empleado_id)) {
+            $w[] = "g.personal_id = " . intval($empleado_id);
+        }
         if (!empty($clasificacion_vehiculo)) {
             $w[] = "v.clasificacion = '" . $conn->real_escape_string($clasificacion_vehiculo) . "'";
         }
@@ -154,11 +158,14 @@ switch ($tipo) {
         $joinVehiculo = !empty($clasificacion_vehiculo) ? " LEFT JOIN vehiculos v ON g.vehiculo_id = v.id " : "";
 
         if ($tipo === 'compras_proveedor') {
-            $q = "SELECT IFNULL(pr.nombre, 'Sin Proveedor') AS Proveedor, COUNT(g.id) AS Cant_Gastos, SUM(g.total) AS Total
+            // Los pagos a empleados van en una fila propia, separada de "Sin Proveedor"
+            $q = "SELECT CASE WHEN MAX(g.personal_id) IS NOT NULL THEN 'PAGOS A EMPLEADOS'
+                              ELSE IFNULL(MAX(pr.nombre), 'Sin Proveedor') END AS Proveedor,
+                         COUNT(g.id) AS Cant_Gastos, SUM(g.total) AS Total
                   FROM gastos g
                   LEFT JOIN proveedores pr ON g.proveedor_id = pr.id
                   $joinVehiculo
-                  WHERE $whereSql GROUP BY g.proveedor_id ORDER BY Total DESC";
+                  WHERE $whereSql GROUP BY g.proveedor_id, (g.personal_id IS NOT NULL) ORDER BY Total DESC";
             $response['columns'] = ['Proveedor', 'Cant. Compras', 'Total Comprado ($)'];
         } elseif ($tipo === 'compras_obra') {
             $q = "SELECT IFNULL(o.nombre, 'Sin Obra') AS Obra, COUNT(g.id) AS Cant_Gastos, SUM(g.total) AS Total
@@ -180,8 +187,8 @@ switch ($tipo) {
                          IFNULL(cc.nombre, 'Sin Centro') AS centro_costo,
                          IFNULL(c.nombre, '-') AS categoria,
                          IFNULL(sc.nombre, '-') AS subcategoria,
-                         IFNULL(pr.nombre, '-') AS proveedor,
-                         IFNULL(g.detalle, '-') AS detalle, 
+                         COALESCE(pr.nombre, CONCAT('EMPLEADO: ', pe.apellido, ', ', pe.nombre), '-') AS proveedor,
+                         IFNULL(g.detalle, '-') AS detalle,
                          IFNULL(g.neto, 0) AS neto, 
                          IFNULL(g.iva, 0) AS iva,
                          IFNULL(g.total, 0) AS total
@@ -190,8 +197,9 @@ switch ($tipo) {
                   LEFT JOIN categorias c ON g.categoria_id = c.id
                   LEFT JOIN subcategorias sc ON g.subcategoria_id = sc.id
                   LEFT JOIN proveedores pr ON g.proveedor_id = pr.id
+                  LEFT JOIN personal pe ON g.personal_id = pe.id
                   $joinVehiculo
-                  WHERE $whereSql 
+                  WHERE $whereSql
                   ORDER BY g.fecha DESC";
             $response['columns'] = ['Fecha', 'Centro de Costo', 'Categoría', 'Subcategoría', 'Proveedor', 'Detalle', 'Neto ($)', 'IVA ($)', 'Total ($)'];
         }
@@ -240,6 +248,50 @@ switch ($tipo) {
     // ==========================================
     // 3. GASTOS VS VENTAS
     // ==========================================
+    // ==========================================
+    // SUELDOS Y PAGOS POR EMPLEADO (gastos con personal_id)
+    // ==========================================
+    case 'sueldos_empleado':
+        $w = ["g.personal_id IS NOT NULL"];
+        if (!empty($f_desde))     $w[] = "g.fecha >= '" . $conn->real_escape_string($f_desde) . "'";
+        if (!empty($f_hasta))     $w[] = "g.fecha <= '" . $conn->real_escape_string($f_hasta) . "'";
+        if (!empty($obra_id))     $w[] = "g.obra_id = " . intval($obra_id);
+        if (!empty($centro_id))   $w[] = "g.centro_costo_id = " . intval($centro_id);
+        if (!empty($cat_id))      $w[] = "g.categoria_id = " . intval($cat_id);
+        if (!empty($subcat_id))   $w[] = "g.subcategoria_id = " . intval($subcat_id);
+        if (!empty($caja_id))     $w[] = "g.caja_id = " . intval($caja_id);
+        if (!empty($usuario_id))  $w[] = "g.usuario_id = " . intval($usuario_id);
+        if (!empty($empleado_id)) $w[] = "g.personal_id = " . intval($empleado_id);
+        $whereSql = implode(" AND ", $w);
+
+        $q = "SELECT CONCAT(MAX(pe.apellido), ', ', MAX(pe.nombre)) AS Empleado,
+                     IFNULL(MAX(pe.cuil), '-') AS Cuil,
+                     COUNT(g.id) AS Cant_Pagos,
+                     SUM(g.total) AS Total
+              FROM gastos g
+              LEFT JOIN personal pe ON g.personal_id = pe.id
+              WHERE $whereSql
+              GROUP BY g.personal_id
+              ORDER BY Total DESC";
+        $response['columns'] = ['Empleado', 'CUIL', 'Cant. Pagos', 'Total Pagado ($)'];
+
+        $res = $conn->query($q);
+        if (!$res) {
+            echo json_encode(['status' => false, 'message' => 'Error SQL en Sueldos: ' . $conn->error]);
+            exit;
+        }
+
+        $totalG = 0;
+        while ($r = $res->fetch_assoc()) {
+            $totalG += floatval($r['Total']);
+            $r['Empleado'] = htmlspecialchars($r['Empleado'] ?? '-');
+            $r['Cuil']     = htmlspecialchars($r['Cuil']);
+            $r['Total']    = '$ ' . number_format(floatval($r['Total']), 2, ',', '.');
+            $response['data'][] = $r;
+        }
+        $response['total'] = '$ ' . number_format($totalG, 2, ',', '.');
+        break;
+
     case 'gastos_vs_ventas':
         $wVentas = ["1=1"];
         if (!empty($f_desde))    $wVentas[] = "fecha >= '" . $conn->real_escape_string($f_desde) . "'";
@@ -256,6 +308,7 @@ switch ($tipo) {
         if (!empty($centro_id)) $wCompras[] = "g.centro_costo_id = " . intval($centro_id);
         if (!empty($prov_id))   $wCompras[] = "g.proveedor_id = " . intval($prov_id);
         if (!empty($vehiculo_id)) $wCompras[] = "g.vehiculo_id = " . intval($vehiculo_id);
+        if (!empty($empleado_id)) $wCompras[] = "g.personal_id = " . intval($empleado_id);
         if (!empty($clasificacion_vehiculo)) $wCompras[] = "v.clasificacion = '" . $conn->real_escape_string($clasificacion_vehiculo) . "'";
 
         $whereCompras = implode(" AND ", $wCompras);
@@ -311,6 +364,7 @@ switch ($tipo) {
         if (!empty($cat_id))    $w[] = "g.categoria_id = " . intval($cat_id);
         if (!empty($subcat_id)) $w[] = "g.subcategoria_id = " . intval($subcat_id);
         if (!empty($vehiculo_id)) $w[] = "g.vehiculo_id = " . intval($vehiculo_id);
+        if (!empty($empleado_id)) $w[] = "g.personal_id = " . intval($empleado_id);
         if (!empty($clasificacion_vehiculo)) $w[] = "v.clasificacion = '" . $conn->real_escape_string($clasificacion_vehiculo) . "'";
 
         $whereSql = implode(" AND ", $w);
@@ -517,6 +571,7 @@ switch ($tipo) {
         if (!empty($centro_id)) $wCompras[] = "g.centro_costo_id = " . intval($centro_id);
         if (!empty($prov_id))   $wCompras[] = "g.proveedor_id = " . intval($prov_id);
         if (!empty($vehiculo_id)) $wCompras[] = "g.vehiculo_id = " . intval($vehiculo_id);
+        if (!empty($empleado_id)) $wCompras[] = "g.personal_id = " . intval($empleado_id);
         if (!empty($clasificacion_vehiculo)) $wCompras[] = "v.clasificacion = '" . $conn->real_escape_string($clasificacion_vehiculo) . "'";
 
         $whereCompras = implode(" AND ", $wCompras);
@@ -589,6 +644,7 @@ switch ($tipo) {
         if (!empty($centro_id)) $wCompras[] = "g.centro_costo_id = " . intval($centro_id);
         if (!empty($prov_id))   $wCompras[] = "g.proveedor_id = " . intval($prov_id);
         if (!empty($vehiculo_id)) $wCompras[] = "g.vehiculo_id = " . intval($vehiculo_id);
+        if (!empty($empleado_id)) $wCompras[] = "g.personal_id = " . intval($empleado_id);
         if (!empty($clasificacion_vehiculo)) $wCompras[] = "v.clasificacion = '" . $conn->real_escape_string($clasificacion_vehiculo) . "'";
         $whereCompras = implode(" AND ", $wCompras);
         $joinVehiculo = !empty($clasificacion_vehiculo) ? " LEFT JOIN vehiculos v ON g.vehiculo_id = v.id " : "";

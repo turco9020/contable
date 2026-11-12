@@ -16,6 +16,7 @@ $clientes = $conn->query("SELECT id, nombre FROM clientes ORDER BY nombre ASC");
 $proveedores = $conn->query("SELECT id, nombre FROM proveedores ORDER BY nombre ASC");
 $usuarios = $conn->query("SELECT id, usuario FROM usuarios ORDER BY usuario ASC");
 $cajas = $conn->query("SELECT id, nombre FROM cajas ORDER BY nombre ASC");
+$empleados = $conn->query("SELECT id, apellido, nombre, estado FROM personal ORDER BY apellido, nombre ASC");
 
 // Obtener Vehículos / Máquinas
 $vehiculos = $conn->query("SELECT id, CONCAT(marca, ' ', modelo, ' (', IFNULL(dominio_patente, 'S/D'), ')') AS nombre FROM vehiculos WHERE estado != 'BAJA' ORDER BY marca, modelo ASC");
@@ -48,6 +49,7 @@ $vehiculos = $conn->query("SELECT id, CONCAT(marca, ' ', modelo, ' (', IFNULL(do
                             <option value="ventas_generales">Ventas y Facturación (Detallado)</option>
                             <option value="ventas_cliente">Ventas por Cliente</option>
                             <option value="compras_proveedor">Compras por Proveedor</option>
+                            <option value="sueldos_empleado">Sueldos y Pagos por Empleado</option>
                             <option value="ventas_obra">Ventas por Obra / Proyecto</option>
                             <option value="compras_obra">Compras por Obra / Proyecto</option>
                             <option value="ventas_centro">Ventas por Centro de Costo</option>
@@ -140,6 +142,17 @@ $vehiculos = $conn->query("SELECT id, CONCAT(marca, ' ', modelo, ' (', IFNULL(do
                             <option value="">-- Todos los Proveedores --</option>
                             <?php while ($prov = $proveedores->fetch_assoc()): ?>
                                 <option value="<?= $prov['id'] ?>"><?= htmlspecialchars($prov['nombre']) ?></option>
+                            <?php endwhile; ?>
+                        </select>
+                    </div>
+
+                    <!-- Empleado (gastos pagados a personal) -->
+                    <div class="col-md-3">
+                        <label class="form-label small fw-bold">Empleado</label>
+                        <select name="personal_id" id="personal_id" class="form-select">
+                            <option value="">-- Todos los Empleados --</option>
+                            <?php while ($emp = $empleados->fetch_assoc()): ?>
+                                <option value="<?= $emp['id'] ?>"><?= htmlspecialchars($emp['apellido'] . ', ' . $emp['nombre']) ?><?= $emp['estado'] === 'INACTIVO' ? ' (INACTIVO)' : '' ?></option>
                             <?php endwhile; ?>
                         </select>
                     </div>

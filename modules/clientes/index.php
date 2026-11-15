@@ -146,6 +146,21 @@ include '../../includes/sidebar.php';
                         </div>
                     </div>
 
+                    <!-- SECCIÓN 4: DOCUMENTACIÓN (varios archivos) -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-12">
+                            <h6 class="text-uppercase text-secondary fw-bold small border-bottom pb-1 mb-2">4. Documentación</h6>
+                        </div>
+                        <div class="col-12">
+                            <input type="file" name="doc_archivos[]" id="doc_archivos" class="form-control" multiple
+                                   accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
+                            <div class="form-text small">Se pueden elegir varios archivos a la vez (PDF, imágenes, Word o Excel). Se suben al guardar.</div>
+                        </div>
+                        <div class="col-12">
+                            <ul id="doc_lista" class="list-group small"></ul>
+                        </div>
+                    </div>
+
                     <!-- BOTONES DE ACCIÓN -->
                     <div class="d-flex justify-content-end gap-2 mt-3">
                         <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Cancelar</button>
@@ -161,6 +176,7 @@ include '../../includes/sidebar.php';
 
 <?php include '../../includes/footer.php'; ?>
 
+<script src="/contable/assets/js/documentacion.js?v=1"></script>
 <script>
 let tabla;
 let modalCliente;
@@ -227,8 +243,11 @@ document.addEventListener("DOMContentLoaded", function(){
                 orderable: false,
                 className: 'text-end',
                 render: function(data){
+                    let btnArchivos = Documentacion.botonListado(data.cantidad_archivos, `ver(${JSON.stringify(data)})`);
+
                     return `
                         <div class="d-inline-flex gap-1">
+                            ${btnArchivos}
                             <button class="btn btn-sm btn-outline-secondary" title="Ver Cliente" onclick='ver(${JSON.stringify(data)})'>
                                 <i class="bi bi-eye"></i>
                             </button>
@@ -252,10 +271,17 @@ document.addEventListener("DOMContentLoaded", function(){
     window.abrirModal = function(){
         $('#formCliente')[0].reset();
         $('#id').val('');
+        Documentacion.limpiar();
         $('#formCliente input, #formCliente textarea, #formCliente select').prop('disabled', false);
         $('#formCliente button[type="submit"]').show();
         modalCliente.show();
     }
+
+    // DOCUMENTACIÓN: al borrar un archivo se refresca el contador del listado
+    Documentacion.init({
+        endpoint: '/contable/ajax/clientes.php',
+        onCambio: () => tabla.ajax.reload(null, false)
+    });
 
     // Abierto desde un botón "+" de otro formulario: arranca con el alta abierta
     if (window.AltaRapida && AltaRapida.activa) {
@@ -266,18 +292,33 @@ document.addEventListener("DOMContentLoaded", function(){
     $('#formCliente').submit(function(e){
         e.preventDefault();
 
-        $.post('/contable/ajax/clientes.php?accion=guardar', $(this).serialize(), function(r){
-            tabla.ajax.reload();
-            modalCliente.hide();
+        // FormData (multipart) para poder enviar los archivos de documentación
+        $.ajax({
+            url: '/contable/ajax/clientes.php?accion=guardar',
+            type: 'POST',
+            data: new FormData(this),
+            contentType: false,
+            processData: false,
+            success: function(r){
+                // Archivo rechazado u otro error: se avisa y el formulario queda abierto
+                if (r && r.ok === false) {
+                    Swal.fire('Atención', r.error || 'No se pudo guardar el cliente.', 'warning');
+                    return;
+                }
 
-            // Abierto desde un botón "+": avisa al formulario de origen y cierra la pestaña
-            if (window.AltaRapida && AltaRapida.activa && r && r.ok && r.nuevo && r.id) {
-                AltaRapida.avisar('cliente', r);
+                tabla.ajax.reload();
+                modalCliente.hide();
+                Documentacion.avisarNoSubidos(r);
+
+                // Abierto desde un botón "+": avisa al formulario de origen y cierra la pestaña
+                if (window.AltaRapida && AltaRapida.activa && r && r.ok && r.nuevo && r.id) {
+                    AltaRapida.avisar('cliente', r);
+                }
             }
         });
     });
 
-    window.editar = function(data){
+    window.editar = function(data, soloLectura = false){
         $('#formCliente')[0].reset();
         
         for(let k in data){
@@ -289,11 +330,13 @@ document.addEventListener("DOMContentLoaded", function(){
         $('#formCliente input, #formCliente textarea, #formCliente select').prop('disabled', false);
         $('#formCliente button[type="submit"]').show();
 
+        Documentacion.cargar(data.id, soloLectura);
+
         modalCliente.show();
     }
 
     window.ver = function(data){
-        window.editar(data);
+        window.editar(data, true);
         setTimeout(() => {
             $('#formCliente input, #formCliente textarea, #formCliente select').prop('disabled', true);
             $('#formCliente button[type="submit"]').hide();
@@ -338,7 +381,7 @@ document.addEventListener("DOMContentLoaded", function(){
     }
 
     // MAYÚSCULAS AUTOMÁTICAS
-    $(document).on('input', 'input:not(.no-upper), textarea', function(){
+    $(document).on('input', 'input:not([type="file"]):not(.no-upper), textarea', function(){
         this.value = this.value.toUpperCase();
     });
 

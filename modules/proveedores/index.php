@@ -142,30 +142,37 @@ include '../../includes/sidebar.php';
                         </div>
                     </div>
 
-                    <!-- SECCIÓN 3: DATOS BANCARIOS Y ADJUNTO -->
+                    <!-- SECCIÓN 3: DATOS BANCARIOS -->
                     <div class="row g-3 mb-4">
                         <div class="col-12">
-                            <h6 class="text-uppercase text-secondary fw-bold small border-bottom pb-1 mb-2">3. Información Bancaria y Documentación</h6>
+                            <h6 class="text-uppercase text-secondary fw-bold small border-bottom pb-1 mb-2">3. Información Bancaria</h6>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label small fw-bold">CBU / CVU</label>
                             <input type="text" name="cbu" id="cbu" class="form-control" placeholder="22 dígitos" maxlength="22">
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label small fw-bold">Alias</label>
                             <input type="text" name="alias" id="alias" class="form-control" placeholder="Ej: EMPRESA.PAGO.BANCO">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-bold">Archivo Adjunto</label>
-                            <input type="file" name="archivo" id="archivo" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
-                            <div id="archivo_actual" class="mt-2"></div>
-                            <button type="button" id="btnEliminarArchivo" class="btn btn-sm btn-outline-danger w-100 mt-2" style="display:none;">
-                                <i class="bi bi-trash me-1"></i> Eliminar archivo actual
-                            </button>
                         </div>
                         <div class="col-12">
                             <label class="form-label small fw-bold">Observaciones</label>
                             <textarea name="observaciones" id="observaciones" class="form-control" rows="2" placeholder="Notas adicionales sobre este proveedor..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- SECCIÓN 4: DOCUMENTACIÓN (varios archivos) -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-12">
+                            <h6 class="text-uppercase text-secondary fw-bold small border-bottom pb-1 mb-2">4. Documentación</h6>
+                        </div>
+                        <div class="col-12">
+                            <input type="file" name="doc_archivos[]" id="doc_archivos" class="form-control" multiple
+                                   accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx">
+                            <div class="form-text small">Se pueden elegir varios archivos a la vez (PDF, imágenes, Word o Excel). Se suben al guardar.</div>
+                        </div>
+                        <div class="col-12">
+                            <ul id="doc_lista" class="list-group small"></ul>
                         </div>
                     </div>
 
@@ -184,6 +191,7 @@ include '../../includes/sidebar.php';
 
 <?php include '../../includes/footer.php'; ?>
 
+<script src="/contable/assets/js/documentacion.js?v=1"></script>
 <script>
 let tabla;
 let modalProveedor;
@@ -253,7 +261,7 @@ document.addEventListener("DOMContentLoaded", function(){
                 orderable: false,
                 className: 'text-end',
                 render: function(data){
-                    let btnArchivo = data.archivo ? `<a href="/contable/uploads/proveedores/${data.archivo}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver Adjunto"><i class="bi bi-file-earmark-pdf"></i></a>` : '';
+                    let btnArchivo = Documentacion.botonListado(data.cantidad_archivos, `ver(${JSON.stringify(data)})`);
 
                     return `
                         <div class="d-inline-flex gap-1">
@@ -281,8 +289,7 @@ document.addEventListener("DOMContentLoaded", function(){
     window.abrirModal = function(){
         $('#formProveedor')[0].reset();
         $('#id').val('');
-        $('#archivo_actual').html('');
-        $('#btnEliminarArchivo').hide();
+        Documentacion.limpiar();
         $('#formProveedor input, textarea, select').prop('disabled', false);
         $('#formProveedor button[type="submit"]').show();
         modalProveedor.show();
@@ -314,6 +321,7 @@ document.addEventListener("DOMContentLoaded", function(){
 
                 tabla.ajax.reload();
                 modalProveedor.hide();
+                Documentacion.avisarNoSubidos(r);
 
                 // Abierto desde un botón "+": avisa al formulario de origen y cierra la pestaña
                 if (window.AltaRapida && AltaRapida.activa && r && r.ok && r.nuevo && r.id) {
@@ -323,9 +331,9 @@ document.addEventListener("DOMContentLoaded", function(){
         });
     });
 
-    window.editar = function(data){
+    window.editar = function(data, soloLectura = false){
         $('#formProveedor')[0].reset();
-        
+
         for(let k in data){
             if(document.getElementById(k) && k !== 'archivo'){
                 document.getElementById(k).value = data[k];
@@ -335,57 +343,23 @@ document.addEventListener("DOMContentLoaded", function(){
         $('#formProveedor input, textarea, select').prop('disabled', false);
         $('#formProveedor button[type="submit"]').show();
 
-        if (data.archivo) {
-            $('#archivo_actual').html(`
-                <div class="alert alert-info py-1 px-2 mb-0 d-flex justify-content-between align-items-center">
-                    <small class="text-truncate">Archivo: <b>${data.archivo}</b></small>
-                    <a href="/contable/uploads/proveedores/${data.archivo}" target="_blank" class="btn btn-xs btn-dark">Ver</a>
-                </div>`);
-            $('#btnEliminarArchivo').show().data('id', data.id);
-        } else {
-            $('#archivo_actual').html('');
-            $('#btnEliminarArchivo').hide();
-        }
+        Documentacion.cargar(data.id, soloLectura);
 
         modalProveedor.show();
     }
 
     window.ver = function(data){
-        window.editar(data);
+        window.editar(data, true);
         setTimeout(() => {
             $('#formProveedor input, textarea, select').prop('disabled', true);
-            $('#formProveedor button[type="submit"], #btnEliminarArchivo').hide();
+            $('#formProveedor button[type="submit"]').hide();
         }, 100);
     }
 
-    // ELIMINAR ARCHIVO ADJUNTO
-    $(document).on('click', '#btnEliminarArchivo', function() {
-        let id = $(this).data('id');
-        
-        Swal.fire({
-            title: '¿Eliminar archivo adjunto?',
-            text: 'El documento se borrará permanentemente.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            cancelButtonColor: '#212529',
-            confirmButtonText: 'Eliminar archivo',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                $.post('/contable/ajax/proveedores.php?accion=eliminar_archivo', { id }, function() {
-                    Swal.fire({
-                        title: 'Adjunto Removido',
-                        text: 'El archivo fue eliminado con éxito.',
-                        icon: 'success',
-                        confirmButtonColor: '#212529'
-                    });
-                    $('#archivo_actual').html('');
-                    $('#btnEliminarArchivo').hide();
-                    tabla.ajax.reload();
-                });
-            }
-        });
+    // DOCUMENTACIÓN: al borrar un archivo se refresca el contador del listado
+    Documentacion.init({
+        endpoint: '/contable/ajax/proveedores.php',
+        onCambio: () => tabla.ajax.reload(null, false)
     });
 
     // ELIMINAR PROVEEDOR COMPLETO

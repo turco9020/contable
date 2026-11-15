@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/database.php';
+include '../includes/documentacion.php';
 
 ob_clean();
 
@@ -8,7 +9,7 @@ ob_clean();
 if($_GET['accion'] == 'listar'){
     header('Content-Type: application/json');
 
-    $r = $conn->query("SELECT * FROM proveedores");
+    $r = $conn->query("SELECT p.*, " . doc_sql_cantidad('proveedor', 'p') . " FROM proveedores p");
 
     $data = [];
     while($row = $r->fetch_assoc()){
@@ -21,6 +22,18 @@ if($_GET['accion'] == 'listar'){
 
 /* GUARDAR */
 if($_GET['accion'] == 'guardar'){
+
+    header('Content-Type: application/json');
+
+    // Documentación: se valida el tipo de cada archivo antes de guardar nada
+    $rechazados = doc_rechazados();
+    if ($rechazados) {
+        echo json_encode([
+            'ok'    => false,
+            'error' => 'Tipo de archivo no permitido: ' . implode(', ', $rechazados) . '. Se aceptan PDF, imágenes (JPG/PNG), Word y Excel.'
+        ]);
+        exit;
+    }
 
     // Se convierten a número para que no puedan alterar la consulta SQL
     $id = (int)($_POST['id'] ?? 0);
@@ -44,36 +57,8 @@ if($_GET['accion'] == 'guardar'){
     $producto  = $conn->real_escape_string($_POST['producto_servicio'] ?? '');
     $obs       = $conn->real_escape_string($_POST['observaciones'] ?? '');
 
-    // Manejo del archivo individual
-    $sql_archivo = "";
-    if (!empty($_FILES['archivo']['name'])) {
-        $dir_destino = $_SERVER['DOCUMENT_ROOT'] . '/contable/uploads/proveedores/';
-        if (!file_exists($dir_destino)) {
-            mkdir($dir_destino, 0777, true);
-        }
-
-        $extension = strtolower(pathinfo($_FILES['archivo']['name'], PATHINFO_EXTENSION));
-
-        // Solo se aceptan documentos e imágenes: evita subir scripts ejecutables (.php, etc.)
-        $permitidas = ['pdf', 'jpg', 'jpeg', 'png'];
-        if (!in_array($extension, $permitidas, true)) {
-            header('Content-Type: application/json');
-            echo json_encode([
-                'ok'    => false,
-                'error' => 'Tipo de archivo no permitido. Solo se aceptan PDF, JPG o PNG.'
-            ]);
-            exit;
-        }
-
-        $nombre_archivo = 'prov_' . time() . '_' . rand(100, 999) . '.' . $extension;
-        
-        if (move_uploaded_file($_FILES['archivo']['tmp_name'], $dir_destino . $nombre_archivo)) {
-            $sql_archivo = ", archivo='$nombre_archivo'";
-        }
-    }
-
     if($id){
-        $sql = "UPDATE proveedores SET 
+        $sql = "UPDATE proveedores SET
         nombre='$nombre',
         cuit='$cuit',
         condicion_fiscal='$condicion',
@@ -91,61 +76,56 @@ if($_GET['accion'] == 'guardar'){
         alias='$alias',
         producto_servicio='$producto',
         observaciones='$obs'
-        $sql_archivo
         WHERE id=$id";
     } else {
-        // En insert, asignamos $nombre_archivo si existe o NULL
-        $archivo_val = !empty($nombre_archivo) ? "'$nombre_archivo'" : "NULL";
-        
-        $sql = "INSERT INTO proveedores 
-        (nombre,cuit,condicion_fiscal,direccion,localidad,provincia,cp,whatsapp,telefono,contacto,email,red_social,sitio_web,cbu,alias,producto_servicio,observaciones,archivo,usuario_id)
+        $sql = "INSERT INTO proveedores
+        (nombre,cuit,condicion_fiscal,direccion,localidad,provincia,cp,whatsapp,telefono,contacto,email,red_social,sitio_web,cbu,alias,producto_servicio,observaciones,usuario_id)
         VALUES
-        ('$nombre','$cuit','$condicion','$direccion','$localidad','$provincia','$cp','$whatsapp','$telefono','$contacto','$email','$red_social','$sitio_web','$cbu','$alias','$producto','$obs',$archivo_val,$usuario)";
+        ('$nombre','$cuit','$condicion','$direccion','$localidad','$provincia','$cp','$whatsapp','$telefono','$contacto','$email','$red_social','$sitio_web','$cbu','$alias','$producto','$obs',$usuario)";
     }
 
     $ok = $conn->query($sql);
+    $proveedor_id = $id ? $id : (int)$conn->insert_id;
+
+    // Archivos de documentación (se suben una vez que el proveedor existe)
+    $no_subidos = $ok ? doc_guardar_subidos($conn, 'proveedor', $proveedor_id, $usuario === 'NULL' ? null : $usuario) : [];
 
     // Se devuelve el id para que el alta rápida pueda seleccionar el proveedor nuevo
-    header('Content-Type: application/json');
     echo json_encode([
-        'ok'     => (bool)$ok,
-        'id'     => $id ? $id : (int)$conn->insert_id,
-        'nuevo'  => !$id,
-        'nombre' => $_POST['nombre'] ?? '',
-        'cuit'   => $_POST['cuit'] ?? ''
+        'ok'         => (bool)$ok,
+        'id'         => $proveedor_id,
+        'nuevo'      => !$id,
+        'nombre'     => $_POST['nombre'] ?? '',
+        'cuit'       => $_POST['cuit'] ?? '',
+        'no_subidos' => $no_subidos
     ]);
     exit;
 }
 
-/* ELIMINAR PROVEEDOR Y SU ARCHIVO */
-if($_GET['accion'] == 'eliminar'){
-    $id = (int)$_POST['id'];
-
-    $res = $conn->query("SELECT archivo FROM proveedores WHERE id = $id");
-    if($row = $res->fetch_assoc()){
-        if(!empty($row['archivo'])){
-            $file_path = $_SERVER['DOCUMENT_ROOT'] . '/contable/uploads/proveedores/' . $row['archivo'];
-            if(file_exists($file_path)) unlink($file_path);
-        }
-    }
-
-    $conn->query("DELETE FROM proveedores WHERE id=$id");
-    echo "OK";
+/* DOCUMENTACIÓN: LISTAR ARCHIVOS DE UN PROVEEDOR */
+if($_GET['accion'] == 'listar_archivos'){
+    header('Content-Type: application/json');
+    $proveedor_id = (int)($_GET['id'] ?? 0);
+    echo json_encode(['ok' => true, 'archivos' => doc_listar($conn, 'proveedor', $proveedor_id)]);
     exit;
 }
 
-/* ELIMINAR ARCHIVO ADJUNTO */
+/* DOCUMENTACIÓN: ELIMINAR UN ARCHIVO */
 if($_GET['accion'] == 'eliminar_archivo'){
-    $id = (int)$_POST['id'];
+    header('Content-Type: application/json');
+    $archivo_id = (int)($_POST['id'] ?? 0);
+    echo json_encode(['ok' => doc_eliminar_uno($conn, 'proveedor', $archivo_id)]);
+    exit;
+}
 
-    $res = $conn->query("SELECT archivo FROM proveedores WHERE id = $id");
-    if($row = $res->fetch_assoc()){
-        if(!empty($row['archivo'])){
-            $file_path = $_SERVER['DOCUMENT_ROOT'] . '/contable/uploads/proveedores/' . $row['archivo'];
-            if(file_exists($file_path)) unlink($file_path);
-            
-            $conn->query("UPDATE proveedores SET archivo=NULL WHERE id=$id");
-        }
+/* ELIMINAR PROVEEDOR Y SUS ARCHIVOS */
+if($_GET['accion'] == 'eliminar'){
+    $id = (int)($_POST['id'] ?? 0);
+
+    $rutas = doc_rutas_registro($conn, 'proveedor', $id);
+    $conn->query("DELETE FROM proveedores WHERE id=$id");
+    if ($conn->affected_rows > 0) {
+        doc_borrar_del_disco('proveedor', $id, $rutas);
     }
 
     echo "OK";

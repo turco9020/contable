@@ -33,6 +33,7 @@
                             <option value="UN">UN</option>
                             <option value="KG">KG</option>
                             <option value="TN">TN</option>
+                            <option value="HR">HR</option>
                         </select>
                     </div>
                     <div class="col-md-2 d-none">

@@ -7,10 +7,13 @@ $cliente_inicial = (int)($_GET['id'] ?? 0);
 <div class="content">
 
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h4 class="fw-bold text-dark mb-0">
-            <i class="bi bi-journal-text text-secondary me-2"></i> Cuenta Corriente de Clientes
-        </h4>
+    <h4 class="fw-bold text-dark mb-0">
+        <i class="bi bi-journal-text text-secondary me-2"></i> Cuenta Corriente de Clientes
+    </h4>
+    <div class="d-flex gap-2">
+        <a href="/contable/modules/facturacion/index.php" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i> Facturacion</a>
         <a href="/contable/modules/clientes/index.php" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i> Clientes</a>
+        </div>
     </div>
 
     <!-- FILTROS -->

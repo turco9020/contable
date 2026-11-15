@@ -229,12 +229,15 @@ include '../../includes/sidebar.php';
 
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Proveedor</label>
+                            <div class="alta-rapida-wrap">
                             <select name="proveedor" id="proveedor" class="form-select">
                                 <option value="">-- Seleccionar --</option>
                                 <?php foreach ($lista_proveedores as $prov): ?>
                                     <option value="<?= htmlspecialchars($prov) ?>"><?= htmlspecialchars($prov) ?></option>
                                 <?php endforeach; ?>
                             </select>
+                            <button type="button" class="btn btn-outline-secondary" data-alta-rapida="proveedor" data-valor="nombre" title="Nuevo proveedor"><i class="bi bi-plus-lg"></i></button>
+                            </div>
                         </div>
 
                         <div class="col-md-12">

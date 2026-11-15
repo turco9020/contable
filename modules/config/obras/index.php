@@ -82,7 +82,10 @@ include '../../../includes/sidebar.php';
                         <!-- Fila 2 -->
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-semibold">Cliente Asignado</label>
-                            <select name="cliente_id" id="cliente_id" class="form-select" required></select>
+                            <div class="alta-rapida-wrap">
+                                <select name="cliente_id" id="cliente_id" class="form-select" required></select>
+                                <button type="button" class="btn btn-outline-secondary" data-alta-rapida="cliente" title="Nuevo cliente"><i class="bi bi-plus-lg"></i></button>
+                            </div>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label fw-semibold">Responsable a Cargo</label>

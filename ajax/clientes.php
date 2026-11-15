@@ -66,9 +66,17 @@ if($_GET['accion'] == 'guardar'){
         ('$nombre','$cuit','$condicion','$direccion','$localidad','$provincia','$cp','$whatsapp','$telefono','$contacto','$email','$red_social','$sitio_web','$observaciones',$usuario)";
     }
 
-    $conn->query($sql);
+    $ok = $conn->query($sql);
 
-    echo "OK";
+    // Se devuelve el id para que el alta rápida pueda seleccionar el cliente nuevo
+    header('Content-Type: application/json');
+    echo json_encode([
+        'ok'     => (bool)$ok,
+        'id'     => $id ? $id : (int)$conn->insert_id,
+        'nuevo'  => !$id,
+        'nombre' => $_POST['nombre'] ?? '',
+        'cuit'   => $_POST['cuit'] ?? ''
+    ]);
     exit;
 }
 

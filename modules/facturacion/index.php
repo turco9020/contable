@@ -101,7 +101,10 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
 
                         <div class="col-md-4">
                             <label class="form-label">Cliente</label>
-                            <select name="cliente_id" id="cliente_id" class="form-control" required></select>
+                            <div class="alta-rapida-wrap">
+                                <select name="cliente_id" id="cliente_id" class="form-control" required></select>
+                                <button type="button" class="btn btn-outline-secondary" data-alta-rapida="cliente" title="Nuevo cliente"><i class="bi bi-plus-lg"></i></button>
+                            </div>
                         </div>
 
                         <div class="col-md-4">

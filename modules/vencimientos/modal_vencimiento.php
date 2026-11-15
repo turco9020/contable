@@ -52,6 +52,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-bold">Proveedor</label>
+                            <div class="alta-rapida-wrap">
                             <select name="proveedor_id" id="proveedor_id" class="form-select">
                                 <option value="">-- Seleccionar Proveedor --</option>
                                 <?php
@@ -64,6 +65,8 @@
                                 }
                                 ?>
                             </select>
+                            <button type="button" class="btn btn-outline-secondary" data-alta-rapida="proveedor" data-mostrar-cuit="1" title="Nuevo proveedor"><i class="bi bi-plus-lg"></i></button>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-bold">Factura / Comprobante (Adjunto)</label>

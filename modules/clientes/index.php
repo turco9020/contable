@@ -257,13 +257,23 @@ document.addEventListener("DOMContentLoaded", function(){
         modalCliente.show();
     }
 
+    // Abierto desde un botón "+" de otro formulario: arranca con el alta abierta
+    if (window.AltaRapida && AltaRapida.activa) {
+        window.abrirModal();
+    }
+
     // ENVÍO DE FORMULARIO
     $('#formCliente').submit(function(e){
         e.preventDefault();
 
-        $.post('/contable/ajax/clientes.php?accion=guardar', $(this).serialize(), function(){
+        $.post('/contable/ajax/clientes.php?accion=guardar', $(this).serialize(), function(r){
             tabla.ajax.reload();
             modalCliente.hide();
+
+            // Abierto desde un botón "+": avisa al formulario de origen y cierra la pestaña
+            if (window.AltaRapida && AltaRapida.activa && r && r.ok && r.nuevo && r.id) {
+                AltaRapida.avisar('cliente', r);
+            }
         });
     });
 

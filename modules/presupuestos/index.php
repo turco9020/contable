@@ -175,7 +175,10 @@ include '../../includes/sidebar.php';
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-semibold small mb-0" for="pres_cliente_id">Cliente *</label>
-                            <select id="pres_cliente_id" class="form-select form-select-sm" required></select>
+                            <div class="alta-rapida-wrap">
+                                <select id="pres_cliente_id" class="form-select form-select-sm" required></select>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-alta-rapida="cliente" title="Nuevo cliente"><i class="bi bi-plus-lg"></i></button>
+                            </div>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label fw-semibold small mb-0" for="pres_obra_id">Obra Vinculada</label>

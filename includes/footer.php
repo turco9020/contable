@@ -202,5 +202,14 @@ $(document).on('hidden.bs.modal', '.modal', function () {
 });
 </script>
 
+<!-- ALTA RÁPIDA: botón "+" al lado de los desplegables de cliente / proveedor -->
+<style>
+.alta-rapida-wrap { display: flex; gap: .25rem; align-items: stretch; }
+.alta-rapida-wrap > select,
+.alta-rapida-wrap > .ts-wrapper { flex: 1 1 auto; min-width: 0; }
+.alta-rapida-wrap > .btn { flex: 0 0 auto; }
+</style>
+<script src="/contable/assets/js/alta_rapida.js?v=2"></script>
+
 </body>
 </html>

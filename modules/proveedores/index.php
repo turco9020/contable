@@ -288,6 +288,11 @@ document.addEventListener("DOMContentLoaded", function(){
         modalProveedor.show();
     }
 
+    // Abierto desde un botón "+" de otro formulario: arranca con el alta abierta
+    if (window.AltaRapida && AltaRapida.activa) {
+        window.abrirModal();
+    }
+
     // ENVÍO DE FORMULARIO CON MULTIPART
     $('#formProveedor').submit(function(e){
         e.preventDefault();
@@ -300,9 +305,14 @@ document.addEventListener("DOMContentLoaded", function(){
             data: formData,
             contentType: false,
             processData: false,
-            success: function(){
+            success: function(r){
                 tabla.ajax.reload();
                 modalProveedor.hide();
+
+                // Abierto desde un botón "+": avisa al formulario de origen y cierra la pestaña
+                if (window.AltaRapida && AltaRapida.activa && r && r.ok && r.nuevo && r.id) {
+                    AltaRapida.avisar('proveedor', r);
+                }
             }
         });
     });

@@ -58,7 +58,10 @@
                                 <label class="btn btn-outline-dark py-0 text-truncate" for="pagado_empleado"><i class="bi bi-person me-1"></i>Empleado</label>
                             </div>
                             <div id="wrap_proveedor">
-                                <select name="proveedor_id" id="proveedor_id" class="form-select" required></select>
+                                <div class="alta-rapida-wrap">
+                                    <select name="proveedor_id" id="proveedor_id" class="form-select" required></select>
+                                    <button type="button" class="btn btn-outline-secondary" data-alta-rapida="proveedor" data-mostrar-cuit="1" title="Nuevo proveedor"><i class="bi bi-plus-lg"></i></button>
+                                </div>
                             </div>
                             <div id="wrap_empleado" class="d-none">
                                 <select name="personal_id" id="personal_id" class="form-select">

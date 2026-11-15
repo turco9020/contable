@@ -78,8 +78,24 @@ if (typeof window.dashboardInicializado !== 'undefined') {
                 if ($('#gastosMesAnterior').length) $('#gastosMesAnterior').html(formatoMoneda(data.gastos_mes_anterior));
                 if ($('#ventasMes').length) $('#ventasMes').html(formatoMoneda(data.ventas_mes));
                 if ($('#ventasMesAnterior').length) $('#ventasMesAnterior').html(formatoMoneda(data.ventas_mes_anterior));
-                if ($('#rentabilidadMes').length) $('#rentabilidadMes').html(formatoMoneda(data.rentabilidad_mes));
-                if ($('#rentabilidadMesAnterior').length) $('#rentabilidadMesAnterior').html(formatoMoneda(data.rentabilidad_mes_anterior));
+                if ($('#rentabilidadMes').length) {
+                    // Verde si es 0 o positiva, rojo si es negativa (número y borde de la tarjeta)
+                    const negativa = Number(data.rentabilidad_mes) < 0;
+                    $('#rentabilidadMes')
+                        .html(formatoMoneda(data.rentabilidad_mes))
+                        .toggleClass('text-success', !negativa)
+                        .toggleClass('text-danger', negativa);
+                    $('#rentabilidadMes').closest('.card')
+                        .toggleClass('border-success', !negativa)
+                        .toggleClass('border-danger', negativa);
+                }
+                if ($('#rentabilidadMesAnterior').length) {
+                    const negativaAnt = Number(data.rentabilidad_mes_anterior) < 0;
+                    $('#rentabilidadMesAnterior')
+                        .html(formatoMoneda(data.rentabilidad_mes_anterior))
+                        .toggleClass('text-secondary', !negativaAnt)
+                        .toggleClass('text-danger', negativaAnt);
+                }
                 if ($('#diferenciaIva').length) $('#diferenciaIva').html(formatoMoneda(data.diferencia_iva));
                 if ($('#retencionesMes').length) $('#retencionesMes').html(formatoMoneda(data.retenciones_mes));
                 if ($('#iibbMes').length) $('#iibbMes').html(formatoMoneda(data.iibb_mes));

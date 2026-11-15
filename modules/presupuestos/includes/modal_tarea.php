@@ -25,7 +25,7 @@
                     </div>
                     <div class="col-md-3">
                         <label class="form-label fw-semibold">Unidad *</label>
-                        <select id="tarea_unidad" class="form-select">
+                        <select id="tarea_unidad" class="form-select" onchange="toggleUnidadOtra()">
                             <option value="M3">M3</option>
                             <option value="M2">M2</option>
                             <option value="ML">ML</option>
@@ -34,7 +34,11 @@
                             <option value="KG">KG</option>
                             <option value="TN">TN</option>
                             <option value="HR">HR</option>
+                            <option value="__OTRA__">OTRA…</option>
                         </select>
+                        <input type="text" id="tarea_unidad_otra" class="form-control mt-2 d-none text-uppercase"
+                               maxlength="20" placeholder="Escriba la unidad (ej: BOLSA)"
+                               oninput="this.value = this.value.toUpperCase()">
                     </div>
                     <div class="col-md-2 d-none">
                         <label class="form-label fw-semibold">Rendimiento</label>

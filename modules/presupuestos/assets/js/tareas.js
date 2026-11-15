@@ -173,12 +173,43 @@ function setEstadoFormularioReadOnly(isReadOnly) {
         : '<i class="bi bi-tools me-2"></i>Análisis de Precio Unitario (APU)';
 }
 
+// --- Unidad de la tarea: lista fija + opción OTRA con campo libre ---
+function toggleUnidadOtra() {
+    const otra = document.getElementById('tarea_unidad').value === '__OTRA__';
+    const campo = document.getElementById('tarea_unidad_otra');
+    campo.classList.toggle('d-none', !otra);
+    if (otra && !campo.disabled) campo.focus();
+}
+
+function getUnidadTarea() {
+    const sel = document.getElementById('tarea_unidad').value;
+    if (sel === '__OTRA__') {
+        return document.getElementById('tarea_unidad_otra').value.trim().toUpperCase();
+    }
+    return sel;
+}
+
+function setUnidadTarea(unidad) {
+    const select = document.getElementById('tarea_unidad');
+    const campo = document.getElementById('tarea_unidad_otra');
+    const u = (unidad || '').trim();
+    const existe = u !== '' && Array.from(select.options).some(o => o.value === u && o.value !== '__OTRA__');
+    if (existe || u === '') {
+        select.value = existe ? u : 'M3';
+        campo.value = '';
+    } else {
+        select.value = '__OTRA__';
+        campo.value = u.toUpperCase();
+    }
+    campo.classList.toggle('d-none', select.value !== '__OTRA__');
+}
+
 function nuevaTarea() {
     esModoVer = false;
     document.getElementById('tarea_id').value = '0';
     document.getElementById('tarea_codigo').value = '';
     document.getElementById('tarea_nombre').value = '';
-    document.getElementById('tarea_unidad').value = 'M3';
+    setUnidadTarea('M3');
     document.getElementById('tarea_rendimiento').value = '1.00';
     document.getElementById('tarea_observaciones').value = '';
     
@@ -403,6 +434,12 @@ function guardarTarea() {
         Swal.fire('Atención', 'Por favor ingrese el nombre de la tarea.', 'warning');
         return;
     }
+    const unidadTarea = getUnidadTarea();
+    if (!unidadTarea) {
+        Swal.fire('Atención', 'Por favor escriba la unidad de la tarea.', 'warning');
+        document.getElementById('tarea_unidad_otra').focus();
+        return;
+    }
 
     const detalles = [];
     let subtotales = { MATERIAL: 0, MO: 0, EQUIPO: 0, SUBCONTRATO: 0 };
@@ -437,7 +474,7 @@ function guardarTarea() {
         id: id,
         codigo: document.getElementById('tarea_codigo').value,
         nombre: nombre,
-        unidad: document.getElementById('tarea_unidad').value,
+        unidad: unidadTarea,
         rendimiento_unidad: document.getElementById('tarea_rendimiento').value,
         observaciones: document.getElementById('tarea_observaciones').value,
         costo_materiales: subtotales.MATERIAL,
@@ -498,7 +535,7 @@ function serializarFormularioTarea() {
     return JSON.stringify([
         document.getElementById('tarea_codigo').value,
         document.getElementById('tarea_nombre').value,
-        document.getElementById('tarea_unidad').value,
+        getUnidadTarea(),
         document.getElementById('tarea_observaciones').value,
         filas
     ]);
@@ -566,7 +603,7 @@ function cargarDatosTarea(id, isReadOnly, alCargar) {
                 document.getElementById('tarea_id').value = t.id;
                 document.getElementById('tarea_codigo').value = t.codigo || '';
                 document.getElementById('tarea_nombre').value = t.nombre;
-                document.getElementById('tarea_unidad').value = t.unidad;
+                setUnidadTarea(t.unidad);
                 document.getElementById('tarea_rendimiento').value = t.rendimiento_unidad;
                 document.getElementById('tarea_observaciones').value = t.observaciones || '';
 

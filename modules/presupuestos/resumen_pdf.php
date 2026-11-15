@@ -62,6 +62,23 @@ $items_sin_apu = 0;
 foreach (($snap['rubros'] ?? []) as $rubro) {
     foreach (($rubro['items'] ?? []) as $it) {
         $tid = intval($it['tarea_id'] ?? 0);
+
+        // Recurso suelto (mano de obra, material o equipo elegido sin APU): se suma directo
+        $rec_tipo = strtoupper((string)($it['recurso_tipo'] ?? ''));
+        if ($tid <= 0 && $rec_tipo !== '' && isset($acum[$rec_tipo])) {
+            $desc = trim((string)($it['detalle'] ?? ''));
+            $unidad = mb_strtoupper(trim((string)($it['unidad'] ?? '')), 'UTF-8');
+            $clave = mb_strtoupper($desc, 'UTF-8') . '|' . $unidad;
+            if (!isset($acum[$rec_tipo][$clave])) {
+                $acum[$rec_tipo][$clave] = ['descripcion' => $desc, 'unidad' => $unidad, 'cantidad' => 0, 'costo' => 0];
+            }
+            $cant_item = floatval($it['cantidad'] ?? 0);
+            $acum[$rec_tipo][$clave]['cantidad'] += $cant_item;
+            $acum[$rec_tipo][$clave]['costo'] += floatval($it['precio_base'] ?? 0) * $cant_item;
+            $items_con_apu++;
+            continue;
+        }
+
         if ($tid <= 0) {
             // Ítem de detalle libre (sin APU): se avisa si tiene contenido
             if (trim((string)($it['detalle'] ?? '')) !== '') $items_sin_apu++;
@@ -200,11 +217,11 @@ ob_start();
 </div>
 
 <?php if ($items_con_apu === 0): ?>
-    <div class="info-box">Este presupuesto no tiene ítems con APU e insumos cargados, por lo que no hay recursos para resumir.</div>
+    <div class="info-box">Este presupuesto no tiene ítems con APU e insumos cargados ni recursos del catálogo, por lo que no hay recursos para resumir.</div>
 <?php else: ?>
 
     <?php if ($items_sin_apu > 0): ?>
-    <div class="aviso"><?= $items_sin_apu ?> ítem(s) no tienen una APU con insumos cargados (detalle libre o APU sin desglose), por lo que no se incluyen en este resumen.</div>
+    <div class="aviso"><?= $items_sin_apu ?> ítem(s) no tienen una APU con insumos cargados ni un recurso del catálogo (detalle libre o APU sin desglose), por lo que no se incluyen en este resumen.</div>
     <?php endif; ?>
 
     <table class="tarjetas">

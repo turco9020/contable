@@ -521,6 +521,52 @@ let recuperadaDeVersion = 0;     // N° de versión recuperada desde el historia
 let vistaListado = 'activos';    // pestaña del listado: 'activos' | 'archivados'
 let apusVersionCargada = {};     // APU guardadas en la versión cargada (para el PDF de APU de ítems con precio fijo)
 
+// Recursos sueltos que se pueden presupuestar como ítem (además de las APU):
+// mismo catálogo que usa el editor de APU (tareas_acciones.php?action=obtener_catalogo)
+let recursosGlobal = { MATERIAL: [], MO: [], EQUIPO: [] };
+const RECURSO_TIPOS = {
+    MO:       { prefijo: 'MO-',  etiqueta: 'Mano de obra', color: 'bg-success' },
+    MATERIAL: { prefijo: 'MAT-', etiqueta: 'Material',     color: 'bg-primary' },
+    EQUIPO:   { prefijo: 'EQ-',  etiqueta: 'Equipo',       color: 'bg-warning text-dark' }
+};
+// Grupos del buscador de cada ítem, en este orden
+const GRUPOS_BUSCADOR_ITEM = [
+    { value: 'APU',      label: 'APU' },
+    { value: 'MO',       label: 'Mano de obra' },
+    { value: 'MATERIAL', label: 'Materiales' },
+    { value: 'EQUIPO',   label: 'Equipos' }
+];
+
+// Opción del buscador para un recurso. El precio con K sigue la regla de las APU:
+// materiales con K Mat; mano de obra y equipos con K MO.
+function opcionRecurso(tipo, id, nombre, unidad, precio) {
+    const p = parseFloat(precio) || 0;
+    return {
+        id: RECURSO_TIPOS[tipo].prefijo + id,
+        text: nombre,
+        nombre: nombre,
+        unidad: unidad || 'UN',
+        costo: p,
+        costoMat: tipo === 'MATERIAL' ? p : 0,
+        costoMo: tipo === 'MATERIAL' ? 0 : p,
+        grupo: tipo,
+        recurso_tipo: tipo,
+        recurso_id: parseInt(id, 10)
+    };
+}
+
+function cargarRecursosCatalogo() {
+    return $.getJSON('/contable/modules/presupuestos/ajax/tareas_acciones.php?action=obtener_catalogo', function(r) {
+        if (r && r.success && r.catalogo) {
+            recursosGlobal = {
+                MATERIAL: r.catalogo.MATERIAL || [],
+                MO: r.catalogo.MO || [],
+                EQUIPO: r.catalogo.EQUIPO || []
+            };
+        }
+    });
+}
+
 const ESTADOS_PRESUPUESTO = ['Borrador', 'Enviado', 'Aprobado', 'Rechazado', 'Archivado'];
 const COLOR_ESTADO = { 'Borrador': 'bg-secondary', 'Enviado': 'bg-primary', 'Aprobado': 'bg-success', 'Rechazado': 'bg-danger', 'Archivado': 'bg-dark' };
 
@@ -657,6 +703,22 @@ document.addEventListener("DOMContentLoaded", function() {
 
             renderizarIndirectosBase();
 
+            // Recursos sueltos para el buscador de ítems; la entrada directa espera a que carguen
+            cargarRecursosCatalogo().always(abrirDesdeUrl);
+        } else {
+            console.error("Error backend:", res.error);
+            if (typeof Swal !== 'undefined') {
+                Swal.fire('Error en el Servidor', res.error || 'No se pudieron cargar los datos maestros.', 'error');
+            }
+        }
+    }, 'json').fail(function(xhr, status, error) {
+        console.error("Error AJAX 500:", xhr.responseText);
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('Error 500', 'Hubo un error interno en el servidor PHP.', 'error');
+        }
+    });
+
+    function abrirDesdeUrl() {
             // Entrada directa desde otro módulo (ej: pestaña Presupuestos de una Obra), ya con
             // los catálogos cargados:
             //   ?abrir=ID      abre ese presupuesto en el formulario
@@ -675,18 +737,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 if (tablaPresupuestos.ajax.json()) lanzarHistorial();
                 else $('#tablaPresupuestos').one('draw.dt', lanzarHistorial);
             }
-        } else {
-            console.error("Error backend:", res.error);
-            if (typeof Swal !== 'undefined') {
-                Swal.fire('Error en el Servidor', res.error || 'No se pudieron cargar los datos maestros.', 'error');
-            }
-        }
-    }, 'json').fail(function(xhr, status, error) {
-        console.error("Error AJAX 500:", xhr.responseText);
-        if (typeof Swal !== 'undefined') {
-            Swal.fire('Error 500', 'Hubo un error interno en el servidor PHP.', 'error');
-        }
-    });
+    }
 
     $('#formPresupuesto').submit(function(e) {
         e.preventDefault();
@@ -736,7 +787,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 
                 let detalleText = $(this).find('.item-detalle-hidden').val() || valSelect || '';
 
-                rubroObj.items.push({
+                let item = {
                     item_num: $(this).find('.item-num').text(),
                     tarea_id: tareaId,
                     detalle: detalleText,
@@ -745,7 +796,17 @@ document.addEventListener("DOMContentLoaded", function() {
                     precio_base: parseFloat($(this).find('.item-precio').val()) || 0,
                     precio_unitario: parseMonedaFloat($(this).find('.item-punit').val()),
                     subtotal: parseMonedaFloat($(this).find('.item-subtotal').val())
-                });
+                };
+
+                // Recurso suelto (mano de obra, material o equipo): sin APU, con su tipo e id de catálogo
+                let optSel = tsInstance ? tsInstance.options[valSelect] : null;
+                if (optSel && optSel.recurso_tipo) {
+                    item.tarea_id = 0;
+                    item.recurso_tipo = optSel.recurso_tipo;
+                    item.recurso_id = optSel.recurso_id;
+                }
+
+                rubroObj.items.push(item);
             });
 
             payload.rubros.push(rubroObj);
@@ -936,7 +997,7 @@ function cargarVersionEnFormulario(id, p, recuperadaDe) {
                         '<thead class="table-light small text-center">' +
                             '<tr>' +
                                 '<th style="width: 50px;">ITEM</th>' +
-                                '<th style="min-width: 320px;">DETALLE / DESCRIPCIÓN (APU)</th>' +
+                                '<th style="min-width: 320px;">DETALLE / DESCRIPCIÓN (APU O RECURSO)</th>' +
                                 '<th style="width: 70px;">UNID</th>' +
                                 '<th style="width: 80px;">CANT</th>' +
                                 '<th style="width: 110px;">PRECIO BASE</th>' +
@@ -979,7 +1040,7 @@ function cargarVersionEnFormulario(id, p, recuperadaDe) {
                 tbody.append(tr);
 
                 let selectElem = tbody.find('tr:last .item-tarea-select')[0];
-                inicializarTomSelectFila(selectElem, it.tarea_id, it.detalle, true);
+                inicializarTomSelectFila(selectElem, it.tarea_id, it.detalle, true, it);
             });
         });
     } else {
@@ -1022,7 +1083,7 @@ function actualizarPreciosAPUActuales() {
     Swal.fire({
         icon: 'question',
         title: '¿Actualizar precios?',
-        text: 'Los precios guardados de cada ítem se reemplazan por el costo actual de su APU y el K base elegido. Los ítems escritos a mano se recalculan con su precio base.',
+        text: 'Los precios guardados de cada ítem se reemplazan por el costo actual de su APU o del recurso del catálogo (mano de obra, material o equipo) y el K base elegido. Los ítems escritos a mano se recalculan con su precio base.',
         showCancelButton: true,
         confirmButtonText: 'Sí, actualizar',
         cancelButtonText: 'Cancelar',
@@ -1064,7 +1125,7 @@ function agregarRubro() {
                     '<thead class="table-light small text-center">' +
                         '<tr>' +
                             '<th style="width: 50px;">ITEM</th>' +
-                            '<th style="min-width: 320px;">DETALLE / DESCRIPCIÓN (APU)</th>' +
+                            '<th style="min-width: 320px;">DETALLE / DESCRIPCIÓN (APU O RECURSO)</th>' +
                             '<th style="width: 70px;">UNID</th>' +
                             '<th style="width: 80px;">CANT</th>' +
                             '<th style="width: 110px;">PRECIO BASE</th>' +
@@ -1112,17 +1173,36 @@ function agregarItemARubro(rNum) {
     recalcularMatrizPresupuesto();
 }
 
+// Etiqueta del tipo de recurso dentro del buscador (las APU van sin etiqueta)
+function etiquetaRecursoHtml(data) {
+    const tipo = RECURSO_TIPOS[data.recurso_tipo];
+    return tipo ? '<span class="badge ' + tipo.color + ' me-1" style="font-size: 9px;">' + tipo.etiqueta + '</span>' : '';
+}
+
 // cargaGuardada = true cuando la fila viene de una versión guardada: se selecciona la APU
-// sin disparar onChange, para no pisar unidad ni precio con los valores actuales de la APU.
-function inicializarTomSelectFila(selectElem, tareaIdVal, detalleVal, cargaGuardada) {
+// (o el recurso) sin disparar onChange, para no pisar unidad ni precio con los valores actuales.
+// itemGuardado: el ítem de la versión (para los recursos sueltos: recurso_tipo / recurso_id).
+function inicializarTomSelectFila(selectElem, tareaIdVal, detalleVal, cargaGuardada, itemGuardado) {
     let ts = new TomSelect(selectElem, {
         create: true,
         persist: false,
-        placeholder: 'Buscar APU o escribir detalle...',
+        placeholder: 'Buscar APU, mano de obra, material o equipo, o escribir detalle...',
         valueField: 'id',
         labelField: 'text',
         searchField: ['text'],
+        optgroupField: 'grupo',
+        optgroups: GRUPOS_BUSCADOR_ITEM,
+        lockOptgroupOrder: true,
         options: [],
+        render: {
+            option: function(data, escape) {
+                return '<div>' + etiquetaRecursoHtml(data) + escape(data.text) +
+                       (data.recurso_tipo && data.unidad ? ' <small class="text-muted">(' + escape(data.unidad) + ')</small>' : '') + '</div>';
+            },
+            item: function(data, escape) {
+                return '<div>' + etiquetaRecursoHtml(data) + escape(data.text) + '</div>';
+            }
+        },
         onChange: function(value) {
             let row = selectElem.closest('tr');
             let option = this.options[value];
@@ -1155,12 +1235,30 @@ function inicializarTomSelectFila(selectElem, tareaIdVal, detalleVal, cargaGuard
             unidad: t.unidad,
             costo: t.costo_unitario_total,
             costoMat: t.costo_material_neto,
-            costoMo: t.costo_mo_neto
+            costoMo: t.costo_mo_neto,
+            grupo: 'APU'
+        });
+    });
+
+    // Recursos sueltos: mano de obra, materiales y equipos del catálogo
+    Object.keys(RECURSO_TIPOS).forEach(function(tipo) {
+        (recursosGlobal[tipo] || []).forEach(function(rc) {
+            ts.addOption(opcionRecurso(tipo, rc.id, rc.nombre, rc.unidad, rc.precio));
         });
     });
 
     // Seleccionar la opción si ya existía
-    if (cargaGuardada) {
+    const recTipo = itemGuardado ? itemGuardado.recurso_tipo : null;
+    const recId = itemGuardado ? parseInt(itemGuardado.recurso_id, 10) : 0;
+    if (cargaGuardada && RECURSO_TIPOS[recTipo] && recId > 0) {
+        // Recurso suelto guardado. Si ya no está en el catálogo, se muestra con lo guardado.
+        const valRec = RECURSO_TIPOS[recTipo].prefijo + recId;
+        if (!ts.options[valRec]) {
+            ts.addOption(opcionRecurso(recTipo, recId, detalleVal || (RECURSO_TIPOS[recTipo].etiqueta + ' #' + recId + ' (ya no está en el catálogo)'),
+                                       itemGuardado.unidad, itemGuardado.precio_base));
+        }
+        ts.setValue(valRec, true); // silencioso: respeta unidad y precio guardados
+    } else if (cargaGuardada) {
         if (tareaIdVal && tareaIdVal > 0) {
             // Si la APU ya no existe en el catálogo, se muestra con el detalle guardado
             if (!ts.options[tareaIdVal]) {
@@ -2030,14 +2128,19 @@ const TIPOS_APU = [
 function actualizarBotonVerAPU(selectElem, value) {
     const esApu = value !== '' && value !== null && value !== undefined &&
                   tareasGlobal.some(function(t) { return String(t.id) === String(value); });
+    const opt = (selectElem && selectElem.tomselect && value) ? selectElem.tomselect.options[value] : null;
+    const esRecurso = !!(opt && opt.recurso_tipo);
     $(selectElem).closest('td').find('.btn-ver-apu').toggleClass('d-none', !esApu);
 
-    // Con APU, el precio base sale del análisis y no se edita a mano (perdería la relación
-    // con la APU). Solo los ítems escritos a mano tienen precio base editable.
+    // Con APU o recurso del catálogo, el precio base sale del catálogo y no se edita a mano
+    // (perdería la relación). Solo los ítems escritos a mano tienen precio base editable.
+    const bloqueado = esApu || esRecurso;
     $(selectElem).closest('tr').find('.item-precio')
-        .prop('readonly', esApu)
-        .toggleClass('bg-light', esApu)
-        .attr('title', esApu ? 'Precio de la APU: para cambiarlo, modificá la APU o usá "Actualizar precios con APU actuales"' : '');
+        .prop('readonly', bloqueado)
+        .toggleClass('bg-light', bloqueado)
+        .attr('title', esApu
+            ? 'Precio de la APU: para cambiarlo, modificá la APU o usá "Actualizar precios con APU actuales"'
+            : (esRecurso ? 'Precio del catálogo: para cambiarlo, modificá el recurso o usá "Actualizar precios con APU actuales"' : ''));
 }
 
 function verAPUDesdeFila(btn) {
@@ -2175,6 +2278,21 @@ function actualizarResumenPresupuesto() {
         const val = (sel && sel.tomselect) ? sel.tomselect.getValue() : '';
         if (!val) return; // fila vacía
 
+        // Recurso suelto (mano de obra, material o equipo): se suma directo a su grupo
+        const opt = sel.tomselect.options[val];
+        if (opt && opt.recurso_tipo && acum[opt.recurso_tipo]) {
+            const grupo = acum[opt.recurso_tipo];
+            const unidad = ($(this).find('.item-unidad').val() || '').toUpperCase();
+            const desc = ($(this).find('.item-detalle-hidden').val() || opt.text || '').trim();
+            const clave = desc.toUpperCase() + '|' + unidad;
+            const precio = parseFloat($(this).find('.item-precio').val()) || 0;
+            if (!grupo[clave]) grupo[clave] = { descripcion: desc, unidad: unidad, cantidad: 0, costo: 0 };
+            grupo[clave].cantidad += cant;
+            grupo[clave].costo += precio * cant;
+            itemsConApu++;
+            return;
+        }
+
         const detalles = apuDetallesGlobal[val];
         if (!detalles || detalles.length === 0) { itemsSinApu++; return; }
         itemsConApu++;
@@ -2191,7 +2309,7 @@ function actualizarResumenPresupuesto() {
     });
 
     if (itemsConApu === 0) {
-        $('#resumenContenido').html('<div class="alert alert-info mb-0">Todavía no hay tareas APU seleccionadas. Elegí APU en la pestaña Presupuesto para ver el resumen de horas, materiales y equipos.</div>');
+        $('#resumenContenido').html('<div class="alert alert-info mb-0">Todavía no hay APU ni recursos seleccionados. Elegí APU, mano de obra, materiales o equipos en la pestaña Presupuesto para ver el resumen de horas, materiales y equipos.</div>');
         return;
     }
 
@@ -2200,7 +2318,7 @@ function actualizarResumenPresupuesto() {
     let html = '';
     if (itemsSinApu > 0) {
         html += '<div class="alert alert-warning py-2 small"><i class="bi bi-exclamation-triangle me-1"></i>' +
-            itemsSinApu + ' ítem(s) no tienen una APU con insumos cargados (detalle libre o APU sin desglose), por lo que no se incluyen en este resumen.</div>';
+            itemsSinApu + ' ítem(s) no tienen una APU con insumos cargados ni un recurso del catálogo (detalle libre o APU sin desglose), por lo que no se incluyen en este resumen.</div>';
     }
 
     html += '<div class="row g-2 mb-3">' +

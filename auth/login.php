@@ -53,7 +53,8 @@ if ($_POST) {
                     
                     <!-- CONTENEDOR DEL LOGO -->
                     <div class="text-center mb-4">
-                        <img src="/contable/assets/img/logo.png" alt="Logo" class="img-fluid mb-3" style="max-height: 80px; width: auto; object-fit: contain;">
+                        <?php require_once __DIR__ . '/../includes/empresa.php'; /* logo configurable en Configuración → Empresa */ ?>
+                        <img src="<?= htmlspecialchars(empresaLogoUrl()) ?>" alt="<?= htmlspecialchars(empresaNombre()) ?>" class="img-fluid mb-3" style="max-height: 80px; width: auto; object-fit: contain;">
                         <h5 class="fw-bold text-dark m-0">Sistema Contable</h5>
                     </div>
                     

@@ -81,7 +81,7 @@ ob_start();
     <meta charset="UTF-8">
     <title>Presupuesto <?= pdfTexto($p['codigo']) ?></title>
     <style>
-        @page { margin: 30px 35px 40px 35px; }
+        @page { margin: 30px 35px 50px 35px; } /* abajo: lugar para el pie de contacto y el número de página */
         body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #222; margin: 0; }
 
         .encabezado { width: 100%; border-bottom: 2px solid #333; padding-bottom: 6px; margin-bottom: 12px; }
@@ -113,6 +113,8 @@ ob_start();
     </style>
 </head>
 <body>
+
+<?= pdfPieEmpresa() /* datos de contacto de la empresa al pie de cada página */ ?>
 
 <table class="encabezado">
     <tr>

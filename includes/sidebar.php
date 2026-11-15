@@ -198,7 +198,8 @@
 
     <!-- Logo ajustado -->
     <div class="sidebar-logo-container">
-        <img src="/contable/assets/img/logo.png" alt="RG Contable" class="sidebar-logo">
+        <?php require_once __DIR__ . '/empresa.php'; /* logo configurable en Configuración → Empresa */ ?>
+        <img src="<?= htmlspecialchars(empresaLogoUrl()) ?>" alt="<?= htmlspecialchars(empresaNombre()) ?>" class="sidebar-logo">
     </div>
     <hr>
 

@@ -1,6 +1,7 @@
 <div class="d-flex justify-content-between align-items-center footer-lite">
     <div class="text-muted small">
-        Sistema Contable © Recursos Globales® <?= date('Y') ?>
+        <?php require_once __DIR__ . '/empresa.php'; ?>
+        Sistema Contable © <?= htmlspecialchars(empresaNombre()) ?> <?= date('Y') ?>
     </div>
 
     <div class="text-muted small">

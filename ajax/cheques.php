@@ -98,7 +98,9 @@ switch ($accion) {
         $observaciones = $_POST['observaciones'] ?? '';
 
         if ($estado === 'RECIBIDO') {
-            $beneficiario = 'RECURSOS GLOBALES';
+            // Cheque recibido: el beneficiario es la propia empresa (Configuración → Empresa)
+            require_once $_SERVER['DOCUMENT_ROOT'].'/contable/includes/empresa.php';
+            $beneficiario = empresaDatos($conn)['razon_social'];
         }
 
         // Lógica para el archivo adjunto

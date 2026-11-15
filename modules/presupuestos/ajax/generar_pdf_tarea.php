@@ -123,13 +123,9 @@ function renderFilasRubro($items) {
 // Pre-procesamiento del Logo (usando JPG)
 $logo_html = '';
 if ($con_logo === 1) {
-    $ruta_logo = $_SERVER['DOCUMENT_ROOT'] . '/contable/assets/img/logo-pdf.jpg';
-    $logo_base64 = '';
-    
-    if (file_exists($ruta_logo)) {
-        $logo_data = file_get_contents($ruta_logo);
-        $logo_base64 = 'data:image/jpeg;base64,' . base64_encode($logo_data);
-    }
+    // Logo configurado en Configuración → Empresa (o el de siempre si no se cargó)
+    require_once $_SERVER['DOCUMENT_ROOT'] . '/contable/includes/empresa.php';
+    $logo_base64 = empresaLogoPdfBase64();
 
     $logo_html = '
     <table style="width: 100%; margin-bottom: 15px; border-bottom: 2px solid #333; padding-bottom: 5px;">

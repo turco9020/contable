@@ -80,9 +80,20 @@ function pdfKFinal(array $p) {
     return $p['total_neto'] > 0 ? $p['total_presupuestado'] / $p['total_neto'] : ($k ?: 1);
 }
 
+require_once __DIR__ . '/../../../includes/empresa.php';
+
+// Logo configurado en Configuración → Empresa (o el de siempre si no se cargó)
 function pdfLogoBase64() {
-    $ruta_logo = __DIR__ . '/../../../assets/img/logo-pdf.jpg';
-    return file_exists($ruta_logo) ? 'data:image/jpeg;base64,' . base64_encode(file_get_contents($ruta_logo)) : '';
+    return empresaLogoPdfBase64();
+}
+
+// Pie con los datos de contacto de la empresa, repetido en todas las páginas.
+// Va a la izquierda; a la derecha queda el "Página X de Y" que agrega pdfEnviar().
+function pdfPieEmpresa() {
+    $linea = empresaLineaContacto();
+    if ($linea === '') return '';
+    return '<div style="position: fixed; bottom: -36px; left: 0; right: 120px; height: 28px; border-top: 1px solid #ccc; padding-top: 3px; font-size: 8px; color: #555; line-height: 1.3;">'
+         . htmlspecialchars($linea, ENT_QUOTES, 'UTF-8') . '</div>';
 }
 
 function pdfCrearDompdf() {

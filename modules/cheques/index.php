@@ -143,8 +143,12 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
 </div>
 
 <?php include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/footer.php'; ?>
+<?php require_once $_SERVER['DOCUMENT_ROOT'].'/contable/includes/empresa.php'; ?>
 
 <script>
+// Beneficiario de los cheques recibidos: la razón social de Configuración → Empresa
+const BENEFICIARIO_EMPRESA = <?= json_encode(empresaDatos()['razon_social']) ?>;
+
 let tabla;
 let modalCheque;
 let pestañaActual = 'RECIBIDOS';
@@ -354,7 +358,7 @@ function adaptarFormularioPorEstado() {
 
     if (estado === 'RECIBIDO') {
         $('#labelBeneficiario').text('Beneficiario (Nosotros)');
-        $selectBeneficiario.append('<option value="RECURSOS GLOBALES" selected>RECURSOS GLOBALES</option>');
+        $selectBeneficiario.append($('<option selected>').val(BENEFICIARIO_EMPRESA).text(BENEFICIARIO_EMPRESA));
         $selectBeneficiario.prop('disabled', true);
     } else {
         $('#labelBeneficiario').text('Beneficiario / Destinatario (Proveedor)');
@@ -428,7 +432,7 @@ $('#formCheque').submit(function(e) {
     let formData = new FormData(this);
     
     if ($('#estado').val() === 'RECIBIDO') {
-        formData.set('beneficiario', 'RECURSOS GLOBALES');
+        formData.set('beneficiario', BENEFICIARIO_EMPRESA);
     } else {
         formData.set('beneficiario', $('#beneficiario').val());
     }

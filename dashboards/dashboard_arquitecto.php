@@ -1,10 +1,10 @@
 <?php
-// Consulta de las últimas 6 obras ACTIVAS (excluyendo las FINALIZADAS)
+// Consulta de las últimas 6 obras ACTIVAS (excluye INACTIVAS y FINALIZADAS; sin estado cuenta como ACTIVA)
 $sql_obras = "SELECT o.*, c.nombre AS cliente_nombre,
-                (SELECT SUM(total) FROM gastos WHERE obra_id = o.id) AS total_gastado 
+                (SELECT SUM(total) FROM gastos WHERE obra_id = o.id) AS total_gastado
               FROM obras o
               LEFT JOIN clientes c ON c.id = o.cliente_id
-              WHERE o.estado != 'FINALIZADA' OR o.estado IS NULL
+              WHERE o.estado = 'ACTIVA' OR o.estado IS NULL OR o.estado = ''
               ORDER BY o.id DESC 
               LIMIT 6";
 $res_obras = mysqli_query($conn, $sql_obras);
@@ -141,6 +141,7 @@ $res_obras = mysqli_query($conn, $sql_obras);
                             <label class="form-label fw-semibold">Estado Operativo</label>
                             <select name="estado" id="estado" class="form-select" disabled>
                                 <option value="ACTIVA">🟢 ACTIVA</option>
+                                <option value="INACTIVA">🟡 INACTIVA</option>
                                 <option value="FINALIZADA">🔴 FINALIZADA</option>
                             </select>
                         </div>
@@ -149,6 +150,7 @@ $res_obras = mysqli_query($conn, $sql_obras);
                             <select name="facturacion" id="facturacion" class="form-select" disabled>
                                 <option value="Por Cobrar">⏳ Por Cobrar</option>
                                 <option value="Pagadas">💵 Pagadas</option>
+                                <option value="Propias">🏠 Propias</option>
                             </select>
                         </div>
 

@@ -18,15 +18,21 @@ include '../../../includes/sidebar.php';
     <!-- Pestañas de Navegación de Obras -->
     <ul class="nav nav-tabs mb-3" id="tabFacturas" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link active fw-semibold text-dark" id="cobrar-tab" data-bs-toggle="tab" data-bs-target="#cobrar" type="button" role="tab" onclick="filtrarPestaña('POR_COBRAR')">
-                <i class="bi bi-wallet2 me-1 text-secondary"></i> Por Cobrar 
-                <span class="badge bg-secondary ms-1" id="cant-cobrar">0</span>
+            <button class="nav-link active fw-semibold text-dark" id="activas-tab" data-bs-toggle="tab" type="button" role="tab" onclick="filtrarPestaña('ACTIVA')">
+                <i class="bi bi-play-circle me-1 text-success"></i> Activas
+                <span class="badge bg-secondary ms-1" id="cant-activas">0</span>
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link fw-semibold text-dark" id="pagadas-tab" data-bs-toggle="tab" data-bs-target="#pagadas" type="button" role="tab" onclick="filtrarPestaña('PAGADAS')">
-                <i class="bi bi-check-circle me-1 text-secondary"></i> Pagadas 
-                <span class="badge bg-secondary ms-1" id="cant-pagadas">0</span>
+            <button class="nav-link fw-semibold text-dark" id="inactivas-tab" data-bs-toggle="tab" type="button" role="tab" onclick="filtrarPestaña('INACTIVA')">
+                <i class="bi bi-pause-circle me-1 text-warning"></i> Inactivas
+                <span class="badge bg-secondary ms-1" id="cant-inactivas">0</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-semibold text-dark" id="finalizadas-tab" data-bs-toggle="tab" type="button" role="tab" onclick="filtrarPestaña('FINALIZADA')">
+                <i class="bi bi-check-circle me-1 text-secondary"></i> Finalizadas
+                <span class="badge bg-secondary ms-1" id="cant-finalizadas">0</span>
             </button>
         </li>
     </ul>
@@ -44,6 +50,7 @@ include '../../../includes/sidebar.php';
                         <th>N° OC</th>
                         <th>Inicio / Fin</th>
                         <th>Estado</th>
+                        <th>Facturación</th>
                         <th>Usuario</th>
                         <th class="text-center">Acciones</th>
                     </tr>
@@ -121,6 +128,7 @@ include '../../../includes/sidebar.php';
                             <label class="form-label fw-semibold">Estado Operativo</label>
                             <select name="estado" id="estado" class="form-select" required>
                                 <option value="ACTIVA">🟢 ACTIVA</option>
+                                <option value="INACTIVA">🟡 INACTIVA</option>
                                 <option value="FINALIZADA">🔴 FINALIZADA</option>
                             </select>
                         </div>
@@ -129,6 +137,7 @@ include '../../../includes/sidebar.php';
                             <select name="facturacion" id="facturacion" class="form-select" required>
                                 <option value="Por Cobrar">⏳ Por Cobrar</option>
                                 <option value="Pagadas">💵 Pagadas</option>
+                                <option value="Propias">🏠 Propias</option>
                             </select>
                         </div>
 
@@ -333,13 +342,18 @@ include '../../../includes/sidebar.php';
 <script>
 let modalObraBS;
 let tabla;
-let estadoFacturacionActual = 'POR_COBRAR';
+let estadoObraActual = 'ACTIVA'; // pestaña seleccionada: ACTIVA / INACTIVA / FINALIZADA
 
 let globalTotalVentas = 0;
 let globalTotalGastos = 0;
 
+// Estado de la obra normalizado (sin estado = ACTIVA, que es el valor por defecto de la base)
+function estadoObra(d) {
+    return String(d.estado || 'ACTIVA').toUpperCase();
+}
+
 window.filtrarPestaña = function(estado) {
-    estadoFacturacionActual = estado;
+    estadoObraActual = estado;
     tabla.draw();
 }
 
@@ -927,14 +941,8 @@ document.addEventListener("DOMContentLoaded", function(){
 
     $.fn.dataTable.ext.search.push(
         function(settings, data, dataIndex, rowData) {
-            let factura = rowData.facturacion; 
-            
-            if (estadoFacturacionActual === 'POR_COBRAR') {
-                return factura === 'Por Cobrar';
-            } else if (estadoFacturacionActual === 'PAGADAS') {
-                return factura === 'Pagadas';
-            }
-            return true;
+            if (settings.nTable.id !== 'tablaObras') return true;
+            return estadoObra(rowData) === estadoObraActual;
         }
     );
 
@@ -949,13 +957,13 @@ document.addEventListener("DOMContentLoaded", function(){
                 extend: 'excelHtml5',
                 text: ' Excel',
                 className: 'btn btn-success btn-sm',
-                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7] }
+                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7, 8] }
             },
             {
                 extend: 'print',
                 text: ' Imprimir',
                 className: 'btn btn-secondary btn-sm',
-                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7] }
+                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7, 8] }
             },
             { 
                 extend: 'colvis', 
@@ -967,11 +975,9 @@ document.addEventListener("DOMContentLoaded", function(){
             let api = this.api();
             let datosCompletos = api.rows().data().toArray();
             
-            let cantCobrar = datosCompletos.filter(x => x.facturacion === 'Por Cobrar').length;
-            let cantPagadas = datosCompletos.filter(x => x.facturacion === 'Pagadas').length;
-
-            $('#cant-cobrar').text(cantCobrar);
-            $('#cant-pagadas').text(cantPagadas);
+            $('#cant-activas').text(datosCompletos.filter(x => estadoObra(x) === 'ACTIVA').length);
+            $('#cant-inactivas').text(datosCompletos.filter(x => estadoObra(x) === 'INACTIVA').length);
+            $('#cant-finalizadas').text(datosCompletos.filter(x => estadoObra(x) === 'FINALIZADA').length);
         },
         columns: [
             { data: 'id' },
@@ -990,8 +996,16 @@ document.addEventListener("DOMContentLoaded", function(){
             { 
                 data: 'estado',
                 render: function(d) {
-                    let badgeColor = d === 'ACTIVA' ? 'bg-success' : 'bg-secondary';
-                    return `<span class="badge ${badgeColor}">${d}</span>`;
+                    let estado = String(d || 'ACTIVA').toUpperCase();
+                    let badgeColor = { 'ACTIVA': 'bg-success', 'INACTIVA': 'bg-warning text-dark', 'FINALIZADA': 'bg-secondary' }[estado] || 'bg-secondary';
+                    return `<span class="badge ${badgeColor}">${estado}</span>`;
+                }
+            },
+            {
+                data: 'facturacion',
+                render: function(d) {
+                    let badgeColor = { 'Por Cobrar': 'bg-light text-dark border', 'Pagadas': 'bg-success', 'Propias': 'bg-info text-dark' }[d] || 'bg-light text-dark border';
+                    return d ? `<span class="badge ${badgeColor}">${d}</span>` : '-';
                 }
             },
             { 

@@ -353,6 +353,7 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
 <?php include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/footer.php'; ?>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+<script src="/contable/assets/js/pdf_afip.js?v=1"></script>
 
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
@@ -713,95 +714,7 @@ document.addEventListener("DOMContentLoaded", function() {
 // (ej: "Fecha de Emisión:" y "27/08/2026" a la misma altura), así que se
 // lee por posición en lugar de por orden de aparición.
 // ==========================================
-const AFIP_CODIGOS_COMPROBANTE = {
-    '1': ['FACTURA', 'A'], '2': ['NOTA DE DEBITO', 'A'], '3': ['NOTA DE CREDITO', 'A'],
-    '6': ['FACTURA', 'B'], '7': ['NOTA DE DEBITO', 'B'], '8': ['NOTA DE CREDITO', 'B'],
-    '11': ['FACTURA', 'C'], '12': ['NOTA DE DEBITO', 'C'], '13': ['NOTA DE CREDITO', 'C'],
-    '19': ['FACTURA', 'E'], '51': ['FACTURA', 'M']
-};
-const RE_IMPORTE_AFIP = /^-?[\d.]*\d,\d{2}$/;   // 1819098,28 o 1.819.098,28
-const RE_FECHA_AFIP = /(\d{2})\/(\d{2})\/(\d{4})/;
-
-function normalizarTxt(s) {
-    return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
-}
-
-function analizarPdfAfip(items) {
-    const conRotulo = re => items.filter(i => re.test(normalizarTxt(i.str)));
-    const mismaLinea = (a, b) => Math.abs(a.y - b.y) <= 3;
-
-    // Valor más cercano a la derecha del rótulo, en la misma línea
-    const valorDe = (reRotulo, reValor) => {
-        for (const r of conRotulo(reRotulo)) {
-            const c = items.filter(i => i !== r && mismaLinea(i, r) && i.x > r.x && reValor.test(i.str)).sort((a, b) => a.x - b.x);
-            if (c.length) return c[0].str;
-        }
-        return '';
-    };
-    const fechaISO = s => { const m = String(s).match(RE_FECHA_AFIP); return m ? `${m[3]}-${m[2]}-${m[1]}` : ''; };
-
-    const d = {};
-    d.fecha = fechaISO(valorDe(/^fecha de emision/, RE_FECHA_AFIP));
-    d.vencimiento = fechaISO(valorDe(/^fecha de vto\. para el pago/, RE_FECHA_AFIP));
-    d.punto_venta = parseInt(valorDe(/^punto de venta/, /^\d{1,5}$/), 10) || '';
-    d.numero = parseInt(valorDe(/^comp\. nro/, /^\d{1,8}$/), 10) || '';
-    d.cae = valorDe(/^cae n/, /^\d{14}$/);
-    d.vto_cae = valorDe(/^fecha de vto\. de cae/, RE_FECHA_AFIP);
-
-    // Tipo: por el código ("COD. 01") o, si no está, por el texto y la letra
-    const cod = items.map(i => i.str.match(/^COD\.?\s*0*(\d{1,3})$/i)).find(Boolean);
-    if (cod && AFIP_CODIGOS_COMPROBANTE[cod[1]]) {
-        [d.tipo, d.letra] = AFIP_CODIGOS_COMPROBANTE[cod[1]];
-    } else {
-        const tipoTxt = items.find(i => /^(factura|nota de credito|nota de debito)$/.test(normalizarTxt(i.str)));
-        const letra = items.find(i => /^[ABCEM]$/.test(i.str));
-        if (tipoTxt) d.tipo = normalizarTxt(tipoTxt.str).toUpperCase();
-        if (letra) d.letra = letra.str;
-    }
-
-    // Receptor (cliente): CUIT y nombre en la línea de "Apellido y Nombre / Razón Social"
-    const rotReceptor = conRotulo(/^apellido y nombre \/ razon social/)[0];
-    if (rotReceptor) {
-        const enLinea = items.filter(i => mismaLinea(i, rotReceptor));
-        const cuit = enLinea.find(i => /^\d{11}$/.test(i.str));
-        const nombre = enLinea.filter(i => i.x > rotReceptor.x).sort((a, b) => a.x - b.x)[0];
-        d.cuit_cliente = cuit ? cuit.str : '';
-        d.nombre_cliente = nombre ? nombre.str : '';
-    }
-
-    // Detalle: solo la columna "Producto / Servicio", entre los encabezados y los totales
-    const hProd = conRotulo(/^producto \/ servicio$/)[0];
-    const hCant = conRotulo(/^cantidad$/)[0];
-    if (hProd) {
-        const xMax = hCant ? hCant.x - 5 : hProd.x + 180;
-        const yMin = Math.max(0, ...conRotulo(/^(importe otros tributos|importe neto gravado|importe total|subtotal:)/).filter(i => i.y < hProd.y).map(i => i.y));
-        d.detalle = items
-            .filter(i => i.y < hProd.y - 3 && i.y > yMin && i.x >= hProd.x - 5 && i.x < xMax)
-            .sort((a, b) => (b.y - a.y) || (a.x - b.x))
-            .map(i => i.str).join(' ').replace(/\s+/g, ' ').trim();
-    }
-
-    // Importes: neto, IVA (sumando todas las alícuotas) y total
-    const num = s => s ? parseMonto(s) : null;
-    d.total = num(valorDe(/^importe total/, RE_IMPORTE_AFIP));
-    d.neto = num(valorDe(/^importe neto gravado/, RE_IMPORTE_AFIP));
-    let iva = 0, hayIva = false;
-    conRotulo(/^iva \d+(\.\d+)?%/).forEach(r => {
-        const v = items.filter(i => i !== r && mismaLinea(i, r) && i.x > r.x && RE_IMPORTE_AFIP.test(i.str)).sort((a, b) => a.x - b.x)[0];
-        if (v) { iva += parseMonto(v.str); hayIva = true; }
-    });
-    const ivaContenido = num(valorDe(/^iva contenido/, RE_IMPORTE_AFIP)); // facturas B (transparencia fiscal)
-    if (hayIva) d.iva = Math.round(iva * 100) / 100;
-    else if (ivaContenido !== null) d.iva = ivaContenido;
-    if (d.neto === null) {
-        // Facturas B / C: sin neto gravado discriminado
-        const subtotal = num(valorDe(/^subtotal:/, RE_IMPORTE_AFIP));
-        const base = subtotal !== null ? subtotal : d.total;
-        if (base !== null) d.neto = Math.round((base - (d.iva || 0)) * 100) / 100;
-        if (d.iva === undefined) d.iva = 0;
-    }
-    return d;
-}
+// El lector del PDF (analizarPdfAfip) está en assets/js/pdf_afip.js, compartido con Gastos.
 
 // Vuelca lo leído en el formulario y avisa qué se completó y qué no
 function aplicarDatosPdfAfip(d, archivoPdf) {

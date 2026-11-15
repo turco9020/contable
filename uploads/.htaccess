@@ -1,0 +1,9 @@
+# Carpeta de archivos subidos por los usuarios.
+# Se bloquea la ejecución de scripts: aunque alguien logre subir un .php,
+# el servidor no lo ejecuta ni lo entrega. PDF e imágenes se siguen viendo normal.
+
+Options -Indexes -ExecCGI
+
+<FilesMatch "(?i)\.(php\d?|phtml|phar|pht|phps|cgi|pl|py|sh|asp|aspx|jsp|htaccess)$">
+    Require all denied
+</FilesMatch>

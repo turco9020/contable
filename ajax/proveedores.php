@@ -22,8 +22,9 @@ if($_GET['accion'] == 'listar'){
 /* GUARDAR */
 if($_GET['accion'] == 'guardar'){
 
-    $id = $_POST['id'] ?? '';
-    $usuario = $_SESSION['id'] ?? 'NULL';
+    // Se convierten a número para que no puedan alterar la consulta SQL
+    $id = (int)($_POST['id'] ?? 0);
+    $usuario = isset($_SESSION['id']) ? (int)$_SESSION['id'] : 'NULL';
 
     $nombre    = $conn->real_escape_string($_POST['nombre'] ?? '');
     $cuit      = $conn->real_escape_string($_POST['cuit'] ?? '');
@@ -52,6 +53,18 @@ if($_GET['accion'] == 'guardar'){
         }
 
         $extension = strtolower(pathinfo($_FILES['archivo']['name'], PATHINFO_EXTENSION));
+
+        // Solo se aceptan documentos e imágenes: evita subir scripts ejecutables (.php, etc.)
+        $permitidas = ['pdf', 'jpg', 'jpeg', 'png'];
+        if (!in_array($extension, $permitidas, true)) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'ok'    => false,
+                'error' => 'Tipo de archivo no permitido. Solo se aceptan PDF, JPG o PNG.'
+            ]);
+            exit;
+        }
+
         $nombre_archivo = 'prov_' . time() . '_' . rand(100, 999) . '.' . $extension;
         
         if (move_uploaded_file($_FILES['archivo']['tmp_name'], $dir_destino . $nombre_archivo)) {
@@ -96,7 +109,7 @@ if($_GET['accion'] == 'guardar'){
     header('Content-Type: application/json');
     echo json_encode([
         'ok'     => (bool)$ok,
-        'id'     => $id ? (int)$id : (int)$conn->insert_id,
+        'id'     => $id ? $id : (int)$conn->insert_id,
         'nuevo'  => !$id,
         'nombre' => $_POST['nombre'] ?? '',
         'cuit'   => $_POST['cuit'] ?? ''

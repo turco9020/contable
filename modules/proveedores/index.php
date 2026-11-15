@@ -157,7 +157,7 @@ include '../../includes/sidebar.php';
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-bold">Archivo Adjunto</label>
-                            <input type="file" name="archivo" id="archivo" class="form-control">
+                            <input type="file" name="archivo" id="archivo" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
                             <div id="archivo_actual" class="mt-2"></div>
                             <button type="button" id="btnEliminarArchivo" class="btn btn-sm btn-outline-danger w-100 mt-2" style="display:none;">
                                 <i class="bi bi-trash me-1"></i> Eliminar archivo actual
@@ -306,6 +306,12 @@ document.addEventListener("DOMContentLoaded", function(){
             contentType: false,
             processData: false,
             success: function(r){
+                // Archivo rechazado u otro error: se avisa y el formulario queda abierto
+                if (r && r.ok === false) {
+                    Swal.fire('Atención', r.error || 'No se pudo guardar el proveedor.', 'warning');
+                    return;
+                }
+
                 tabla.ajax.reload();
                 modalProveedor.hide();
 

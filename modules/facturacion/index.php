@@ -8,6 +8,15 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
 .acciones-factura { gap: 2px !important; }
 .acciones-factura .btn { padding: 0.15rem 0.35rem; font-size: 0.8rem; }
 .celda-cliente { max-width: 200px; white-space: normal; line-height: 1.2; }
+
+/* Modal: el cliente / la obra elegidos van en una sola línea, cortados con "…"
+   (el nombre completo aparece al pasar el mouse); la lista abierta los muestra completos */
+#modalFactura .ts-wrapper.single .ts-control { flex-wrap: nowrap; overflow: hidden; }
+#modalFactura .ts-wrapper.single .ts-control > .item {
+    display: block; min-width: 0; max-width: 100%;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#modalFactura .ts-dropdown .option { white-space: normal; }
 </style>
 
 <div class="content">
@@ -875,7 +884,11 @@ function aplicarBuscadores() {
             create: false,
             sortField: { field: "text", order: "asc" },
             placeholder: "-- Seleccionar o Buscar --",
-            allowEmptyOption: true
+            allowEmptyOption: true,
+            render: {
+                // Elegido: cortado con "…" por CSS y el nombre completo al pasar el mouse
+                item: (data, escape) => `<div title="${escape(data.text)}">${escape(data.text)}</div>`
+            }
         });
     });
 }

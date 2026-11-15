@@ -3,6 +3,24 @@
     "_instrucciones": "INSTRUCCIONES DE USO: Para agregar una nueva actualización, duplicá un bloque entre llaves {} debajo de este. Agregalo SIEMPRE arriba de todo para que aparezca primero en el sistema. Los campos 'version', 'fecha', 'titulo' y el array 'cambios' son obligatorios."
   },
   {
+    "version": "v1.4.0",
+    "fecha": "15/11/2026",
+    "titulo": "Cobros, Cuenta Corriente y Datos de la Empresa",
+    "cambios": [
+      "Facturación: cobros parciales por factura, con ingreso opcional a una caja; saldo pendiente y estado automático DEBE / PARCIAL / PAGADO.",
+      "Nueva Cuenta Corriente de clientes, con saldo acumulado, facturas pendientes y salida en PDF y Excel.",
+      "Configuración → Empresa: datos fiscales y de contacto, y logos editables del sistema y de los PDF; el presupuesto suma un pie con los datos de contacto.",
+      "Presupuestos: el buscador de cada ítem trae, además de las APU, mano de obra, materiales y equipos.",
+      "APU: unidad HR y opción OTRA para escribir una unidad que no esté en la lista.",
+      "Botón \"+\" junto a los desplegables de cliente y proveedor, para darlos de alta sin perder el formulario.",
+      "Clientes y Proveedores: sección Documentación para adjuntar varios archivos.",
+      "Cajas: opción para dejar una caja en solo lectura para los usuarios.",
+      "Obras: pestañas Activas / Inactivas / Finalizadas y facturación \"Propias\".",
+      "Dashboard: la Rentabilidad Neta se muestra en rojo cuando es negativa.",
+      "Mejoras de seguridad en la carga de archivos adjuntos."
+    ]
+  },
+  {
     "version": "v1.3.0",
     "fecha": "05/11/2026",
     "titulo": "Pólizas de Caución y Modo Oscuro",

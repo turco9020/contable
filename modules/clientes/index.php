@@ -116,11 +116,11 @@ include '../../includes/sidebar.php';
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-bold">Teléfono</label>
-                            <input type="text" name="telefono" id="telefono" class="form-control" placeholder="Teléfono de línea o fijo">
+                            <input type="text" name="telefono" id="telefono" class="form-control" placeholder="03424555555">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-bold">WhatsApp</label>
-                            <input type="text" name="whatsapp" id="whatsapp" class="form-control" placeholder="Número de celular con código de área">
+                            <input type="text" name="whatsapp" id="whatsapp" class="form-control" placeholder="+5493424242424">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-bold">Email</label>

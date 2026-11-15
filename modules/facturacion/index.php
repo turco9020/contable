@@ -679,123 +679,16 @@ document.addEventListener("DOMContentLoaded", function() {
             pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
                 pdf.getPage(1).then(function(page) {
                     page.getTextContent().then(function(textContent) {
-                        let fragmentos = textContent.items.map(item => item.str.trim()).filter(str => str !== "");
-                        let textoCompleto = fragmentos.join(" ");
-                        
                         $('#seccionEscaneo label').text(labelOriginal);
-                        
                         try {
-                            // 1. FECHA EMISIÓN
-                            let indexFecha = fragmentos.findIndex(f => f.toLowerCase().includes("emisión") || f.toLowerCase().includes("emision"));
-                            if(indexFecha !== -1) {
-                                for(let i = indexFecha; i <= indexFecha + 5; i++) {
-                                    if(fragmentos[i]) {
-                                        let matchF = fragmentos[i].match(/(\d{2})\/(\d{2})\/(\d{4})/);
-                                        if(matchF) {
-                                            $('#fecha').val(`${matchF[3]}-${matchF[2]}-${matchF[1]}`);
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-
-                            // 2. FECHA VENCIMIENTO
-                            let indexVto = fragmentos.findIndex(f => f.toLowerCase().includes("vto. para el pago") || f.toLowerCase().includes("vto. para"));
-                            if(indexVto !== -1) {
-                                for(let i = indexVto; i <= indexVto + 5; i++) {
-                                    if(fragmentos[i]) {
-                                        let matchV = fragmentos[i].match(/(\d{2})\/(\d{2})\/(\d{4})/);
-                                        if(matchV) {
-                                            $('#fecha_vencimiento').val(`${matchV[3]}-${matchV[2]}-${matchV[1]}`);
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-
-                            // 3. PUNTO DE VENTA Y NRO COMPROBANTE
-                            let ptoVentaDetectado = false;
-                            let nroCompDetectado = false;
-
-                            fragmentos.forEach(frag => {
-                                if(!ptoVentaDetectado && /^\d{4,5}$/.test(frag)) {
-                                    $('#punto_venta').val(parseInt(frag, 10));
-                                    ptoVentaDetectado = true;
-                                }
-                                if(!nroCompDetectado && /^\d{7,8}$/.test(frag)) {
-                                    $('#nro_factura').val(parseInt(frag, 10));
-                                    nroCompDetectado = true;
-                                }
-                            });
-
-                            if(!ptoVentaDetectado) {
-                                let matchPto = textoCompleto.match(/Punto\s*de\s*Venta[\s:]*(\d+)/i);
-                                if(matchPto) $('#punto_venta').val(parseInt(matchPto[1], 10));
-                            }
-                            if(!nroCompDetectado) {
-                                let matchNro = textoCompleto.match(/Comp\.\s*Nro[\s:]*(\d+)/i) || textoCompleto.match(/Nro[\s:]*(\d+)/i);
-                                if(matchNro) $('#nro_factura').val(parseInt(matchNro[1], 10));
-                            }
-
-                            // 4. CLIENTE (POR CUIT)
-                            let todosLosCuits = textoCompleto.match(/CUIT[\s:]*(\d{11})/gi) || textoCompleto.match(/\b\d{11}\b/g);
-                            if (todosLosCuits && todosLosCuits.length > 0) {
-                                for (let i = 0; i < todosLosCuits.length; i++) {
-                                    let numeroCuitPDF = todosLosCuits[i].replace(/[^0-9]/g, '');
-                                    let encontrado = globalClientesParaMapeo.find(c => {
-                                        let cuitDB = c.cuit.replace(/[^0-9]/g, '');
-                                        return cuitDB === numeroCuitPDF;
-                                    });
-                                    if (encontrado) {
-                                        if (buscadoresTom['#cliente_id']) {
-                                            buscadoresTom['#cliente_id'].setValue(encontrado.id);
-                                        } else {
-                                            $('#cliente_id').val(encontrado.id);
-                                        }
-                                        break;
-                                    }
-                                }
-                            }
-
-                            // 5. DETALLE
-                            let matchDetalle = textoCompleto.match(/Producto\s*\/\s*Servicio\s*(.*?)\s*\d+,00/i) || 
-                                               textoCompleto.match(/Descripción\s*(.*?)\s*(?:Subtotal|Importe)/i) ||
-                                               textoCompleto.match(/c\/IVA\s*(.*?)\s*Importe\s*Otros/i);
-
-                            if (matchDetalle && matchDetalle[1]) {
-                                $('#detalle').val(matchDetalle[1].trim());
-                            } else {
-                                let fragDetalle = fragmentos.find(f => f.includes("MantAcued") || (f.length > 30 && !f.includes("Razón Social") && !f.includes("Domicilio")));
-                                $('#detalle').val(fragDetalle ? fragDetalle.trim() : "Carga automática AFIP: Verificar descripción interna.");
-                            }
-
-                            // 6. IMPORTES
-                            let matchTotal = textoCompleto.match(/(?:Importe\s*Total|Total)[\s:]*\$?[\s:]*([\d.,]+)/i);
-                            let matchNeto = textoCompleto.match(/(?:Neto\s*Gravado|Neto)[\s:]*\$?[\s:]*([\d.,]+)/i);
-                            let matchIva = textoCompleto.match(/IVA\s*(?:21|10\.5)?%[\s:]*\$?[\s:]*([\d.,]+)/i);
-
-                            if(matchNeto) {
-                                let neto = matchNeto[1].replace(/\./g, '').replace(',', '.');
-                                $('#neto').val(formatMonto(parseFloat(neto)));
-                            }
-                            if(matchIva) {
-                                let iva = matchIva[1].replace(/\./g, '').replace(',', '.');
-                                $('#iva').val(formatMonto(parseFloat(iva)));
-                            }
-                            if(matchTotal) {
-                                let total = matchTotal[1].replace(/\./g, '').replace(',', '.');
-                                $('#total').val(formatMonto(parseFloat(total)));
-                            }
-                            actualizarImporteIIBB();
-
-                            let cartel = document.createElement("div");
-                            cartel.className = "alert alert-success mt-2 py-1 eval-aviso";
-                            cartel.innerHTML = "✨ <b>Análisis completado.</b> Verificá los campos antes de guardar.";
-                            $('.eval-aviso').remove();
-                            $('#seccionEscaneo').append(cartel);
-
+                            // Lectura por posición (cada valor está en la misma línea que su rótulo)
+                            const items = textContent.items
+                                .filter(it => it.str && it.str.trim() !== '')
+                                .map(it => ({ str: it.str.trim(), x: it.transform[4], y: it.transform[5] }));
+                            aplicarDatosPdfAfip(analizarPdfAfip(items), file);
                         } catch (err) {
                             console.error("Error procesando contenido del PDF: ", err);
+                            Swal.fire('No se pudo leer el PDF', 'Completá los datos a mano.', 'warning');
                         }
                     });
                 });
@@ -804,6 +697,168 @@ document.addEventListener("DOMContentLoaded", function() {
         fileReader.readAsArrayBuffer(file);
     });
 });
+
+// ==========================================
+// ASISTENTE DE CARGA: COMPROBANTE PDF DE AFIP / ARCA
+// En el PDF oficial cada valor está en la misma línea que su rótulo
+// (ej: "Fecha de Emisión:" y "27/08/2026" a la misma altura), así que se
+// lee por posición en lugar de por orden de aparición.
+// ==========================================
+const AFIP_CODIGOS_COMPROBANTE = {
+    '1': ['FACTURA', 'A'], '2': ['NOTA DE DEBITO', 'A'], '3': ['NOTA DE CREDITO', 'A'],
+    '6': ['FACTURA', 'B'], '7': ['NOTA DE DEBITO', 'B'], '8': ['NOTA DE CREDITO', 'B'],
+    '11': ['FACTURA', 'C'], '12': ['NOTA DE DEBITO', 'C'], '13': ['NOTA DE CREDITO', 'C'],
+    '19': ['FACTURA', 'E'], '51': ['FACTURA', 'M']
+};
+const RE_IMPORTE_AFIP = /^-?[\d.]*\d,\d{2}$/;   // 1819098,28 o 1.819.098,28
+const RE_FECHA_AFIP = /(\d{2})\/(\d{2})\/(\d{4})/;
+
+function normalizarTxt(s) {
+    return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function analizarPdfAfip(items) {
+    const conRotulo = re => items.filter(i => re.test(normalizarTxt(i.str)));
+    const mismaLinea = (a, b) => Math.abs(a.y - b.y) <= 3;
+
+    // Valor más cercano a la derecha del rótulo, en la misma línea
+    const valorDe = (reRotulo, reValor) => {
+        for (const r of conRotulo(reRotulo)) {
+            const c = items.filter(i => i !== r && mismaLinea(i, r) && i.x > r.x && reValor.test(i.str)).sort((a, b) => a.x - b.x);
+            if (c.length) return c[0].str;
+        }
+        return '';
+    };
+    const fechaISO = s => { const m = String(s).match(RE_FECHA_AFIP); return m ? `${m[3]}-${m[2]}-${m[1]}` : ''; };
+
+    const d = {};
+    d.fecha = fechaISO(valorDe(/^fecha de emision/, RE_FECHA_AFIP));
+    d.vencimiento = fechaISO(valorDe(/^fecha de vto\. para el pago/, RE_FECHA_AFIP));
+    d.punto_venta = parseInt(valorDe(/^punto de venta/, /^\d{1,5}$/), 10) || '';
+    d.numero = parseInt(valorDe(/^comp\. nro/, /^\d{1,8}$/), 10) || '';
+    d.cae = valorDe(/^cae n/, /^\d{14}$/);
+    d.vto_cae = valorDe(/^fecha de vto\. de cae/, RE_FECHA_AFIP);
+
+    // Tipo: por el código ("COD. 01") o, si no está, por el texto y la letra
+    const cod = items.map(i => i.str.match(/^COD\.?\s*0*(\d{1,3})$/i)).find(Boolean);
+    if (cod && AFIP_CODIGOS_COMPROBANTE[cod[1]]) {
+        [d.tipo, d.letra] = AFIP_CODIGOS_COMPROBANTE[cod[1]];
+    } else {
+        const tipoTxt = items.find(i => /^(factura|nota de credito|nota de debito)$/.test(normalizarTxt(i.str)));
+        const letra = items.find(i => /^[ABCEM]$/.test(i.str));
+        if (tipoTxt) d.tipo = normalizarTxt(tipoTxt.str).toUpperCase();
+        if (letra) d.letra = letra.str;
+    }
+
+    // Receptor (cliente): CUIT y nombre en la línea de "Apellido y Nombre / Razón Social"
+    const rotReceptor = conRotulo(/^apellido y nombre \/ razon social/)[0];
+    if (rotReceptor) {
+        const enLinea = items.filter(i => mismaLinea(i, rotReceptor));
+        const cuit = enLinea.find(i => /^\d{11}$/.test(i.str));
+        const nombre = enLinea.filter(i => i.x > rotReceptor.x).sort((a, b) => a.x - b.x)[0];
+        d.cuit_cliente = cuit ? cuit.str : '';
+        d.nombre_cliente = nombre ? nombre.str : '';
+    }
+
+    // Detalle: solo la columna "Producto / Servicio", entre los encabezados y los totales
+    const hProd = conRotulo(/^producto \/ servicio$/)[0];
+    const hCant = conRotulo(/^cantidad$/)[0];
+    if (hProd) {
+        const xMax = hCant ? hCant.x - 5 : hProd.x + 180;
+        const yMin = Math.max(0, ...conRotulo(/^(importe otros tributos|importe neto gravado|importe total|subtotal:)/).filter(i => i.y < hProd.y).map(i => i.y));
+        d.detalle = items
+            .filter(i => i.y < hProd.y - 3 && i.y > yMin && i.x >= hProd.x - 5 && i.x < xMax)
+            .sort((a, b) => (b.y - a.y) || (a.x - b.x))
+            .map(i => i.str).join(' ').replace(/\s+/g, ' ').trim();
+    }
+
+    // Importes: neto, IVA (sumando todas las alícuotas) y total
+    const num = s => s ? parseMonto(s) : null;
+    d.total = num(valorDe(/^importe total/, RE_IMPORTE_AFIP));
+    d.neto = num(valorDe(/^importe neto gravado/, RE_IMPORTE_AFIP));
+    let iva = 0, hayIva = false;
+    conRotulo(/^iva \d+(\.\d+)?%/).forEach(r => {
+        const v = items.filter(i => i !== r && mismaLinea(i, r) && i.x > r.x && RE_IMPORTE_AFIP.test(i.str)).sort((a, b) => a.x - b.x)[0];
+        if (v) { iva += parseMonto(v.str); hayIva = true; }
+    });
+    const ivaContenido = num(valorDe(/^iva contenido/, RE_IMPORTE_AFIP)); // facturas B (transparencia fiscal)
+    if (hayIva) d.iva = Math.round(iva * 100) / 100;
+    else if (ivaContenido !== null) d.iva = ivaContenido;
+    if (d.neto === null) {
+        // Facturas B / C: sin neto gravado discriminado
+        const subtotal = num(valorDe(/^subtotal:/, RE_IMPORTE_AFIP));
+        const base = subtotal !== null ? subtotal : d.total;
+        if (base !== null) d.neto = Math.round((base - (d.iva || 0)) * 100) / 100;
+        if (d.iva === undefined) d.iva = 0;
+    }
+    return d;
+}
+
+// Vuelca lo leído en el formulario y avisa qué se completó y qué no
+function aplicarDatosPdfAfip(d, archivoPdf) {
+    const ok = [], faltan = [];
+    const setear = (sel, val, nombre) => { if (val !== '' && val !== null && val !== undefined) { $(sel).val(val); ok.push(nombre); } else faltan.push(nombre); };
+
+    setear('#fecha', d.fecha, 'fecha de emisión');
+    setear('#fecha_vencimiento', d.vencimiento, 'vencimiento');
+    setear('#punto_venta', d.punto_venta, 'punto de venta');
+    setear('#nro_factura', d.numero, 'número');
+
+    // Tipo de comprobante (ej: "FACTURA A")
+    let tipoOk = false;
+    if (d.tipo && d.letra) {
+        const buscado = normalizarTxt(d.tipo + ' ' + d.letra);
+        const opt = $('#tipo_comprobante_id option').toArray().find(o => normalizarTxt(o.text) === buscado);
+        if (opt) { $('#tipo_comprobante_id').val(opt.value); tipoOk = true; ok.push('tipo'); }
+    }
+    if (!tipoOk) faltan.push('tipo' + (d.tipo ? ' (' + d.tipo + ' ' + (d.letra || '') + ' no está en la lista)' : ''));
+
+    // Cliente por el CUIT del receptor
+    let avisoCliente = '';
+    if (d.cuit_cliente) {
+        const cliente = globalClientesParaMapeo.find(c => String(c.cuit || '').replace(/\D/g, '') === d.cuit_cliente);
+        if (cliente) {
+            if (buscadoresTom['#cliente_id']) buscadoresTom['#cliente_id'].setValue(cliente.id);
+            else $('#cliente_id').val(cliente.id);
+            ok.push('cliente');
+        } else {
+            faltan.push('cliente');
+            avisoCliente = `<br>⚠️ El cliente <b>${escapeHtmlFac(d.nombre_cliente || '')}</b> (CUIT ${escapeHtmlFac(d.cuit_cliente)}) no está cargado en Clientes.`;
+        }
+    } else {
+        faltan.push('cliente');
+    }
+
+    setear('#detalle', d.detalle, 'detalle');
+    setear('#neto', d.neto !== null && d.neto !== undefined ? formatMonto(d.neto) : '', 'neto');
+    setear('#iva', d.iva !== null && d.iva !== undefined ? formatMonto(d.iva) : '', 'IVA');
+    setear('#total', d.total !== null && d.total !== undefined ? formatMonto(d.total) : '', 'total');
+    actualizarImporteIIBB();
+
+    // CAE en observaciones (si están vacías)
+    if (d.cae && !$('#observaciones').val().trim()) {
+        $('#observaciones').val('CAE: ' + d.cae + (d.vto_cae ? ' - Vto. CAE: ' + d.vto_cae : ''));
+    }
+
+    // El mismo PDF queda como comprobante adjunto definitivo (si no se eligió otro)
+    const adj = document.getElementById('archivo');
+    if (archivoPdf && adj && adj.files.length === 0) {
+        try {
+            const dt = new DataTransfer();
+            dt.items.add(archivoPdf);
+            adj.files = dt.files;
+            ok.push('adjunto');
+        } catch (e) { /* navegador sin DataTransfer: se adjunta a mano */ }
+    }
+
+    const cartel = document.createElement('div');
+    cartel.className = 'alert ' + (faltan.length ? 'alert-warning' : 'alert-success') + ' mt-2 py-1 small text-start eval-aviso';
+    cartel.innerHTML = '✨ <b>Análisis completado.</b> Se completó: ' + ok.join(', ') + '.' +
+        (faltan.length ? '<br>Revisá a mano: ' + faltan.join(', ') + '.' : '') + avisoCliente +
+        '<br>Verificá los campos antes de guardar.';
+    $('.eval-aviso').remove();
+    $('#seccionEscaneo').append(cartel);
+}
 
 function aplicarBuscadores() {
     const IDs = ['#cliente_id', '#obra_id'];

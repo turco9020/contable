@@ -122,6 +122,15 @@ if($accion == 'guardar'){
     $id = $_POST['id'] ?? '';
     $tipo = $_POST['tipo'];
 
+    // Los ingresos de un cobro de Facturación se manejan desde la factura (no desde Caja)
+    if (!empty($id)) {
+        $res_ori = $conn->query("SELECT origen FROM movimientos_caja WHERE id = " . (int)$id);
+        if ($res_ori && ($ori = $res_ori->fetch_assoc()) && $ori['origen'] === 'COBRO') {
+            echo "ERROR: Este ingreso viene de un cobro de Facturación: modificalo desde el botón Cobros de la factura.";
+            exit;
+        }
+    }
+
     // Bloqueo de cajas en "solo lectura" para usuarios que no son admin / contador
     if (!$puede_operar_bloqueadas) {
         if ($tipo === 'TRANSFERENCIA' && empty($id)) {
@@ -373,6 +382,13 @@ if($accion == 'guardar'){
 // =======================
 if($accion == 'eliminar'){
     $id = (int)$_POST['id'];
+
+    // Los ingresos de un cobro de Facturación se borran desde la factura (así no queda el cobro sin su ingreso)
+    $res_ori = $conn->query("SELECT origen FROM movimientos_caja WHERE id = $id");
+    if ($res_ori && ($ori = $res_ori->fetch_assoc()) && $ori['origen'] === 'COBRO') {
+        echo "ERROR: Este ingreso viene de un cobro de Facturación: eliminalo desde el botón Cobros de la factura.";
+        exit;
+    }
 
     // Bloqueo de cajas en "solo lectura" para usuarios que no son admin / contador
     if (!$puede_operar_bloqueadas) {

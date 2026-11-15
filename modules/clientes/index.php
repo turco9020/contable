@@ -248,6 +248,9 @@ document.addEventListener("DOMContentLoaded", function(){
                     return `
                         <div class="d-inline-flex gap-1">
                             ${btnArchivos}
+                            <a class="btn btn-sm btn-outline-success" title="Cuenta corriente" href="/contable/modules/clientes/cuenta_corriente.php?id=${data.id}">
+                                <i class="bi bi-journal-text"></i>
+                            </a>
                             <button class="btn btn-sm btn-outline-secondary" title="Ver Cliente" onclick='ver(${JSON.stringify(data)})'>
                                 <i class="bi bi-eye"></i>
                             </button>

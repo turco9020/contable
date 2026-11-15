@@ -333,10 +333,14 @@ if ($rVencimientos) {
 // FACTURAS PENDIENTES DE COBRO
 // =========================
 $sqlFacturas = "
-SELECT f.id, f.nro_factura AS numero, c.nombre AS cliente, f.total, f.fecha_vencimiento
+SELECT f.id, f.nro_factura AS numero, c.nombre AS cliente, f.fecha_vencimiento,
+       -- Saldo pendiente: total menos cobros y retenciones
+       f.total
+         - (SELECT COALESCE(SUM(cv.importe), 0) FROM cobros_venta cv WHERE cv.factura_id = f.id)
+         - (SELECT COALESCE(SUM(rv.importe), 0) FROM retenciones_venta rv WHERE rv.factura_id = f.id) AS total
 FROM facturas_venta f
 LEFT JOIN clientes c ON c.id = f.cliente_id
-WHERE f.estado = 'DEBE'
+WHERE f.estado IN ('DEBE', 'PARCIAL')
 ORDER BY f.fecha_vencimiento ASC
 LIMIT 5
 ";

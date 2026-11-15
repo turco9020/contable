@@ -113,6 +113,16 @@ if($_GET['accion'] == 'eliminar_archivo'){
     exit;
 }
 
+/* CUENTA CORRIENTE DEL CLIENTE (cálculo en includes/cuenta_corriente.php) */
+if($_GET['accion'] == 'cuenta_corriente'){
+    header('Content-Type: application/json');
+    require_once __DIR__ . '/../includes/cuenta_corriente.php';
+
+    $cc = ctaCteCalcular($conn, (int)($_GET['id'] ?? 0), $_GET['desde'] ?? '', $_GET['hasta'] ?? '', ctaCteRestriccionUsuario());
+    echo json_encode($cc ? ['ok' => true] + $cc : ['ok' => false, 'error' => 'Cliente no encontrado.']);
+    exit;
+}
+
 /* ELIMINAR */
 if($_GET['accion'] == 'eliminar'){
     $id = (int)($_POST['id'] ?? 0);

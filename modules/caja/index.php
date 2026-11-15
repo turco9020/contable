@@ -389,7 +389,8 @@ document.addEventListener("DOMContentLoaded", function(){
 
                     // CONTROL DE PERMISOS MODIFICADO
                     const rol = SESION_ROL.toLowerCase();
-                    const esGasto = (d.origen === 'GASTO');
+                    // Gastos y cobros de Facturación se manejan desde su módulo, no desde Caja
+                    const esGasto = (d.origen === 'GASTO' || d.origen === 'COBRO');
                     const esEditable = !esGasto && !cajaBloqueadaParaMi(d.caja_id) && (
                         (rol === 'admin' || rol === 'contador') ||
                         (d.origen === 'MANUAL' && d.usuario_id == SESION_USUARIO_ID)
@@ -414,7 +415,7 @@ document.addEventListener("DOMContentLoaded", function(){
                         return `
                             <div class="d-inline-flex gap-1 align-items-center justify-content-end">
                                 ${btnArchivo}
-                                <span class="badge bg-light text-muted border py-1.5 px-2" title="Movimiento originado en Gastos, generado por otro usuario o de una caja en solo lectura" style="font-size: 0.75rem;">
+                                <span class="badge bg-light text-muted border py-1.5 px-2" title="Movimiento originado en Gastos o en un cobro de Facturación, generado por otro usuario o de una caja en solo lectura" style="font-size: 0.75rem;">
                                     <i class="bi bi-lock-fill text-secondary me-1"></i> Bloqueado
                                 </span>
                             </div>

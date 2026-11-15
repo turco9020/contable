@@ -3,6 +3,13 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/header.php';
 include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
 ?>
 
+<style>
+/* Botones de Acciones más compactos, para que la columna ocupe menos */
+.acciones-factura { gap: 2px !important; }
+.acciones-factura .btn { padding: 0.15rem 0.35rem; font-size: 0.8rem; }
+.celda-cliente { max-width: 200px; white-space: normal; line-height: 1.2; }
+</style>
+
 <div class="content">
 
     <!-- CABECERA DEL MÓDULO (Estilo unificado) -->
@@ -10,9 +17,14 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
         <h4 class="fw-bold text-dark mb-0">
             <i class="bi bi-receipt text-secondary me-2"></i> Facturación (Ventas)
         </h4>
-        <button class="btn btn-dark d-flex align-items-center" onclick="abrirModal()">
-            <i class="bi bi-plus-circle me-2"></i> Nueva Factura
-        </button>
+        <div class="d-flex gap-2">
+            <a href="/contable/modules/clientes/cuenta_corriente.php" class="btn btn-outline-success d-flex align-items-center">
+                <i class="bi bi-journal-text me-2"></i> Cuenta corriente
+            </a>
+            <button class="btn btn-dark d-flex align-items-center" onclick="abrirModal()">
+                <i class="bi bi-plus-circle me-2"></i> Nueva Factura
+            </button>
+        </div>
     </div>
 
     <!-- Pestañas de Navegación de Estados de Facturas -->
@@ -44,6 +56,7 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
                         <th>Neto</th>
                         <th>IVA</th>
                         <th>Total</th>
+                        <th>Saldo</th>
                         <th>Vence</th>
                         <th>Estado</th>
                         <th>Usuario</th>
@@ -121,6 +134,7 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
                             <label class="form-label">Estado de Pago</label>
                             <select name="estado" id="estado" class="form-select" required>
                                 <option value="DEBE">🔴 DEBE</option>
+                                <option value="PARCIAL">🔵 PARCIAL (con cobros)</option>
                                 <option value="PAGADO">🟢 PAGADO</option>
                                 <option value="VER">🟡 VER (Revisión)</option>
                             </select>
@@ -245,6 +259,88 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
     </div>
 </div>
 
+<!-- MODAL COBROS DE UNA FACTURA (pagos parciales o totales) -->
+<div class="modal fade" id="modalCobros" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-cash-coin me-2"></i> Cobros - Factura <span id="lblFacturaCobro"></span></h5>
+                <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Resumen de saldo -->
+                <div class="row g-2 mb-3 text-center small">
+                    <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="text-muted">Total factura</div><div class="fw-bold" id="cobResTotal">$ 0,00</div></div></div>
+                    <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="text-muted">Cobrado</div><div class="fw-bold text-success" id="cobResCobrado">$ 0,00</div></div></div>
+                    <div class="col-6 col-md-3"><div class="border rounded p-2"><div class="text-muted">Retenciones</div><div class="fw-bold text-secondary" id="cobResRetenido">$ 0,00</div></div></div>
+                    <div class="col-6 col-md-3"><div class="border rounded p-2 bg-light"><div class="text-muted">Saldo pendiente</div><div class="fw-bold fs-6" id="cobResSaldo">$ 0,00</div></div></div>
+                </div>
+
+                <div class="row g-4">
+                    <!-- Formulario de nuevo cobro -->
+                    <div class="col-md-5 border-end">
+                        <h6 class="fw-bold mb-3 text-secondary">Registrar cobro</h6>
+                        <form id="formCobro" method="post" enctype="multipart/form-data">
+                            <input type="hidden" name="cob_factura_id" id="cob_factura_id">
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold">Fecha</label>
+                                    <input type="date" name="cob_fecha" id="cob_fecha" class="form-control form-control-sm" required>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold">Importe ($)</label>
+                                    <input type="text" inputmode="decimal" name="cob_importe" id="cob_importe" class="form-control form-control-sm text-end fw-bold" placeholder="0,00" required>
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-semibold">Medio de pago</label>
+                                <select name="cob_medio_pago_id" id="cob_medio_pago_id" class="form-select form-select-sm"></select>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-semibold">Ingresar en caja <span class="text-muted fw-normal">(opcional)</span></label>
+                                <select name="cob_caja_id" id="cob_caja_id" class="form-select form-select-sm"></select>
+                                <div class="form-text small">Si elegís una caja, el ingreso se registra solo en Caja y se borra junto con el cobro.</div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-semibold">N° de recibo / comprobante</label>
+                                <input type="text" name="cob_comprobante" class="form-control form-control-sm" maxlength="100">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-semibold">Observaciones</label>
+                                <input type="text" name="cob_observaciones" class="form-control form-control-sm" maxlength="255">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Adjuntar comprobante (PDF / imagen)</label>
+                                <input type="file" name="cob_archivo" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png">
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-success w-100" id="btnGuardarCobro"><i class="bi bi-plus-circle me-1"></i> Registrar cobro</button>
+                        </form>
+                    </div>
+
+                    <!-- Cobros registrados -->
+                    <div class="col-md-7">
+                        <h6 class="fw-bold mb-3 text-secondary">Cobros registrados</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered table-striped align-middle" style="font-size:0.85rem;">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Medio / Caja</th>
+                                        <th>Recibo</th>
+                                        <th class="text-end">Importe</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyCobros"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/footer.php'; ?>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
@@ -311,7 +407,7 @@ $.fn.dataTable.ext.search.push(
         let estado = rowData.estado ? rowData.estado.toUpperCase() : 'DEBE';
 
         if (estadoPestañaActual === 'POR_COBRAR') {
-            return (estado === 'DEBE' || estado === 'VER');
+            return (estado === 'DEBE' || estado === 'VER' || estado === 'PARCIAL');
         } else if (estadoPestañaActual === 'PAGADAS') {
             return (estado === 'PAGADO');
         }
@@ -345,6 +441,7 @@ document.addEventListener("DOMContentLoaded", function() {
                 // Setea fecha actual por comodidad en la re-carga
                 $('#ret_fecha').val(new Date().toISOString().split('T')[0]); 
                 refrescarTablaRetenciones(facId);
+                tabla.ajax.reload(null, false); // la retención cambia el saldo y el estado
             }
         });
     });
@@ -357,19 +454,32 @@ document.addEventListener("DOMContentLoaded", function() {
         autoWidth: false,
         responsive: true,
         deferRender: true,
+        // Cuando falta ancho, se ocultan primero las columnas de número más alto
+        // (pasan al desplegable de la fila). Acciones nunca debe quedar oculta.
+        columnDefs: [
+            { targets: 12, responsivePriority: 1 },     // Acciones
+            { targets: 2,  responsivePriority: 2 },     // N° factura
+            { targets: 3,  responsivePriority: 3 },     // Cliente
+            { targets: 7,  responsivePriority: 4 },     // Total
+            { targets: 8,  responsivePriority: 5 },     // Saldo
+            { targets: 9,  responsivePriority: 6 },     // Vence
+            { targets: 10, responsivePriority: 7 },     // Estado
+            { targets: 0,  responsivePriority: 8 },     // Fecha
+            { targets: [5, 6, 1, 11], responsivePriority: 10000 } // Neto, IVA, Tipo, Usuario
+        ],
         dom: '<"d-flex justify-content-between align-items-center mb-2"Bf>rtip',
         buttons: [
             {
                 extend: 'excelHtml5',
                 text: ' Excel',
                 className: 'btn btn-success btn-sm',
-                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] }
+                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] }
             },
             {
                 extend: 'print',
                 text: ' Imprimir',
                 className: 'btn btn-secondary btn-sm',
-                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] }
+                exportOptions: { columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] }
             },
             { 
                 extend: 'colvis', 
@@ -398,7 +508,11 @@ document.addEventListener("DOMContentLoaded", function() {
                     return `${pv}-${nf}`;
                 }
             },
-            { data: 'cliente_nombre' },
+            {
+                // Nombres largos en dos líneas, para que la tabla no oculte otras columnas
+                data: 'cliente_nombre',
+                render: (d, type) => type === 'display' ? `<div class="celda-cliente">${$('<div>').text(d || '').html()}</div>` : d
+            },
             { data: 'centro_costo_nombre', className: 'none'},
             { 
                 data: 'neto',
@@ -414,11 +528,27 @@ document.addEventListener("DOMContentLoaded", function() {
                     return '$ ' + Number(d || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
                 }
             },
-            { 
+            {
                 data: 'total',
                 className: 'text-end',
                 render: function(d) {
                     return '$ ' + Number(d || 0).toLocaleString('es-AR', { minimumFractionDigits: 2 });
+                }
+            },
+            {
+                // Saldo = Total - Cobros - Retenciones
+                data: 'saldo',
+                className: 'text-end',
+                render: function(d, type, row) {
+                    let saldo = Number(d || 0);
+                    if (type !== 'display') return saldo;
+                    let estado = (row.estado || '').toUpperCase();
+                    let cobrado = Number(row.cobrado || 0), retenido = Number(row.retenido || 0);
+                    // Marcada como pagada a mano, sin cobros cargados: no se muestra un saldo engañoso
+                    if (estado === 'PAGADO' && cobrado === 0 && retenido === 0) return '<span class="text-muted">-</span>';
+                    let titulo = 'Cobrado: $ ' + formatMonto(cobrado) + ' · Retenciones: $ ' + formatMonto(retenido);
+                    let clase = saldo <= 0.01 ? 'text-success' : (cobrado > 0 || retenido > 0 ? 'text-primary fw-bold' : '');
+                    return `<span class="${clase}" title="${titulo}">$ ${formatMonto(saldo)}</span>`;
                 }
             },
             {
@@ -457,6 +587,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     
                     if(texto === 'PAGADO') colorLed = 'bg-success';
                     else if(texto === 'VER') colorLed = 'bg-warning';
+                    else if(texto === 'PARCIAL') colorLed = 'bg-primary';
                     
                     return `
                         <div class="d-inline-flex align-items-center text-secondary fw-semibold" style="font-size: 0.9rem;">
@@ -476,13 +607,16 @@ document.addEventListener("DOMContentLoaded", function() {
             {
                 data: null,
                 orderable: false,
-                className: 'text-end',
+                className: 'text-end text-nowrap',
                 render: function(d) {
                     let btnArchivo = d.archivo ? `<a href="/contable/uploads/facturacion/${d.archivo}" target="_blank" class="btn btn-sm btn-outline-dark" title="Ver Adjunto"><i class="bi bi-file-earmark-pdf"></i></a>` : '';
-                    
+
                     return `
-                        <div class="d-inline-flex gap-1">
+                        <div class="d-inline-flex gap-1 acciones-factura">
                             ${btnArchivo}
+                            <button class="btn btn-sm btn-outline-success" title="Cobros (pagos del cliente)" onclick="abrirModalCobros(${d.id}, '${String(d.punto_venta).padStart(5, '0')}-${String(d.nro_factura).padStart(8, '0')}')">
+                                <i class="bi bi-cash-coin"></i>
+                            </button>
                             <button class="btn btn-sm btn-outline-dark" title="Gestionar Retenciones" onclick="abrirModalRetenciones(${d.id}, '${d.punto_venta}-${d.nro_factura}')">
                                 <i class="bi bi-percent"></i>
                             </button>
@@ -889,7 +1023,7 @@ function actualizarBadgesPestañas(datosFilas) {
         let factura = fila._aData;
         let estado = factura.estado ? factura.estado.toUpperCase() : 'DEBE';
 
-        if (estado === 'DEBE' || estado === 'VER') {
+        if (estado === 'DEBE' || estado === 'VER' || estado === 'PARCIAL') {
             contadorCobrar++;
         } else if (estado === 'PAGADO') {
             contadorPagadas++;
@@ -961,7 +1095,145 @@ window.eliminarRetencion = function(id, facturaId) {
     if(confirm('¿Desea eliminar este registro de retención?')) {
         $.post('/contable/ajax/facturacion.php?accion=eliminar_retencion', { id: id }, function() {
             refrescarTablaRetenciones(facturaId);
+            tabla.ajax.reload(null, false); // la retención cambia el saldo y el estado
         });
     }
+}
+
+// ==========================================
+// COBROS DE UNA FACTURA
+// ==========================================
+let modalCobrosBS;
+const SESION_ROL_FAC = <?= json_encode(strtolower($_SESSION['rol'] ?? '')) ?>;
+
+function escapeHtmlFac(s) {
+    return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+window.abrirModalCobros = function(facturaId, nroFactura) {
+    if (!modalCobrosBS) modalCobrosBS = new bootstrap.Modal(document.getElementById('modalCobros'));
+    $('#formCobro')[0].reset();
+    $('#cob_factura_id').val(facturaId);
+    $('#lblFacturaCobro').text(nroFactura);
+    $('#cob_fecha').val(new Date().toISOString().split('T')[0]);
+
+    // Medios de pago (Configuración → Medios de pago)
+    $.get('/contable/ajax/medios_pago.php?accion=listar', function(r) {
+        let s = $('#cob_medio_pago_id').empty().append('<option value="">-- Sin especificar --</option>');
+        (r.data || []).forEach(m => s.append($('<option>').val(m.id).text(m.nombre)));
+    }, 'json');
+
+    // Cajas activas donde el usuario puede cargar movimientos
+    $.get('/contable/ajax/cajas.php?accion=listar', function(r) {
+        const puedeBloqueadas = SESION_ROL_FAC === 'admin' || SESION_ROL_FAC === 'contador';
+        let s = $('#cob_caja_id').empty().append('<option value="">-- No registrar en caja --</option>');
+        (r.data || []).forEach(c => {
+            if (c.activa != 1) return;
+            if (!puedeBloqueadas && c.permite_movimientos == 0) return;
+            s.append($('<option>').val(c.id).text(c.nombre));
+        });
+    }, 'json');
+
+    refrescarCobros(facturaId, true);
+    modalCobrosBS.show();
+}
+
+function refrescarCobros(facturaId, completarImporte) {
+    $.get('/contable/ajax/facturacion.php?accion=listar_cobros', { factura_id: facturaId }, function(r) {
+        let tbody = $('#tbodyCobros').empty();
+        if (!r.success) {
+            tbody.append(`<tr><td colspan="5" class="text-center text-danger py-3">${escapeHtmlFac(r.message || 'No se pudieron cargar los cobros.')}</td></tr>`);
+            return;
+        }
+
+        const res = r.resumen || { total: 0, cobrado: 0, retenido: 0, saldo: 0 };
+        $('#cobResTotal').text('$ ' + formatMonto(res.total));
+        $('#cobResCobrado').text('$ ' + formatMonto(res.cobrado));
+        $('#cobResRetenido').text('$ ' + formatMonto(res.retenido));
+        $('#cobResSaldo').text('$ ' + formatMonto(res.saldo)).toggleClass('text-success', res.saldo <= 0.01).toggleClass('text-danger', res.saldo > 0.01);
+
+        // Sin saldo no se pueden cargar más cobros
+        const sinSaldo = res.saldo <= 0.01;
+        $('#formCobro :input').prop('disabled', sinSaldo);
+        if (completarImporte || sinSaldo) $('#cob_importe').val(sinSaldo ? '' : formatMonto(res.saldo));
+
+        if (r.data.length === 0) {
+            tbody.append('<tr><td colspan="5" class="text-center text-muted py-3">No hay cobros cargados para esta factura.</td></tr>');
+            return;
+        }
+        r.data.forEach(x => {
+            const fecha = x.fecha.split('-').reverse().join('/');
+            const medio = [x.medio_pago, x.caja ? '<i class="bi bi-wallet2"></i> ' + escapeHtmlFac(x.caja) : ''].filter(Boolean).map(t => t.startsWith('<') ? t : escapeHtmlFac(t)).join('<br>') || '<span class="text-muted">-</span>';
+            const btnAdjunto = x.archivo ? `<a href="/contable/uploads/cobros/${encodeURIComponent(x.archivo)}" target="_blank" class="btn btn-xs btn-outline-dark py-0 px-1" title="Ver comprobante"><i class="bi bi-file-earmark"></i></a>` : '';
+            tbody.append(`
+                <tr title="${escapeHtmlFac(x.observaciones || '')}">
+                    <td>${fecha}</td>
+                    <td class="small">${medio}</td>
+                    <td>${escapeHtmlFac(x.comprobante || '-')}</td>
+                    <td class="text-end fw-bold">$ ${formatMonto(x.importe)}</td>
+                    <td class="text-center">
+                        <div class="d-inline-flex gap-1">
+                            ${btnAdjunto}
+                            <button class="btn btn-xs btn-outline-danger py-0 px-1" title="Eliminar cobro" onclick="eliminarCobro(${x.id}, ${facturaId})"><i class="bi bi-trash"></i></button>
+                        </div>
+                    </td>
+                </tr>`);
+        });
+    }, 'json');
+}
+
+document.getElementById('formCobro').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const facId = $('#cob_factura_id').val();
+    let fd = new FormData(this);
+    fd.set('cob_importe', parseMonto($('#cob_importe').val())); // "1.500,50" -> 1500.5
+    const btn = $('#btnGuardarCobro').prop('disabled', true);
+
+    $.ajax({
+        url: '/contable/ajax/facturacion.php?accion=guardar_cobro',
+        type: 'POST',
+        data: fd,
+        contentType: false,
+        processData: false,
+        dataType: 'json',
+        success: function(r) {
+            if (!r.success) {
+                Swal.fire('No se guardó', r.message || 'No se pudo guardar el cobro.', 'warning');
+                return;
+            }
+            const caja = $('#cob_caja_id').val(), medio = $('#cob_medio_pago_id').val();
+            $('#formCobro')[0].reset();
+            $('#cob_caja_id').val(caja); $('#cob_medio_pago_id').val(medio); // se mantienen para el próximo
+            $('#cob_fecha').val(new Date().toISOString().split('T')[0]);
+            refrescarCobros(facId, true);
+            tabla.ajax.reload(null, false);
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Cobro registrado', timer: 1500, showConfirmButton: false });
+        },
+        error: function() { Swal.fire('Error', 'Ocurrió un problema de comunicación al guardar.', 'error'); },
+        complete: function() { btn.prop('disabled', false); }
+    });
+});
+
+window.eliminarCobro = function(id, facturaId) {
+    Swal.fire({
+        icon: 'warning',
+        title: '¿Eliminar este cobro?',
+        text: 'Si se registró en una caja, también se borra ese ingreso.',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#dc3545',
+        reverseButtons: true
+    }).then(function(res) {
+        if (!res.isConfirmed) return;
+        $.post('/contable/ajax/facturacion.php?accion=eliminar_cobro', { id: id }, function(r) {
+            if (!r.success) {
+                Swal.fire('No se eliminó', r.message || 'No se pudo eliminar el cobro.', 'warning');
+                return;
+            }
+            refrescarCobros(facturaId, true);
+            tabla.ajax.reload(null, false);
+        }, 'json');
+    });
 }
 </script>

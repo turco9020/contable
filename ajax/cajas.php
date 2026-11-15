@@ -49,6 +49,14 @@ if($accion == 'listar'){
     exit;
 }
 
+// La configuración de cajas (Configuración → Cajas) es solo para admin:
+// evita que un usuario cambie, por ejemplo, el bloqueo de movimientos de su propia caja
+if (in_array($accion, ['guardar', 'eliminar'], true) && !esAdmin()) {
+    header('HTTP/1.1 403 Forbidden');
+    echo "ERROR: Solo un administrador puede modificar las cajas.";
+    exit;
+}
+
 // =======================
 // GUARDAR / EDITAR CAJA
 // =======================
@@ -60,6 +68,8 @@ if($accion == 'guardar'){
     $activa = ($_POST['activa'] ?? '1') === '0' ? 0 : 1;
     // Si está en 0, Caja y Gastos no aceptan movimientos que la dejen por debajo de $ 0
     $permite_negativo = ($_POST['permite_negativo'] ?? '1') === '0' ? 0 : 1;
+    // Si está en 0, los usuarios (no admin / contador) solo pueden ver la caja
+    $permite_movimientos = ($_POST['permite_movimientos'] ?? '1') === '0' ? 0 : 1;
 
     // Si viene un usuario_id del formulario se asigna, sino se guarda como NULL (Caja Central)
     $usuario_id = !empty($_POST['usuario_id']) ? (int)$_POST['usuario_id'] : "NULL";
@@ -73,14 +83,15 @@ if($accion == 'guardar'){
                 descripcion='$descripcion',
                 activa=$activa,
                 permite_negativo=$permite_negativo,
+                permite_movimientos=$permite_movimientos,
                 usuario_id=$usuario_id
             WHERE id=$id
         ");
     }else{
         // NUEVO
         $ok = $conn->query("
-            INSERT INTO cajas(nombre, descripcion, activa, permite_negativo, usuario_id)
-            VALUES('$nombre', '$descripcion', $activa, $permite_negativo, $usuario_id)
+            INSERT INTO cajas(nombre, descripcion, activa, permite_negativo, permite_movimientos, usuario_id)
+            VALUES('$nombre', '$descripcion', $activa, $permite_negativo, $permite_movimientos, $usuario_id)
         ");
     }
 

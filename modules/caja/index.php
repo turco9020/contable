@@ -9,7 +9,7 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
         <h5 class="fw-bold text-dark mb-0">
             <i class="bi bi-wallet2 text-secondary me-2"></i>Caja
         </h5>
-        <button class="btn btn-dark d-flex align-items-center" onclick="abrirModal()">
+        <button id="btnNuevoMovimiento" class="btn btn-dark d-flex align-items-center" onclick="abrirModal()">
             <i class="bi bi-plus-circle me-2"></i>Nuevo Movimiento
         </button>
     </div>
@@ -151,12 +151,20 @@ include $_SERVER['DOCUMENT_ROOT'].'/contable/includes/sidebar.php';
 const SESION_USUARIO_ID = <?php echo json_encode($_SESSION['id'] ?? null); ?>;
 const SESION_ROL = <?php echo json_encode($_SESSION['rol'] ?? ''); ?>;
 
+// Admin y contador operan en todas las cajas; el resto no puede mover las que están en "solo lectura"
+const PUEDE_OPERAR_BLOQUEADAS = ['admin', 'contador'].includes(String(SESION_ROL).toLowerCase());
+let cajasSoloLectura = new Set(); // ids de cajas con permite_movimientos = 0
+
+function cajaBloqueadaParaMi(cajaId){
+    return !PUEDE_OPERAR_BLOQUEADAS && cajasSoloLectura.has(String(cajaId));
+}
+
 let tabla;
 let modalMovimiento;
 
-function cargarCajasIndex(){ 
+function cargarCajasIndex(){
     $.get('/contable/ajax/cajas.php?accion=listar', function(r){
-        let select = $('#formMovimiento #caja_id'); 
+        let select = $('#formMovimiento #caja_id');
         let selectOrigen = $('#caja_origen_id');
         let selectDestino = $('#caja_destino_id');
 
@@ -164,11 +172,24 @@ function cargarCajasIndex(){
         selectOrigen.empty().append('<option value="" selected disabled>-- Seleccionar Caja Origen --</option>');
         selectDestino.empty().append('<option value="" selected disabled>-- Seleccionar Caja Destino --</option>');
 
+        cajasSoloLectura = new Set(r.data.filter(c => c.permite_movimientos == 0).map(c => String(c.id)));
+        let operables = 0;
+
         r.data.forEach(c => {
+            // Las cajas en solo lectura no se ofrecen para cargar movimientos
+            if (cajaBloqueadaParaMi(c.id)) return;
+            operables++;
             select.append(`<option value="${c.id}">${c.nombre}</option>`);
             selectOrigen.append(`<option value="${c.id}">${c.nombre}</option>`);
             selectDestino.append(`<option value="${c.id}">${c.nombre}</option>`);
         });
+
+        // Sin ninguna caja donde pueda operar, no se muestra "Nuevo Movimiento"
+        $('#btnNuevoMovimiento').toggleClass('d-none', operables === 0);
+
+        // Se repintan saldos y botones de la tabla ya con el estado de bloqueo
+        cargarSaldos();
+        if (tabla) tabla.rows().invalidate('data').draw(false);
     }, 'json');
 }
 
@@ -202,7 +223,9 @@ function cargarSaldos(){
                 <div class="col-md-3 mb-3">
                     <div class="card shadow-sm border-0 card-caja h-100" onclick="filtrarPorCaja(${caja.id}, '${caja.nombre}')" style="cursor: pointer;">
                         <div class="card-body">
-                            <h6 class="text-muted mb-1 small text-uppercase">${caja.nombre}</h6>
+                            <h6 class="text-muted mb-1 small text-uppercase">${caja.nombre}
+                                ${cajaBloqueadaParaMi(caja.id) ? '<span class="badge bg-warning text-dark ms-1" title="Podés ver la caja, pero no cargar movimientos"><i class="bi bi-lock-fill"></i> Solo lectura</span>' : ''}
+                            </h6>
                             <h4 class=" mb-0 ${colorClase}">$ ${saldoFmt}</h4>
                         </div>
                     </div>
@@ -247,8 +270,7 @@ $('#tipo').on('change', function(){
 document.addEventListener("DOMContentLoaded", function(){
     modalMovimiento = new bootstrap.Modal(document.getElementById('modalMovimiento'));
 
-    cargarCajasIndex(); 
-    cargarSaldos();
+    cargarCajasIndex(); // al terminar también carga los saldos
 
     // FORMATEADOR EN TIEMPO REAL PARA EL IMPORTE
     $('#importe').on('input', function() {
@@ -368,8 +390,8 @@ document.addEventListener("DOMContentLoaded", function(){
                     // CONTROL DE PERMISOS MODIFICADO
                     const rol = SESION_ROL.toLowerCase();
                     const esGasto = (d.origen === 'GASTO');
-                    const esEditable = !esGasto && (
-                        (rol === 'admin' || rol === 'contador') || 
+                    const esEditable = !esGasto && !cajaBloqueadaParaMi(d.caja_id) && (
+                        (rol === 'admin' || rol === 'contador') ||
                         (d.origen === 'MANUAL' && d.usuario_id == SESION_USUARIO_ID)
                     );
 
@@ -392,7 +414,7 @@ document.addEventListener("DOMContentLoaded", function(){
                         return `
                             <div class="d-inline-flex gap-1 align-items-center justify-content-end">
                                 ${btnArchivo}
-                                <span class="badge bg-light text-muted border py-1.5 px-2" title="Movimiento originado en Gastos o generado por otro usuario" style="font-size: 0.75rem;">
+                                <span class="badge bg-light text-muted border py-1.5 px-2" title="Movimiento originado en Gastos, generado por otro usuario o de una caja en solo lectura" style="font-size: 0.75rem;">
                                     <i class="bi bi-lock-fill text-secondary me-1"></i> Bloqueado
                                 </span>
                             </div>

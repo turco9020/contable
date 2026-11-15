@@ -12,6 +12,24 @@ $accion = $_GET['accion'] ?? '';
 $id_usuario_sesion = $_SESSION['id'] ?? null;
 $rol_sesion = $_SESSION['rol'] ?? '';
 
+// Admin y contador pueden operar en todas las cajas, aunque estén en "solo lectura"
+$puede_operar_bloqueadas = strcasecmp($rol_sesion, 'admin') === 0 || strcasecmp($rol_sesion, 'contador') === 0;
+
+// Cajas en "solo lectura" (permite_movimientos = 0): los demás usuarios no pueden
+// cargar, editar ni borrar ingresos, egresos o transferencias en ellas.
+// Devuelve el nombre de la primera caja bloqueada entre las indicadas, o null.
+function cajaSoloLectura($conn, array $ids) {
+    $ids = array_values(array_filter(array_map('intval', $ids)));
+    if (!$ids) return null;
+    $res = $conn->query("SELECT nombre FROM cajas WHERE permite_movimientos = 0 AND id IN (" . implode(',', $ids) . ") LIMIT 1");
+    return ($res && ($row = $res->fetch_assoc())) ? $row['nombre'] : null;
+}
+
+function rechazarCajaSoloLectura($nombre) {
+    echo "ERROR: La caja \"$nombre\" está en solo lectura: no se pueden cargar, editar ni borrar movimientos en ella.";
+    exit;
+}
+
 // =======================
 // SALDOS
 // =======================
@@ -103,6 +121,22 @@ if($accion == 'guardar'){
 
     $id = $_POST['id'] ?? '';
     $tipo = $_POST['tipo'];
+
+    // Bloqueo de cajas en "solo lectura" para usuarios que no son admin / contador
+    if (!$puede_operar_bloqueadas) {
+        if ($tipo === 'TRANSFERENCIA' && empty($id)) {
+            $cajas_involucradas = [$_POST['caja_origen_id'] ?? 0, $_POST['caja_destino_id'] ?? 0];
+        } else {
+            $cajas_involucradas = [$_POST['caja_id'] ?? 0];
+            if (!empty($id)) {
+                // Al editar, también cuenta la caja donde está hoy el movimiento
+                $res_actual = $conn->query("SELECT caja_id FROM movimientos_caja WHERE id = " . (int)$id);
+                if ($res_actual && ($actual = $res_actual->fetch_assoc())) $cajas_involucradas[] = $actual['caja_id'];
+            }
+        }
+        $bloqueada = cajaSoloLectura($conn, $cajas_involucradas);
+        if ($bloqueada) rechazarCajaSoloLectura($bloqueada);
+    }
 
     // ---------------------------------------------------------------------
     // LOGICA ESPECIAL PARA TRANSFERENCIAS NUEVAS
@@ -339,6 +373,15 @@ if($accion == 'guardar'){
 // =======================
 if($accion == 'eliminar'){
     $id = (int)$_POST['id'];
+
+    // Bloqueo de cajas en "solo lectura" para usuarios que no son admin / contador
+    if (!$puede_operar_bloqueadas) {
+        $res_mov = $conn->query("SELECT caja_id FROM movimientos_caja WHERE id = $id");
+        if ($res_mov && ($mov_caja = $res_mov->fetch_assoc())) {
+            $bloqueada = cajaSoloLectura($conn, [$mov_caja['caja_id']]);
+            if ($bloqueada) rechazarCajaSoloLectura($bloqueada);
+        }
+    }
 
     if (strcasecmp($rol_sesion, 'admin') !== 0 && strcasecmp($rol_sesion, 'contador') !== 0) {
         $check_res = $conn->query("SELECT usuario_id, origen FROM movimientos_caja WHERE id = $id");

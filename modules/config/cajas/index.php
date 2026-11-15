@@ -29,6 +29,7 @@ if($res_users){
                 <th>Asignada a</th>
                 <th>Activa</th>
                 <th>Saldo negativo</th>
+                <th>Movimientos</th>
                 <th>Acciones</th>
             </tr>
         </thead>
@@ -95,6 +96,17 @@ if($res_users){
     </select>
     <small class="text-muted d-block mb-2">Si está en NO, no se puede registrar un egreso, transferencia o gasto que deje la caja por debajo de $ 0.</small>
 
+    <label>Movimientos de usuarios</label>
+    <select class="form-control mb-1"
+            id="permite_movimientos"
+            name="permite_movimientos">
+
+        <option value="1">SI</option>
+        <option value="0">NO (solo lectura)</option>
+
+    </select>
+    <small class="text-muted d-block mb-2">Si está en NO, los usuarios ven la caja pero no pueden cargar, editar ni borrar ingresos, egresos o transferencias. Admin y contador siempre pueden.</small>
+
     <button type="submit" id="btnGuardar" class="btn btn-dark w-100">
         Guardar
     </button>
@@ -151,6 +163,13 @@ document.addEventListener("DOMContentLoaded", function(){
                 render:function(d){
                     // Sin la columna (antes del ALTER) se comporta como "permite"
                     return d === undefined || d == 1 ? 'Permite' : '<span class="badge bg-dark">No permite</span>';
+                }
+            },
+            {
+                data:'permite_movimientos',
+                defaultContent:'1',
+                render:function(d){
+                    return d === undefined || d == 1 ? 'Usuarios' : '<span class="badge bg-warning text-dark">Solo lectura</span>';
                 }
             },
             {
@@ -213,6 +232,7 @@ window.verCaja = function(d){
     $('#usuario_id').val(d.usuario_id ? d.usuario_id : '');
     $('#activa').val(d.activa);
     $('#permite_negativo').val(d.permite_negativo == 0 ? '0' : '1');
+    $('#permite_movimientos').val(d.permite_movimientos == 0 ? '0' : '1');
 
     modalCaja.show();
 }
@@ -231,6 +251,7 @@ window.editar = function(d){
     $('#usuario_id').val(d.usuario_id ? d.usuario_id : '');
     $('#activa').val(d.activa);
     $('#permite_negativo').val(d.permite_negativo == 0 ? '0' : '1');
+    $('#permite_movimientos').val(d.permite_movimientos == 0 ? '0' : '1');
 
     modalCaja.show();
 }

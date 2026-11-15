@@ -60,6 +60,7 @@ $cliente_inicial = (int)($_GET['id'] ?? 0);
                             <th class="text-end">Debe</th>
                             <th class="text-end">Haber</th>
                             <th class="text-end">Saldo</th>
+                            <th class="text-center" style="width: 40px;">Ver</th>
                         </tr>
                     </thead>
                 </table>
@@ -88,6 +89,23 @@ $cliente_inicial = (int)($_GET['id'] ?? 0);
 
 </div>
 
+<!-- MODAL: VER FACTURA COMPLETA -->
+<div class="modal fade" id="modalVerFactura" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-receipt me-2"></i><span id="vf_titulo">Factura</span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="vf_cuerpo"></div>
+            <div class="modal-footer">
+                <a id="vf_pdf" href="#" target="_blank" class="btn btn-outline-danger d-none"><i class="bi bi-file-earmark-pdf me-1"></i> Ver PDF de la factura</a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php include '../../includes/footer.php'; ?>
 
 <script>
@@ -103,7 +121,6 @@ function cc_fecha(f) {
 function cc_esc(s) {
     return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
-const CC_COLOR_TIPO = { 'FACTURA': 'bg-dark', 'COBRO': 'bg-success', 'RETENCIÓN': 'bg-secondary', 'NOTA DE CRÉDITO': 'bg-info text-dark', 'CANCELADA': 'bg-light text-dark border' };
 
 document.addEventListener('DOMContentLoaded', function() {
     tsCliente = new TomSelect('#cc_cliente', { placeholder: '-- Elegí un cliente --', onChange: () => cargarCuentaCorriente() });
@@ -125,17 +142,22 @@ document.addEventListener('DOMContentLoaded', function() {
             {
                 extend: 'excelHtml5', text: ' Excel', className: 'btn btn-success btn-sm',
                 title: () => 'Cuenta corriente - ' + (tsCliente.getItem(tsCliente.getValue())?.innerText || ''),
-                exportOptions: { orthogonal: 'export' }
+                exportOptions: { orthogonal: 'export', columns: [0, 1, 2, 3, 4, 5, 6] } // sin la columna del botón
             }
         ],
         columns: [
             { data: 'fecha', render: (d, t) => t === 'export' ? d : cc_fecha(d) },
-            { data: 'tipo', render: (d, t) => t === 'export' ? d : `<span class="badge ${CC_COLOR_TIPO[d] || 'bg-secondary'}">${cc_esc(d)}</span>` },
+            { data: 'tipo', render: d => cc_esc(d) }, // tal como figura en Facturación (ej: FACTURA A)
             { data: 'comprobante', render: d => cc_esc(d || '') },
             { data: 'detalle', render: d => cc_esc(d || '') },
             { data: 'debe', className: 'text-end', render: (d, t) => t === 'export' ? Number(d) : (Number(d) ? cc_moneda(d) : '') },
             { data: 'haber', className: 'text-end', render: (d, t) => t === 'export' ? Number(d) : (Number(d) ? cc_moneda(d) : '') },
-            { data: 'saldo', className: 'text-end fw-semibold', render: (d, t) => t === 'export' ? Number(d) : cc_moneda(d) }
+            { data: 'saldo', className: 'text-end fw-semibold', render: (d, t) => t === 'export' ? Number(d) : cc_moneda(d) },
+            {
+                // Abre la factura (en cobros y retenciones, la factura a la que corresponden)
+                data: 'factura_id', className: 'text-center', orderable: false,
+                render: d => d ? `<button class="btn btn-sm btn-outline-dark py-0 px-1" title="Ver factura" onclick="verFacturaCC(${parseInt(d, 10)})"><i class="bi bi-eye"></i></button>` : ''
+            }
         ],
         language: { emptyTable: 'Sin movimientos en el período.', search: 'Buscar:' }
     });
@@ -170,6 +192,43 @@ function cargarCuentaCorriente() {
                 <td class="text-end fw-bold">${cc_moneda(p.saldo)}</td>
             </tr>`);
         });
+    });
+}
+
+// Modal con la factura completa: datos, importes, cobros, retenciones y saldo
+function verFacturaCC(facturaId) {
+    $.getJSON('/contable/ajax/clientes.php', { accion: 'cc_factura', id: facturaId }, function(r) {
+        if (!r.ok) { Swal.fire('Error', r.error || 'No se pudo abrir la factura.', 'error'); return; }
+        const f = r.factura;
+        const fila = (lbl, val) => `<tr><th class="text-muted fw-semibold" style="width: 35%;">${lbl}</th><td>${val}</td></tr>`;
+
+        let html = '<table class="table table-sm mb-3">' +
+            fila('Cliente', cc_esc(f.cliente)) +
+            fila('Fecha', cc_fecha(f.fecha)) +
+            fila('Vencimiento', cc_fecha(f.fecha_vencimiento)) +
+            fila('Estado', cc_esc(f.estado)) +
+            (f.centro_costo ? fila('Centro de costo', cc_esc(f.centro_costo)) : '') +
+            (f.obra ? fila('Obra', cc_esc(f.obra)) : '') +
+            fila('Detalle', cc_esc(f.detalle || '-').replace(/\n/g, '<br>')) +
+            (f.observaciones ? fila('Observaciones', cc_esc(f.observaciones).replace(/\n/g, '<br>')) : '') +
+            '</table>';
+
+        html += '<div class="row g-2 text-center small mb-3">' +
+            [['Neto', f.neto], ['IVA', f.iva], ['Total', f.total], ['Saldo pendiente', f.saldo]].map(([l, v], i) =>
+                `<div class="col-6 col-md-3"><div class="border rounded p-2 ${i === 3 ? 'bg-light' : ''}"><div class="text-muted">${l}</div><div class="fw-bold ${i === 3 ? (v > 0.01 ? 'text-danger' : 'text-success') : ''}">${cc_moneda(v)}</div></div></div>`
+            ).join('') + '</div>';
+
+        const filasCobros = f.cobros.map(c => `<tr><td>${cc_fecha(c.fecha)}</td><td>COBRO</td><td>${cc_esc([c.comprobante ? 'Recibo ' + c.comprobante : '', c.medio, c.caja ? 'Caja ' + c.caja : ''].filter(Boolean).join(' · '))}</td><td class="text-end">${cc_moneda(c.importe)}</td></tr>`);
+        const filasRet = f.retenciones.map(x => `<tr><td>${cc_fecha(x.fecha)}</td><td>RETENCIÓN</td><td>${cc_esc([x.tipo, x.nro_certificado ? 'Cert. ' + x.nro_certificado : ''].filter(Boolean).join(' · '))}</td><td class="text-end">${cc_moneda(x.importe)}</td></tr>`);
+        html += '<h6 class="fw-bold text-secondary">Cobros y retenciones</h6>' +
+            '<table class="table table-sm table-bordered mb-0 small"><thead class="table-light"><tr><th>Fecha</th><th>Tipo</th><th>Detalle</th><th class="text-end">Importe</th></tr></thead><tbody>' +
+            (filasCobros.concat(filasRet).join('') || '<tr><td colspan="4" class="text-center text-muted">Sin cobros ni retenciones cargados.</td></tr>') +
+            '</tbody></table>';
+
+        $('#vf_titulo').text(f.tipo + ' ' + f.numero);
+        $('#vf_cuerpo').html(html);
+        $('#vf_pdf').toggleClass('d-none', !f.archivo_url).attr('href', f.archivo_url || '#');
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalVerFactura')).show();
     });
 }
 

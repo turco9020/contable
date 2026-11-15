@@ -123,6 +123,16 @@ if($_GET['accion'] == 'cuenta_corriente'){
     exit;
 }
 
+/* CUENTA CORRIENTE: DETALLE DE UNA FACTURA (modal "Ver factura") */
+if($_GET['accion'] == 'cc_factura'){
+    header('Content-Type: application/json');
+    require_once __DIR__ . '/../includes/cuenta_corriente.php';
+
+    $fac = ctaCteFactura($conn, (int)($_GET['id'] ?? 0), ctaCteRestriccionUsuario());
+    echo json_encode($fac ? ['ok' => true, 'factura' => $fac] : ['ok' => false, 'error' => 'Factura no encontrada o sin permisos.']);
+    exit;
+}
+
 /* ELIMINAR */
 if($_GET['accion'] == 'eliminar'){
     $id = (int)($_POST['id'] ?? 0);
